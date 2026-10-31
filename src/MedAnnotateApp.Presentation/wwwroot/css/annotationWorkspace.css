@@ -11,7 +11,8 @@ main[role="main"] { height: 100%; min-height: 0; padding-bottom: 0 !important; }
 /* One corner radius for every panel, so the rounding reads clearly and consistently. */
 :root { --box-radius: 10px; --control-radius: 6px; }
 /* The side panels sit half a centimetre from the description and image column. */
-.annotation-workspace { flex-direction: row; height: calc(100% - 42px); min-height: 0; margin: 0; padding: 6px 0; align-items: stretch; gap: .5cm; }
+/* The bottom padding lifts the buttons under the image off the window's lower edge. */
+.annotation-workspace { flex-direction: row; height: 100%; min-height: 0; margin: 0; padding: 6px 0 14px; align-items: stretch; gap: .5cm; }
 .annotation-workspace .left-column { flex: 1 1 0; width: auto; max-width: none; min-width: 0; min-height: 0; height: 100%; margin: 0; justify-content: flex-start; }
 .annotation-workspace .right-column { flex: 0 0 300px; width: 300px; max-width: none; min-width: 0; min-height: 0; height: 100%; margin: 0; padding-left: 0; box-sizing: border-box; }
 .annotation-workspace .right-column.student-mode { height: 100%; }
@@ -32,7 +33,8 @@ main[role="main"] { height: 100%; min-height: 0; padding-bottom: 0 !important; }
 .annotation-workspace .metadata-inner strong,
 .annotation-workspace .metadata-item .label { min-width: 0; font-size: inherit; line-height: inherit; }
 .annotation-workspace .metadata-item .value { min-width: 0; overflow-wrap: anywhere; }
-.annotation-workspace .comments-section { flex: 1 1 0; height: auto; min-height: 60px; overflow: hidden; border-radius: var(--box-radius); }
+/* Comments get a compact, fixed share of the column instead of filling it to the bottom. */
+.annotation-workspace .comments-section { flex: 0 1 auto; height: clamp(120px, 26vh, 220px); min-height: 60px; overflow: hidden; border-radius: var(--box-radius); }
 .comments-section label { flex: 0 0 auto; width: 100%; padding: 8px 12px; margin: 0; border-bottom: 1px solid #f0f0f0; color: #333; font-size: .85rem; font-weight: 600; }
 .comments-section textarea { flex: 1 1 0; min-height: 0; height: auto; line-height: 1.4; }
 /* The description scrolls beside its text size and read-in-full controls. Its height is fixed at five lines of the
@@ -46,32 +48,39 @@ main[role="main"] { height: 100%; min-height: 0; padding-bottom: 0 !important; }
 .description-tool:disabled { color: #b8b8b8; cursor: not-allowed; }
 .description-tool .bi { font-size: .78rem; }
 .annotation-instructions { flex: 0 0 auto; width: 100%; font-size: .73rem; line-height: 1.2; margin: 2px 0 4px; }
-.annotation-instructions-emphasis { color: #a9000e; font-style: italic; }
 .header-text .keyword { cursor: pointer; font-weight: bold; }
 .header-text .keyword:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
 .annotation-status { flex: 0 0 auto; width: 100%; min-height: 24px; max-height: 3.5em; padding: 3px 8px; margin-bottom: 5px; overflow: auto; font-size: .78rem; line-height: 1.25; background: #eef3f7; border-left: 3px solid #49667d; border-radius: var(--control-radius); }
+.annotation-status .status-term { color: #a9000e; font-weight: 700; }
 .annotation-status[data-state="error"] { color: #780c13; background: #fff0f0; border-color: #a9000e; }
 .annotation-status[data-state="unsaved"] { background: #fff7dc; border-color: #8c6700; }
 .annotation-status[data-state="saving"] { background: #e6f3ff; }
 .annotation-status[data-state="inspection"] { color: #5e1921; background: #f8f0f1; border-color: #a9000e; }
 .annotation-workspace .main-content, .annotation-workspace .annotation-section { flex: 1 1 0; min-height: 0; height: auto; margin: 0; }
-.image-viewport { flex: 1 1 0; min-height: 0; width: 100%; display: flex; align-items: center; justify-content: center; padding: 3px; }
+/* The image and its buttons form one column, centred in the free space, so the buttons always sit right under the image. */
+.image-viewport { flex: 1 1 0; min-height: 0; width: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; padding: 3px; }
 /* The red frame follows the container's rounded corners, and the canvas is rounded to match so no image corner pokes out. */
 #image-container { border: 0; outline: 2px solid #a9000e; border-radius: var(--box-radius); overflow: visible; flex: 0 0 auto; box-sizing: content-box; max-width: 100%; margin: 0; }
 #canvasContainer { position: relative; border: 0; padding: 0; box-sizing: content-box; flex: 0 0 auto; display: block; overflow: visible; }
 .zoom-selection { position: absolute; z-index: 1; box-sizing: border-box; pointer-events: none; border: 2px dashed #1a6fe0; background: rgba(26, 111, 224, .14); box-shadow: 0 0 0 1px rgba(255, 255, 255, .85), inset 0 0 0 1px rgba(255, 255, 255, .6); }
 #mainCanvas { border: 0; border-radius: var(--box-radius); padding: 0; display: block; max-width: none; box-sizing: content-box; touch-action: none; }
-.buttons-section { flex: 0 0 auto; flex-wrap: wrap; height: auto; gap: 6px; padding: 3px 0; margin: 4px 0 0; }
+/* Filters sits in the left corner while the decision buttons stay centred under the image. */
+.buttons-section { flex: 0 0 auto; display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; width: 100%; height: auto; max-width: 100%; gap: 6px; padding: 0; margin: 0; }
+.buttons-section .filters-button { grid-column: 1; justify-self: start; }
+.decision-buttons { grid-column: 2; display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
+.decision-buttons-wide { width: min(600px, 55vw); }
+.decision-buttons-wide #submit-button { width: 100%; max-width: none; }
 .buttons-section .button, .buttons-section .primary-button { font-size: .85rem; padding: 6px 10px; border-radius: var(--control-radius); }
 .student-mode .annotation-section { border-radius: var(--box-radius); }
 .student-mode .annotation-item { border-radius: var(--control-radius); }
 .buttons-section .button:disabled, .buttons-section .primary-button:disabled { color: #656565; background-color: #e9ecef; opacity: 1; cursor: not-allowed; box-shadow: none; }
 .annotation-workspace :is(button, a, input, textarea):focus-visible,
-.logout-section :is(button, a):focus-visible,
 .tools-container button:focus-visible,
 .floating-textbox :is(input, button):focus-visible { outline: 2px solid #a9000e; outline-offset: 2px; }
 .comments-section textarea:focus-visible { outline-offset: -2px; }
-.tools-container .tool-button { background-color: #fff; border-color: #d8d4d4; transition: background-color .12s ease, border-color .12s ease; }
+.tools-container { gap: 6px; padding: 6px; border-radius: var(--control-radius); }
+.tools-container .tool-button { width: 38px; height: 38px; padding: 5px; border-radius: var(--control-radius); background-color: #fff; border-color: #d8d4d4; transition: background-color .12s ease, border-color .12s ease; }
+.tools-container .tool-button img { width: 24px; height: 24px; }
 .tools-container .tool-button:hover { background-color: #f6f2f2; border-color: #bda7a9; transform: none; }
 .tools-container .tool-button.active,
 .tools-container .tool-button.active:hover { background-color: #a9000e; border-color: #a9000e; color: #fff; }
@@ -80,8 +89,16 @@ main[role="main"] { height: 100%; min-height: 0; padding-bottom: 0 !important; }
 .tools-container .tool-button:disabled,
 .tools-container .tool-button:disabled:hover { opacity: .45; background-color: #fff; border-color: #d8d4d4; cursor: not-allowed; }
 .tools-container .tool-button:disabled img { filter: none; }
+/* Hover or keyboard focus slides the tool's name out to the right: the button becomes a red box holding the
+   white icon and its name. Without hover only the icon shows. */
+.tools-container .tool-button { position: relative; overflow: visible; }
+.tools-container .tool-button img { position: relative; z-index: 1; }
+.tools-container .tool-button::after { content: attr(data-label); position: absolute; top: -1px; left: -1px; height: calc(100% + 2px); display: flex; align-items: center; padding: 0 14px 0 44px; color: #fff; background: #a9000e; border-radius: var(--control-radius); box-shadow: 0 4px 12px rgba(0, 0, 0, .18); font-size: .85rem; font-weight: 500; white-space: nowrap; pointer-events: none; opacity: 0; clip-path: inset(0 calc(100% - 40px) 0 0 round var(--control-radius)); transition: clip-path .2s ease-out, opacity .12s ease-out; }
+.tools-container .tool-button:is(:hover, :focus-visible):not(:disabled)::after { opacity: 1; clip-path: inset(0 0 0 0 round var(--control-radius)); }
+.tools-container .tool-button:is(:hover, :focus-visible):not(:disabled) { background-color: #a9000e; border-color: #a9000e; }
+.tools-container .tool-button:is(:hover, :focus-visible):not(:disabled) img { filter: brightness(0) invert(1); }
 
-/* Dialogs open in the browser's top layer, above the fixed tool strip, lens and label box. */
+/* Dialogs open in the browser's top layer, above the fixed tool strip and label box. */
 /* The page sheets reset every margin, so the dialog's own centring is restored here. */
 .annotation-dialog { inset: 0; width: fit-content; height: fit-content; max-width: calc(100vw - 32px); max-height: calc(100dvh - 32px); margin: auto; padding: 0; color: #212529; background: #fff; border: 0; border-radius: 8px; box-shadow: 0 20px 50px rgba(0, 0, 0, .35); overflow: hidden; }
 .annotation-dialog[open] { display: flex; flex-direction: column; animation: annotation-dialog-in .15s ease-out; }
@@ -118,22 +135,27 @@ main[role="main"] { height: 100%; min-height: 0; padding-bottom: 0 !important; }
 .student-mode .annotation-info { min-width: 0; }
 .student-mode .annotation-label { white-space: normal; overflow-wrap: anywhere; line-height: 1.35; }
 .student-mode .annotation-actions { flex-shrink: 0; }
-.annotation-workspace ~ .logout-section { height: 40px; padding: 0 16px; }
-.logout-section .btn { font-size: .8rem; padding: 4px 8px; }
-/* Red frame so Change filters stands out in the footer. */
-.logout-section .change-filters-button { color: #a9000e; background: #fff; border: 1.5px solid #a9000e; border-radius: var(--control-radius); font-weight: 500; transition: background-color .12s ease, color .12s ease; }
-.logout-section .change-filters-button:hover, .logout-section .change-filters-button:focus-visible { color: #fff; background: #a9000e; border-color: #a9000e; }
-.logout-section .counter, .logout-section .counter-display, .logout-section #end-button { font-size: .85rem; }
+/* Progress sits in the header, to the left of Log Out, so the workspace has no footer. */
+.header-progress { color: #a9000e; font-size: .9rem; font-weight: 500; white-space: nowrap; }
+/* Red-framed buttons: Filters at the left of the decision row, Log Out at the top right of the header.
+   Log Out keeps its #end-button id for the page scripts, so its rules carry the id to beat the older #end-button styles. */
+.filters-button, #end-button.header-logout { display: inline-flex; align-items: center; gap: 6px; color: #a9000e; background: #fff; border: 1.5px solid #a9000e; border-radius: var(--control-radius); font-size: .85rem; font-weight: 500; line-height: 1.2; transition: background-color .12s ease, color .12s ease; }
+.filters-button { padding: 6px 12px; }
+#end-button.header-logout { padding: 6px 14px; cursor: pointer; }
+.filters-button:hover, .filters-button:focus-visible, #end-button.header-logout:hover, #end-button.header-logout:focus-visible { color: #fff; background: #a9000e; border-color: #a9000e; }
+#end-button.header-logout:focus-visible { outline: 2px solid #a9000e; outline-offset: 2px; }
 .floating-textbox { max-width: calc(100vw - 12px); }
 .floating-input { min-width: 90px; }
 @media (prefers-reduced-motion: reduce) {
   .floating-textbox { animation: none; }
   .annotation-item, .annotation-actions button { transition: none; }
-  .tools-container .tool-button { transition: none; }
+  .tools-container .tool-button, .tools-container .tool-button::after { transition: none; }
   .description-tool, .annotation-dialog-action { transition: none; }
   .annotation-dialog[open] { animation: none; }
 }
-.centered-container { height: calc(100% - 42px); min-height: 0; overflow: auto; }
+/* The no-images message fills the space under the header instead of covering it, so Progress and Log Out stay visible. */
+.centered-container { position: relative; inset: auto; transform: none; z-index: auto; width: 100%; height: 100%; min-height: 0; overflow: auto; background: transparent; }
+.no-data-message a.button { text-decoration: none; }
 @media (max-width: 850px) {
   body > .container { padding-inline: 12px; }
   .annotation-workspace { flex-direction: row; gap: .5cm; }
@@ -141,7 +163,7 @@ main[role="main"] { height: 100%; min-height: 0; padding-bottom: 0 !important; }
   .annotation-workspace .metadata-inner { padding-inline: 10px; }
   .annotation-workspace .metadata-inner > p,
   .annotation-workspace .metadata-inner > .metadata-item { grid-template-columns: minmax(0, 1fr); row-gap: 2px; }
-  .buttons-section .button, .buttons-section .primary-button { font-size: .75rem; padding: 4px 6px; }
+  .buttons-section .button, .buttons-section .primary-button, .buttons-section .filters-button { font-size: .75rem; padding: 4px 6px; }
 }
 @media (max-height: 600px) {
   .description-panel { --description-lines: 4; }

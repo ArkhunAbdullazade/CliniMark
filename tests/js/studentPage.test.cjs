@@ -30,7 +30,7 @@ function page(response, options = {}) {
         resetAnnotation() { this.annotations = []; this.currentAction = 'none'; },
         stopInteraction() { this.stopped = true; this.readOnly = true; }};
     }
-    createTools() { return {rectButton: new Element(), freehandButton: new Element(), magnifyButton: new Element(), zoomButton: new Element()}; }
+    createTools() { return {rectButton: new Element(), freehandButton: new Element(), zoomButton: new Element()}; }
     getAnnotationGroups() { return this.groups; }
     getAllGroupedAnnotationsJSON() { return this.groups.map(group => ({label: group.label, annotations: []})); }
     deleteGroup(index) { this.groups.splice(index, 1); this.onGroupedAnnotationsChange(); }
@@ -146,7 +146,7 @@ test('inspection restores student status without changing local groups', () => {
   const status = elements['annotation-status'], before = status.textContent;
   manager.baseManager.onInspectionChange(true);
   assert.equal(status.dataset.state, 'inspection');
-  assert.match(status.textContent, /Inspection only.*temporarily hidden/);
+  assert.match(status.textContent, /^Zoom to Area/);
   assert.equal(manager.groups[0], group);
   manager.baseManager.onInspectionChange(false);
   assert.equal(status.textContent, before);
@@ -196,12 +196,12 @@ test('student saving status takes priority over the inspection hint', async () =
   await saving;
 });
 
-test('real student canvas keeps grouped and selected outlines hidden during inspection redraws', () => {
+test('real student canvas draws grouped outlines first and the selected outline last', () => {
   let baseDraws = 0;
   const outlined = [];
   class CanvasManager {
     constructor() {
-      this.ready = true; this.usingLens = false;
+      this.ready = true;
       this.drawCanvas = () => { baseDraws++; };
       this.drawAnnotation = shape => outlined.push(shape);
     }
@@ -216,14 +216,7 @@ test('real student canvas keeps grouped and selected outlines hidden during insp
   manager.groupedAnnotations = [{annotations: [groupedShape]}];
   manager.baseManager.selectedAnnotation = selectedShape;
   manager.baseManager.drawCanvas();
-  assert.deepEqual(outlined, [groupedShape, selectedShape]);
-  outlined.length = 0;
-  manager.baseManager.usingLens = true;
-  manager.baseManager.drawCanvas();
-  assert.equal(baseDraws, 2, 'The base image redraw still runs during inspection');
-  assert.deepEqual(outlined, [], 'Student overlays must remain hidden after resize/redraw');
-  manager.baseManager.usingLens = false;
-  manager.baseManager.drawCanvas();
+  assert.equal(baseDraws, 1, 'The base image is redrawn before the outlines');
   assert.deepEqual(outlined, [groupedShape, selectedShape]);
   assert.equal(manager.groupedAnnotations[0].annotations[0], groupedShape);
   assert.equal(manager.baseManager.selectedAnnotation, selectedShape);

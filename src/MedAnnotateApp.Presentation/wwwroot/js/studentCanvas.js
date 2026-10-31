@@ -12,7 +12,7 @@ class StudentCanvasManager {
     const drawBase = this.baseManager.drawCanvas.bind(this.baseManager);
     this.baseManager.drawCanvas = () => {
       drawBase();
-      if (!this.baseManager.ready || this.baseManager.usingLens) return;
+      if (!this.baseManager.ready) return;
       for (let i = 0; i < this.groupedAnnotations.length; i++) {
         if (i === this.selectedGroupIndex) continue;
         for (const shape of this.groupedAnnotations[i].annotations) this.baseManager.drawAnnotation(shape, false);
@@ -298,12 +298,6 @@ class StudentCanvasManager {
   handleAnnotationsChange() {
     const annotations = this.baseManager.annotations;
     
-    // Don't show textbox if magnifier is active
-    if (this.baseManager.usingLens) {
-      this.hideTextBox();
-      return;
-    }
-    
     // If we have annotations but no current group, start a new one
     if (annotations.length > 0 && !this.currentGroup) {
       this.startNewGroup();
@@ -421,12 +415,6 @@ class StudentCanvasManager {
   setupEventListeners() {
     // Add window resize event to reposition the textbox if needed
     window.addEventListener('resize', () => {
-      // Don't update if magnifier is active
-      if (this.baseManager.usingLens) {
-        this.hideTextBox();
-        return;
-      }
-      
       if (this.textBoxElement && this.textBoxElement.style.display !== 'none' && 
           this.currentAnnotationBeingEdited) {
         this.showTextBoxForAnnotation(this.currentAnnotationBeingEdited);
@@ -435,12 +423,6 @@ class StudentCanvasManager {
     
     // Also handle scroll events for textbox repositioning
     document.addEventListener('scroll', () => {
-      // Don't update if magnifier is active
-      if (this.baseManager.usingLens) {
-        this.hideTextBox();
-        return;
-      }
-      
       if (this.textBoxElement && this.textBoxElement.style.display !== 'none' && 
           this.currentAnnotationBeingEdited) {
         this.showTextBoxForAnnotation(this.currentAnnotationBeingEdited);
@@ -452,12 +434,6 @@ class StudentCanvasManager {
     if (originalSelectAnnotation) {
       this.baseManager.selectAnnotation = (annotation) => {
         originalSelectAnnotation.call(this.baseManager, annotation);
-        
-        // Don't update if magnifier is active
-        if (this.baseManager.usingLens) {
-          this.hideTextBox();
-          return;
-        }
         
         // Then update the current annotation being edited
         if (annotation && this.textBoxElement.style.display !== 'none') {
@@ -472,12 +448,6 @@ class StudentCanvasManager {
     if (originalHandleDragMove) {
       this.baseManager.handleDragMove = (e) => {
         originalHandleDragMove.call(this.baseManager, e);
-        
-        // Don't update if magnifier is active
-        if (this.baseManager.usingLens) {
-          this.hideTextBox();
-          return;
-        }
         
         // Then update textbox position if needed
         if (this.textBoxElement.style.display !== 'none' && 
@@ -494,12 +464,6 @@ class StudentCanvasManager {
       this.baseManager.handleResize = (e) => {
         originalHandleResize.call(this.baseManager, e);
         
-        // Don't update if magnifier is active
-        if (this.baseManager.usingLens) {
-          this.hideTextBox();
-          return;
-        }
-        
         // Then update textbox position
         if (this.textBoxElement.style.display !== 'none' && 
             this.currentAnnotationBeingEdited && 
@@ -515,12 +479,6 @@ class StudentCanvasManager {
       this.baseManager.handleRotate = (e) => {
         originalHandleRotate.call(this.baseManager, e);
         
-        // Don't update if magnifier is active
-        if (this.baseManager.usingLens) {
-          this.hideTextBox();
-          return;
-        }
-        
         // Then update textbox position
         if (this.textBoxElement.style.display !== 'none' && 
             this.currentAnnotationBeingEdited && 
@@ -530,39 +488,11 @@ class StudentCanvasManager {
       };
     }
     
-    // Also track show/hide lens events from the base manager
-    const originalShowLens = this.baseManager.showLens;
-    if (originalShowLens) {
-      this.baseManager.showLens = () => {
-        originalShowLens.call(this.baseManager);
-        
-        // Hide textbox when magnifier is shown
-        this.hideTextBox();
-      };
-    }
-    
-    const originalHideLens = this.baseManager.hideLens;
-    if (originalHideLens) {
-      this.baseManager.hideLens = () => {
-        originalHideLens.call(this.baseManager);
-        
-        // Restore textbox if we have annotations
-        if (this.currentGroup && this.baseManager.annotations.length > 0) {
-          this.showTextBoxForAnnotation(this.baseManager.annotations[this.baseManager.annotations.length - 1]);
-        }
-      };
-    }
-    
     // Check for animation frame support
     if (window.requestAnimationFrame) {
       // Set up animation frame for smooth textbox tracking during interactions
       const trackAnnotation = () => {
-        // Don't update if magnifier is active
-        if (this.baseManager.usingLens) {
-          if (this.textBoxElement.style.display !== 'none') {
-            this.hideTextBox();
-          }
-        } else if (this.textBoxElement.style.display !== 'none' && 
+        if (this.textBoxElement.style.display !== 'none' && 
             this.currentAnnotationBeingEdited && 
             (this.baseManager.currentAction === 'move' || 
              this.baseManager.currentAction === 'resize' || 
@@ -643,11 +573,6 @@ class StudentCanvasManager {
   
   // Proxy methods to base manager for convenience
   switchMode(mode) {
-    // Hide textbox when switching to magnifier mode
-    if (mode === "magnifier") {
-      this.hideTextBox();
-    }
-    
     return this.baseManager.switchMode(mode);
   }
   

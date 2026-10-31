@@ -47,8 +47,7 @@ function toolbar() {
   const canvas = new Element('canvas');
   canvas.width = 1200; canvas.height = 800;
   Object.assign(manager, {canvas, ctx: drawingContext, sourceImage: {},
-    currentMode: 'rectangle', annotations: [], ready: true, usingLens: false,
-    lens: null, _lensSize: 150, _maxLensSize: 600, _zoomFactor: 4});
+    currentMode: 'rectangle', annotations: [], ready: true});
   return {manager, tools: manager.createTools(new Element('div'))};
 }
 
@@ -61,7 +60,8 @@ test('toolbar starts with rectangle selected and exposes every tool state', () =
   const {tools} = toolbar();
   pressed(tools.rectButton, true);
   pressed(tools.freehandButton, false);
-  pressed(tools.magnifyButton, false);
+  pressed(tools.zoomButton, false);
+  assert.deepEqual(Object.keys(tools), ['rectButton', 'freehandButton', 'zoomButton']);
   for (const button of Object.values(tools)) assert.ok(button.getAttribute('aria-label'));
 });
 
@@ -75,56 +75,17 @@ test('rectangle and freehand selection keep visual and accessible state together
   pressed(tools.rectButton, true); pressed(tools.freehandButton, false);
 });
 
-test('magnifier toggles independently without changing drawing mode or stored shapes', () => {
-  const {manager, tools} = toolbar();
-  const shapes = [{type: 'rectangle', cx: 200, cy: 200, width: 100, height: 80, rotation: 0},
-    {type: 'freehand', points: [{x: 20, y: 30}, {x: 60, y: 30}, {x: 40, y: 70}]}];
-  manager.annotations = shapes;
-  const before = JSON.stringify(shapes);
-  manager.switchMode('freehand');
-  manager.switchMode('magnifier');
-  assert.equal(manager.usingLens, true); assert.ok(manager.lens);
-  assert.equal(manager.currentMode, 'freehand');
-  pressed(tools.magnifyButton, true); pressed(tools.freehandButton, true);
-  manager.switchMode('magnifier');
-  assert.equal(manager.usingLens, false); assert.equal(manager.lens, null);
-  assert.equal(manager.currentMode, 'freehand');
-  pressed(tools.magnifyButton, false); pressed(tools.freehandButton, true);
-  assert.equal(manager.annotations, shapes);
-  assert.equal(JSON.stringify(manager.annotations), before);
-});
-
-test('changing drawing mode closes the lens and clears its selected state', () => {
-  const {manager, tools} = toolbar();
-  manager.switchMode('magnifier');
-  manager.switchMode('freehand');
-  assert.equal(manager.usingLens, false); assert.equal(manager.lens, null);
-  assert.equal(manager.currentMode, 'freehand');
-  pressed(tools.magnifyButton, false);
-  pressed(tools.rectButton, false); pressed(tools.freehandButton, true);
-});
-
-test('magnifier waits for a decoded image without falsely activating the tool', () => {
-  const {manager, tools} = toolbar();
-  manager.ready = false;
-  manager.switchMode('magnifier');
-  assert.equal(manager.usingLens, false); assert.equal(manager.lens, null);
-  pressed(tools.magnifyButton, false);
-});
-
-test('zoom to area is its own mode: it closes the lens, drops the selection and hands back to drawing', () => {
+test('zoom to area is its own mode: it drops the selection and hands back to drawing', () => {
   const {manager, tools} = toolbar();
   const hints = [];
   manager.onInspectionChange = (active, kind) => hints.push([active, kind]);
   manager.selectedAnnotation = {type: 'rectangle', cx: 200, cy: 200, width: 100, height: 80, rotation: 0};
   manager.annotations = [manager.selectedAnnotation];
-  manager.switchMode('magnifier');
   manager.switchMode('zoom');
   assert.equal(manager.currentMode, 'zoom');
-  assert.equal(manager.usingLens, false); assert.equal(manager.lens, null);
   assert.equal(manager.selectedAnnotation, null);
   assert.equal(manager.annotations.length, 1);
-  pressed(tools.zoomButton, true); pressed(tools.magnifyButton, false);
+  pressed(tools.zoomButton, true);
   pressed(tools.rectButton, false); pressed(tools.freehandButton, false);
   assert.equal(manager.canvas.style.cursor, 'zoom-in');
   assert.deepEqual(hints.at(-1), [true, 'zoom']);

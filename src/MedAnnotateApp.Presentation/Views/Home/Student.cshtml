@@ -24,10 +24,12 @@
                     <canvas id="mainCanvas"></canvas>
                 </div>
             </div>
-            </div>
-
             <div class="buttons-section">
-                <button id="submit-button" class="primary-button" disabled>Submit Annotations</button>
+                <a asp-controller="Identity" asp-action="Filters" class="btn filters-button">Filters</a>
+                <div class="decision-buttons decision-buttons-wide">
+                    <button id="submit-button" class="primary-button" disabled>Submit Annotations</button>
+                </div>
+            </div>
             </div>
         </div>
 
@@ -95,7 +97,7 @@ else
             </div>
             <h3>@(AnnotationProgress.IsComplete(counter) ? "All matching images have been completed." : "No available images match all of your selected filters.")</h3>
             <p>@(AnnotationProgress.IsComplete(counter) ? "Saved annotations remain in the database for research evaluation." : "Images may be completed, assigned to another user, or missing the selected metadata.")</p>
-            <a asp-controller="Identity" asp-action="Filters" class="button">Change filters</a>
+            <a asp-controller="Identity" asp-action="Filters" class="button">Filters</a>
             <button id="end-button-center" type="button" class="button mt-4">
                 Log Out
             </button>
@@ -103,11 +105,10 @@ else
     </div>
 }
 
-<div class="logout-section">
-    <a asp-controller="Identity" asp-action="Filters" class="btn change-filters-button">Change filters</a>
-    <div class="counter">Team progress in selected filters: @counter</div>
-    <button type="button" id="end-button" class="end-button">Log Out</button>
-</div>
+@section HeaderActions {
+    <span class="header-progress">Progress: @counter</span>
+    <button type="button" id="end-button" class="header-logout"><i class="bi bi-box-arrow-right" aria-hidden="true"></i> Log Out</button>
+}
 
 <script nonce="@Context.Items[SecurityHeaders.NonceKey]">
     // Flag to identify student page for canvas.js processing

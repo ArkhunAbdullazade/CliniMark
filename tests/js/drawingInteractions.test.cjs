@@ -193,15 +193,3 @@ test('pointer cancellation restores exact box and freehand geometry without repo
   }
 });
 
-test('Delete and Backspace cannot remove annotations while the magnifier is inspecting the image',()=>{
-  const f=fixture();f.manager.setAnnotations([rectangle()]);
-  gesture(f.manager,f.event,[300,250]);
-  const before=f.manager.getAllAnnotationsJSON();
-  let prevented=0;f.manager.usingLens=true;
-  for(const key of ['Delete','Backspace'])f.listeners.keydown({key,preventDefault:()=>{prevented++;}});
-  assert.equal(f.manager.getAllAnnotationsJSON(),before);assert.equal(f.changes(),0);
-  assert.equal(prevented,0);
-  f.manager.usingLens=false;
-  f.listeners.keydown({key:'Delete',preventDefault:()=>{prevented++;}});
-  assert.equal(f.manager.annotations.length,0);assert.equal(f.changes(),1);assert.equal(prevented,1);
-});

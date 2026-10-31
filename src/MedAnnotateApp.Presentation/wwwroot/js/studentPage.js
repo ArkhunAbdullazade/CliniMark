@@ -8,8 +8,7 @@ document.addEventListener("DOMContentLoaded", () => {
   let baseStatus = {message: status?.textContent || "", state: status?.dataset.state || "ready"};
   let inspecting = null;
   const inspectionHints = {
-    magnifier: "Inspection only: outlines are temporarily hidden. Drag the lens or its edge. Click Magnifier again to return to drawing.",
-    zoom: "Zoom to Area: drag a box over the image, or click a point, to see it enlarged. Select Rectangle or Freehand to draw again."
+    zoom: "Zoom to Area: drag a box over the image, or click a point, to see it enlarged. Select Boundary Box or Freehand Contour to draw again."
   };
   const renderStatus = () => {
     if (!status) return;
@@ -21,7 +20,7 @@ document.addEventListener("DOMContentLoaded", () => {
     baseStatus = {message, state};
     renderStatus();
   };
-  const inspectionChanged = (active, kind = "magnifier") => {
+  const inspectionChanged = (active, kind = "zoom") => {
     if (active && !inspecting && status) baseStatus = {message: status.textContent, state: status.dataset.state || "ready"};
     inspecting = active ? kind : null;
     renderStatus();
@@ -46,7 +45,6 @@ document.addEventListener("DOMContentLoaded", () => {
   const tools=manager.createTools(document.getElementById("image-container"));
   tools.rectButton.addEventListener("click",()=>manager.switchMode("rectangle"));
   tools.freehandButton.addEventListener("click",()=>manager.switchMode("freehand"));
-  tools.magnifyButton.addEventListener("click",()=>manager.switchMode("magnifier"));
   tools.zoomButton.addEventListener("click",()=>manager.switchMode("zoom"));
   function updateList() {
     list.replaceChildren();

@@ -1,17 +1,22 @@
 @model MedAnnotateApp.Presentation.Dtos.ImageFiltersDto
 @{
-    ViewBag.Title = "Image selections";
+    ViewBag.Title = "Filters";
+    // Only the lists themselves: no introduction or help text on this page.
+    ViewData["CompactImageFilters"] = true;
 }
 <link rel="stylesheet" href="~/css/authForms.css" asp-append-version="true" />
 
 <section class="card shadow-sm my-4 auth-page">
     <div class="card-body p-4">
-        <h1 class="h3">Image selections</h1>
-        <p>These selections apply whenever you open annotation work. Saved annotations stay available for matching images.</p>
-        <form method="post" asp-controller="Identity" asp-action="Filters" data-image-filter-form>
+        <h1 class="visually-hidden">Filters</h1>
+        <form method="post" asp-controller="Identity" asp-action="Filters" data-image-filter-form data-filter-tools>
             <div asp-validation-summary="All" class="text-danger" role="alert"></div>
             <partial name="_ImageFilters" model="Model" />
-            <button type="submit" class="btn btn-danger mt-3">Save selections and continue</button>
+            <div class="auth-actions">
+                <button type="submit" class="btn btn-danger">Save and Continue</button>
+                @* Leaves without saving, so the current selections and any assigned image stay as they are. *@
+                <a asp-controller="Home" asp-action="Index" class="btn btn-cancel">Cancel and Return</a>
+            </div>
         </form>
     </div>
 </section>

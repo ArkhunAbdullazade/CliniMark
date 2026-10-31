@@ -6,20 +6,28 @@ document.addEventListener("DOMContentLoaded", () => {
   let baseStatus = {message: status?.textContent || "", state: status?.dataset.state || "ready"};
   let inspecting = null;
   const inspectionHints = {
-    magnifier: "Inspection only: outlines are temporarily hidden. Drag the lens or its edge. Click Magnifier again to return to drawing.",
-    zoom: "Zoom to Area: drag a box over the image, or click a point, to see it enlarged. Select Rectangle or Freehand to draw again."
+    zoom: "Zoom to Area: drag a box over the image, or click a point, to see it enlarged. Select Boundary Box or Freehand Contour to draw again."
   };
+  // The term in the current-term prompt is shown in bold red, so the specialist sees at once what to outline.
+  const currentTermPrompt = /^(Annotate the current term: )(.+)(\. Changes are not saved until you select Save and Next Term\.)$/s;
   const renderStatus = () => {
     if (!status) return;
     const hint = inspecting && !["error", "saving"].includes(baseStatus.state);
-    status.textContent = hint ? inspectionHints[inspecting] : baseStatus.message;
+    const message = hint ? inspectionHints[inspecting] : baseStatus.message;
+    const parts = hint ? null : currentTermPrompt.exec(message);
+    if (parts) {
+      const term = document.createElement("strong");
+      term.className = "status-term";
+      term.textContent = parts[2];
+      status.replaceChildren(parts[1], term, parts[3]);
+    } else status.textContent = message;
     status.dataset.state = hint ? "inspection" : baseStatus.state;
   };
   const showStatus = (message, state = "ready") => {
     baseStatus = {message, state};
     renderStatus();
   };
-  const inspectionChanged = (active, kind = "magnifier") => {
+  const inspectionChanged = (active, kind = "zoom") => {
     if (active && !inspecting && status) baseStatus = {message: status.textContent, state: status.dataset.state || "ready"};
     inspecting = active ? kind : null;
     renderStatus();
@@ -66,7 +74,6 @@ document.addEventListener("DOMContentLoaded", () => {
   const tools = manager.createTools(document.getElementById("image-container"));
   tools.rectButton.addEventListener("click", () => manager.switchMode("rectangle"));
   tools.freehandButton.addEventListener("click", () => manager.switchMode("freehand"));
-  tools.magnifyButton.addEventListener("click", () => manager.switchMode("magnifier"));
   tools.zoomButton.addEventListener("click", () => manager.switchMode("zoom"));
   let history = [], currentIndex = -1, reviewIndex = -1;
   let historyLoaded = false, historyLoading = false;

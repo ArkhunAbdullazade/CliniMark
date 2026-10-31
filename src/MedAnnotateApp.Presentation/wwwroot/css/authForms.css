@@ -41,6 +41,18 @@
 .auth-page .image-filter-options .form-check-input:checked { background-color: #a9000e; border-color: #a9000e; }
 .auth-page .image-filter-options .form-check-label { flex: 1; min-width: 0; padding: 6px 0; line-height: 1.5; overflow-wrap: anywhere; cursor: pointer; }
 .auth-page [data-selection-error]:not(:empty) { display: block; margin-top: 6px; line-height: 1.4; }
+/* Search and Select all above each filter list. */
+.auth-page .image-filter-tools { display: flex; flex-direction: column; gap: 6px; margin-bottom: 6px; }
+.auth-page .image-filter-search { min-height: 36px; padding: 6px 10px; font-size: 15px; }
+.auth-page .image-filter-all { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 12px; }
+.auth-page .image-filter-all .form-check { display: flex; align-items: center; gap: 8px; min-height: 32px; margin: 0; padding: 0; }
+.auth-page .image-filter-all .form-check-input { float: none; margin: 0; }
+.auth-page .image-filter-all .form-check-input:checked, .auth-page .image-filter-all .form-check-input:indeterminate { background-color: #a9000e; border-color: #a9000e; }
+.auth-page .image-filter-all .form-check-label { font-weight: 500; cursor: pointer; }
+.auth-page .image-filter-count { color: #5b5b5b; font-size: 13px; white-space: nowrap; }
+.auth-page .image-filter-empty { margin: 0; padding: 8px; color: #5b5b5b; font-style: italic; }
+.auth-page .btn-cancel { min-height: 44px; padding: 10px 20px; border: 1.5px solid #a9000e; border-radius: 6px; background: #fff; color: #a9000e; font-size: 16px; font-weight: 500; }
+.auth-page .btn-cancel:hover { background: #fff1f2; color: #8f000c; border-color: #8f000c; }
 .auth-page .auth-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin-top: 20px; }
 .auth-page .signup-warning { display: flex; gap: 8px; margin: 8px 0 0; padding: 8px 10px; border: 1px solid #e9c46a; border-radius: 6px; background: #fff8e6; color: #5c4400; font-size: 14px; line-height: 1.45; }
 .auth-page .signup-warning .bi { flex: 0 0 auto; color: #a06a00; }

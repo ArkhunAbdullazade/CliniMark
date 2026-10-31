@@ -26,7 +26,6 @@
                     <button type="button" class="description-tool" data-description-open title="Read the whole description" aria-label="Read the whole description" aria-haspopup="dialog"><i class="bi bi-arrows-angle-expand" aria-hidden="true"></i></button>
                 </div>
             </div>
-            <div class="annotation-instructions annotation-instructions-emphasis">Draw a rectangular boundary box or a free contour around the term in red. Zoom, move, resize, rotate, and delete as needed.</div>
             <div id="annotation-status" class="annotation-status" role="status" aria-live="polite">Loading image and saved responses…</div>
 
             <div class="main-content">
@@ -40,21 +39,24 @@
                             <canvas id="mainCanvas"></canvas>
                         </div>
                     </div>
-                    </div>
                     <div class="buttons-section">
-                        <button
-                            title="Click Not Visible if you are certain that it is not possible to visually annotate the current medical term in this particular image."
-                            id="not-present-button" type="button" class="button btn btn-block">
-                            Not Visible/Abstract
-                        </button>
-                        <button
-                            title="Click Location Uncertain if you are unsure whether the current medical term is present in the image at all, or of its exact location."
-                            id="skip-button" type="button" class="button btn btn-block">
-                            Uncertain/Skip
-                        </button>
-                        <button id="next-button" type="button" class="button btn btn-block" disabled>
-                            Save and Next Term
-                        </button>
+                        <a asp-controller="Identity" asp-action="Filters" class="btn filters-button">Filters</a>
+                        <div class="decision-buttons">
+                            <button
+                                title="Click Not Visible if you are certain that it is not possible to visually annotate the current medical term in this particular image."
+                                id="not-present-button" type="button" class="button btn btn-block">
+                                Not Visible/Abstract
+                            </button>
+                            <button
+                                title="Click Location Uncertain if you are unsure whether the current medical term is present in the image at all, or of its exact location."
+                                id="skip-button" type="button" class="button btn btn-block">
+                                Uncertain/Skip
+                            </button>
+                            <button id="next-button" type="button" class="button btn btn-block" disabled>
+                                Save and Next Term
+                            </button>
+                        </div>
+                    </div>
                     </div>
                 </div>
             </div>
@@ -121,23 +123,17 @@ else
                 @(AnnotationProgress.IsComplete(counter) ? "All matching images have been completed." : "No available images match all of your selected filters.")
             </h3>
             <p>@(AnnotationProgress.IsComplete(counter) ? "Saved annotations remain in the database for research evaluation." : "Images may be completed, assigned to another specialist, or missing the selected metadata. Choose different filters or ask the research team to refine the image metadata.")</p>
-            <a asp-controller="Identity" asp-action="Filters" class="button">Change filters</a>
+            <a asp-controller="Identity" asp-action="Filters" class="button">Filters</a>
             <button id="end-button-center" type="button" class="button mt-4">
                 Log Out
             </button>
         </div>
     </div>
 }
-<div class="logout-section">
-    <a asp-controller="Identity" asp-action="Filters" class="btn change-filters-button">Change filters</a>
-    <div class="counter-display">
-        <span>Team progress in selected filters: </span>
-        <span id="counter-value">@counter</span>
-    </div>
-    <button id="end-button" type="button">
-        Log Out
-    </button>
-</div>
+@section HeaderActions {
+    <span class="header-progress">Progress: <span id="counter-value">@counter</span></span>
+    <button id="end-button" type="button" class="header-logout"><i class="bi bi-box-arrow-right" aria-hidden="true"></i> Log Out</button>
+}
 
 <script nonce="@Context.Items[SecurityHeaders.NonceKey]">
     window.annotatedMedData = @Html.Raw(Json.Serialize(AnnotationImage.From(Model)));

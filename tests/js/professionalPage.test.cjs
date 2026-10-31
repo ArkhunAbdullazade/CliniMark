@@ -25,6 +25,10 @@ class Element {
     (this.listeners[name] ||= []).push(callback);
   }
   setAttribute(name, value) { this.attributes[name] = value; }
+  replaceChildren(...nodes) {
+    this.children = nodes;
+    this.textContent = nodes.map(node => typeof node === 'string' ? node : node.textContent).join('');
+  }
   async fire(name, event = {}) {
     for (const callback of this.listeners[name] || []) await callback(event);
   }
@@ -49,7 +53,7 @@ async function page(occurrences, expectedCount, options = {}) {
       this.currentAction = 'none';
     }
     createTools() {
-      return {rectButton: new Element(), freehandButton: new Element(), magnifyButton: new Element(), zoomButton: new Element()};
+      return {rectButton: new Element(), freehandButton: new Element(), zoomButton: new Element()};
     }
     resetAnnotation() { this.annotations = []; }
     stopInteraction() { this.stopped = true; this.readOnly = true; }
@@ -60,6 +64,7 @@ async function page(occurrences, expectedCount, options = {}) {
     window: {annotatedMedData: {id: 1}, addEventListener(name, callback) { events[name] = callback; }, watchAssignment: options.watch},
     document: {
       addEventListener(name, callback) { if (name === 'DOMContentLoaded') onReady = callback; },
+      createElement: tag => Object.assign(new Element(), {tagName: tag.toUpperCase()}),
       getElementById: id => elements[id],
       querySelectorAll: selector => selector === '.header-text .keyword' ? occurrences : [],
       querySelector: selector => selector === '.header-text' ? header : {value: 'synthetic-csrf'}
@@ -123,7 +128,7 @@ test('inspection restores the specialist status and keeps the current shapes and
   const status = elements['annotation-status'], before = status.textContent;
   manager.onInspectionChange(true);
   assert.equal(status.dataset.state, 'inspection');
-  assert.match(status.textContent, /Inspection only.*temporarily hidden/);
+  assert.match(status.textContent, /^Zoom to Area/);
   assert.equal(term.classList.contains('current_keyword'), true);
   assert.equal(manager.annotations.length, 1);
   manager.onInspectionChange(false);
@@ -293,6 +298,9 @@ test('removing every shape and the comment returns the term to an untouched stat
   manager.onAnnotationsChange();
   assert.equal(status.dataset.state, 'ready');
   assert.match(status.textContent, /^Annotate the current term: lesion\./);
+  // The term itself is a separate bold red element; the rest of the prompt stays plain text.
+  const term = status.children[1];
+  assert.equal(term.tagName, 'STRONG');assert.equal(term.className, 'status-term');assert.equal(term.textContent, 'lesion');
   assert.equal(warnsBeforeLeaving(), false);
 
   elements.comments.value = 'A note';
@@ -359,9 +367,6 @@ test('zoom to area shows its own hint and restores the specialist status afterwa
   manager.onInspectionChange(true, 'zoom');
   assert.equal(status.dataset.state, 'inspection');
   assert.match(status.textContent, /^Zoom to Area/);
-  manager.onInspectionChange(true, 'magnifier');
-  assert.match(status.textContent, /^Inspection only/);
-  manager.onInspectionChange(true, 'zoom');
   manager.onInspectionChange(false, 'zoom');
   assert.equal(status.textContent, before);
   assert.equal(status.dataset.state, 'ready');

@@ -11,7 +11,7 @@ const tools=manager.createTools(document.getElementById('image-container'));
 document.querySelectorAll('.tool-button img').forEach(img=>img.src='../../src/MedAnnotateApp.Presentation/wwwroot/images/'+img.getAttribute('src').split('/').pop());
 tools.rectButton.onclick=()=>manager.switchMode('rectangle');
 tools.freehandButton.onclick=()=>manager.switchMode('freehand');
-tools.magnifyButton.onclick=()=>manager.switchMode('magnifier');
+tools.zoomButton.onclick=()=>manager.switchMode('zoom');
 let serialized='';
 document.getElementById('save').onclick=()=>{try{serialized=manager.getAllAnnotationsJSON();document.getElementById('result').textContent=serialized;}catch(e){document.getElementById('result').textContent=e.message;}};
 document.getElementById('reload').onclick=()=>manager.loadCoordinates(serialized);

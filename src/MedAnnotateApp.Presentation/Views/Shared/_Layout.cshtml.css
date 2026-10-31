@@ -8,6 +8,13 @@ a.navbar-brand {
   margin-right: 0;
 }
 
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-left: auto;
+}
+
 /* The logo replaces the text title; its height matches the title's former line so the workspace keeps its room. */
 .brand-logo {
   display: block;

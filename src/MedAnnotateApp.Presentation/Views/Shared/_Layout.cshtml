@@ -22,6 +22,13 @@
                         <img src="~/images/stanford-university-logo.png" alt="Logo" width="35" height="35" />
                     </div> *@
                 </div>
+                @* Page actions such as Log Out sit at the top right, outside the collapse so they show at every width. *@
+                @if (IsSectionDefined("HeaderActions"))
+                {
+                    <div class="header-actions">
+                        @await RenderSectionAsync("HeaderActions", required: false)
+                    </div>
+                }
             </div>
         </nav>
     </header>

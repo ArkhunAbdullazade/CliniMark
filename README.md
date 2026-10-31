@@ -34,11 +34,11 @@ https://github.com/user-attachments/assets/b1e7f00c-6cef-4361-a3d1-9c89e0a28a19
 
 ### Drawing tools
 
-Both workflows provide rectangle and freehand tools, with a magnifier for inspecting small details.
+Both workflows provide boundary box and freehand contour tools, with zoom to area for inspecting small details.
 
-| Rectangle and freehand regions | Magnifier |
-| --- | --- |
-| <img width="620" height="502" alt="DEMOSS4" src="https://github.com/user-attachments/assets/eb2d3831-7b87-492a-931c-1be9b61ce850" /> | <img width="617" height="500" alt="DEMOSS5" src="https://github.com/user-attachments/assets/198f6b16-b2af-4671-afe8-07f9fab77733" /> |
+| Boundary box and freehand contour regions |
+| --- |
+| <img width="620" height="502" alt="DEMOSS4" src="https://github.com/user-attachments/assets/eb2d3831-7b87-492a-931c-1be9b61ce850" /> |
 
 ### Participant access and image assignment
 

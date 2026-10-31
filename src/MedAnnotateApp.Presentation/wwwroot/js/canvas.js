@@ -39,17 +39,6 @@ class CanvasManager {
       this.onAnnotationsChange = null;
       this.onInspectionChange = null;
   
-      // Magnifier state
-      this.usingLens = false;
-      this.lens = null;
-      this._lensSize = 150;
-      this._maxLensSize = 600;
-      this._zoomFactor = 4;
-      this.draggingLens = false;
-      this.isResizingLens = false;
-      this.lensOffset = { x: 0, y: 0 };
-      this.initialLensSize = 150;
-  
       // Zoom-to-area state
       this.zoomSelection = null;
       this.zoomDialog = null;
@@ -195,17 +184,14 @@ class CanvasManager {
       toolsContainer.className = "tools-container";
       toolsContainer.style.position = "fixed";
       
-      const rectButton = this.createToolButton("rectangle", "../images/rectangle.svg", "Rectangle Mode", true);
+      const rectButton = this.createToolButton("rectangle", "../images/rectangle.svg", "Boundary Box", true);
       
-      const freehandButton = this.createToolButton("freehand", "../images/freehand.svg", "Freehand Mode", false);
-      
-      const magnifyButton = this.createToolButton("magnify", "../images/magnifier.svg", "Magnifier Tool", false);
+      const freehandButton = this.createToolButton("freehand", "../images/freehand.svg", "Freehand Contour", false);
       
       const zoomButton = this.createToolButton("zoom", "../images/zoom-area.svg", "Zoom to Area", false);
       
       toolsContainer.appendChild(rectButton);
       toolsContainer.appendChild(freehandButton);
-      toolsContainer.appendChild(magnifyButton);
       toolsContainer.appendChild(zoomButton);
       
       document.body.appendChild(toolsContainer);
@@ -213,11 +199,10 @@ class CanvasManager {
   
       this.rectButton = rectButton;
       this.freehandButton = freehandButton;
-      this.magnifyButton = magnifyButton;
       this.zoomButton = zoomButton;
   
       this.updateToolsPosition(imageContainer);
-      return { rectButton, freehandButton, magnifyButton, zoomButton };
+      return { rectButton, freehandButton, zoomButton };
     }
   
     createToolButton(type, iconSrc, title, isActive) {
@@ -227,8 +212,9 @@ class CanvasManager {
       button.setAttribute("aria-pressed", String(isActive));
       button.className = `tool-button${isActive ? " active" : ""}`;
       button.id = `${type}ModeButton`;
-      button.title = title;
-      
+      // The name slides out beside the icon on hover or focus (see annotationWorkspace.css), replacing the slow browser tooltip.
+      button.setAttribute("data-label", title);
+
       const icon = document.createElement("img");
       icon.src = iconSrc;
       icon.alt = "";
@@ -252,41 +238,12 @@ class CanvasManager {
   
     // Mode switching
     switchMode(newMode) {
-      // Special handling for magnifier mode
-      if (newMode === "magnifier") {
-        if (!this.ready && !this.usingLens) return;
-        // Toggle magnifier on/off
-        if (this.usingLens) {
-          this.hideLens();
-          if (this.magnifyButton) {
-            this.magnifyButton.classList.remove("active");
-            this.magnifyButton.setAttribute("aria-pressed", "false");
-          }
-        } else {
-          this.showLens();
-          if (this.magnifyButton) {
-            this.magnifyButton.classList.add("active");
-            this.magnifyButton.setAttribute("aria-pressed", "true");
-          }
-        }
-        return; // Don't change the current drawing mode
-      }
-      
       // Do nothing if trying to switch to the same mode
       if (this.currentMode === newMode) return;
 
       // Update the current mode for rectangle/freehand/zoom
       this.cancelZoomSelection();
       this.currentMode = newMode;
-      
-      // Hide lens when switching modes
-      if (this.usingLens) {
-        this.hideLens();
-        if (this.magnifyButton) {
-          this.magnifyButton.classList.remove("active");
-          this.magnifyButton.setAttribute("aria-pressed", "false");
-        }
-      }
       
       // Zooming only inspects, so no shape stays selected with handles that cannot be used.
       if (newMode === "zoom" && this.selectedAnnotation) {
@@ -304,9 +261,9 @@ class CanvasManager {
       this.notifyInspection();
     }
 
-    // Pages show a hint while the magnifier or zoom-to-area replaces drawing.
+    // Pages show a hint while zoom-to-area replaces drawing.
     notifyInspection() {
-      if (this.onInspectionChange) this.onInspectionChange(this.usingLens || this.currentMode === "zoom", this.usingLens ? "magnifier" : "zoom");
+      if (this.onInspectionChange) this.onInspectionChange(this.currentMode === "zoom", "zoom");
     }
   
     // Canvas drawing and manipulation
@@ -315,12 +272,6 @@ class CanvasManager {
       this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
       
       this.ctx.drawImage(this.sourceImage, 0, 0, this.canvas.width, this.canvas.height);
-      if (this.usingLens) {
-        const lensRect = this.lens.getBoundingClientRect();
-        this.moveLensTo(lensRect.left + lensRect.width / 2, lensRect.top + lensRect.height / 2);
-        return;
-      }
-      
       this.annotations.forEach(ann => this.drawAnnotation(ann, ann === this.selectedAnnotation));
       if (this.currentAction === "draw" && this.currentDrawingAnnotation) {
         if (this.currentMode === "freehand") this.drawFreehandPreview();
@@ -490,174 +441,6 @@ class CanvasManager {
       this.ctx.lineCap = "butt";
     }
   
-    // Magnifier functions
-    showLens() {
-      if (this.lens) {
-        document.body.removeChild(this.lens);
-        this.lens = null;
-      }
-      
-      // Clear displayed annotations regardless of page type
-      this.clearDisplayedAnnotations();
-      
-      this.lens = document.createElement("div");
-      this.lens.className = "lens";
-      
-      this.lens.style.border = "2px solid #a9000e";
-      this.lens.style.boxShadow = "0 2px 8px rgba(0,0,0,0.3)";
-      this.lens.style.borderRadius = "50%";
-      this.lens.style.overflow = "hidden";
-      this.lens.style.position = "fixed";
-      this.lens.style.boxSizing = "border-box";
-      this.lens.style.touchAction = "none";
-      this.lens.title = "Drag the center to move. Drag the circular border to resize.";
-      this.lens.style.pointerEvents = "auto";
-      this.lens.style.zIndex = "1000";
-      
-      const lensCanvas = document.createElement("canvas");
-      lensCanvas.width = this._lensSize;
-      lensCanvas.height = this._lensSize;
-      lensCanvas.style.width = "100%";
-      lensCanvas.style.height = "100%";
-      lensCanvas.style.display = "block";
-      this.lens.appendChild(lensCanvas);
-      this.lens.ctx = lensCanvas.getContext("2d");
-      
-      const canvasRect = this.canvas.getBoundingClientRect();
-      const lensLeft = canvasRect.left + (canvasRect.width / 2) - (this._lensSize / 2);
-      const lensTop = canvasRect.top + (canvasRect.height / 2) - (this._lensSize / 2);
-      
-      this.lens.style.width = this._lensSize + "px";
-      this.lens.style.height = this._lensSize + "px";
-      this.lens.style.left = lensLeft + "px";
-      this.lens.style.top = lensTop + "px";
-      
-      document.body.appendChild(this.lens);
-      this.setupLensEventListeners();
-      this.usingLens = true;
-      this.updateLens();
-      
-      // Initially start showing the lens at the center of the canvas
-      const centerX = canvasRect.left + canvasRect.width/2;
-      const centerY = canvasRect.top + canvasRect.height/2;
-      
-      this.moveLensTo(centerX, centerY);
-      this.updateCursor();
-      this.notifyInspection();
-    }
-  
-    hideLens() {
-      if (this.lens) {
-        if (this.lens.finishInteraction) this.lens.finishInteraction();
-        document.body.removeChild(this.lens);
-        this.lens = null;
-      }
-  
-      // Reset flags
-      this.usingLens = false;
-      this.draggingLens = false;
-      this.isResizingLens = false;
-      
-      // Redraw the canvas with annotations
-      this.drawCanvas();
-      this.updateCursor();
-      this.notifyInspection();
-    }
-  
-    updateLens() {
-      if (!this.lens) return;
-      
-      const lensRect = this.lens.getBoundingClientRect();
-      const canvasRect = this.canvas.getBoundingClientRect();
-      
-      const relativeLensX = (lensRect.left + lensRect.width/2) - canvasRect.left;
-      const relativeLensY = (lensRect.top + lensRect.height/2) - canvasRect.top;
-      
-      const buffer = this._lensSize;
-      if (relativeLensX < -buffer || relativeLensX > canvasRect.width + buffer ||
-          relativeLensY < -buffer || relativeLensY > canvasRect.height + buffer) {
-        return;
-      }
-      
-      const displaySize = Math.max(1, lensRect.width - 4);
-      const sourceWidth = this.screenPixels(displaySize / this._zoomFactor);
-      const sourceHeight = sourceWidth;
-
-      // Not clamped: the crosshair marks the point under the lens centre even at the image edges.
-      const sourceX = relativeLensX * this.canvas.width / canvasRect.width - sourceWidth/2;
-      const sourceY = relativeLensY * this.canvas.height / canvasRect.height - sourceHeight/2;
-
-      const lensCanvas = this.lens.querySelector("canvas");
-      const lensCtx = lensCanvas.getContext("2d");
-      const pixelRatio = window.devicePixelRatio || 1;
-      const backingSize = Math.max(1, Math.round(displaySize * pixelRatio));
-      if (lensCanvas.width !== backingSize || lensCanvas.height !== backingSize) {
-        lensCanvas.width = backingSize;
-        lensCanvas.height = backingSize;
-      }
-      const backingScale = backingSize / displaySize;
-      lensCtx.setTransform(backingScale, 0, 0, backingScale, 0, 0);
-      
-      lensCtx.clearRect(0, 0, displaySize, displaySize);
-      
-      try {
-        // Only the part of the square that lies on the image is drawn; the rest of the lens is clipped away.
-        const left = Math.max(0, sourceX), top = Math.max(0, sourceY);
-        const right = Math.min(this.canvas.width, sourceX + sourceWidth), bottom = Math.min(this.canvas.height, sourceY + sourceHeight);
-        const scale = displaySize / sourceWidth;
-        if (right > left && bottom > top) {
-          lensCtx.drawImage(
-            this.canvas,
-            left,
-            top,
-            right - left,
-            bottom - top,
-            (left - sourceX) * scale,
-            (top - sourceY) * scale,
-            (right - left) * scale,
-            (bottom - top) * scale
-          );
-        }
-
-        const center = displaySize / 2;
-        lensCtx.strokeStyle = "rgba(255,0,0,0.7)";
-        lensCtx.lineWidth = 1;
-        
-        lensCtx.beginPath();
-        lensCtx.moveTo(center - 10, center);
-        lensCtx.lineTo(center + 10, center);
-        lensCtx.stroke();
-        
-        lensCtx.beginPath();
-        lensCtx.moveTo(center, center - 10);
-        lensCtx.lineTo(center, center + 10);
-        lensCtx.stroke();
-      } catch (e) {
-        console.error("Error updating lens:", e);
-      }
-    }
-  
-    moveLensTo(x, y, requestedSize = this._lensSize) {
-      if (!this.lens) return;
-      const canvasRect = this.canvas.getBoundingClientRect();
-      const maxSize = Math.max(1, Math.min(this._maxLensSize, canvasRect.width, canvasRect.height));
-      this._lensSize = this.clamp(requestedSize, Math.min(75, maxSize), maxSize);
-      const radius = this._lensSize / 2;
-      // The centre can reach every image border, so edges can be inspected at any lens size. The part of the
-      // lens hanging past the image is clipped, so it never covers the page around the image.
-      const left = this.clamp(x, canvasRect.left, canvasRect.right) - radius;
-      const top = this.clamp(y, canvasRect.top, canvasRect.bottom) - radius;
-      this.lens.style.width = this._lensSize + "px";
-      this.lens.style.height = this._lensSize + "px";
-      this.lens.style.left = left + "px";
-      this.lens.style.top = top + "px";
-      const overhang = [canvasRect.top - top, left + this._lensSize - canvasRect.right, top + this._lensSize - canvasRect.bottom, canvasRect.left - left];
-      // Sides that stay on the image keep room for the lens shadow.
-      this.lens.style.clipPath = overhang.some(value => value > 0)
-        ? `inset(${overhang.map(value => value > 0 ? `${value}px` : "-12px").join(" ")})` : "";
-      this.updateLens();
-    }
-  
     // Zoom-to-area: a blue box drawn over the image opens that area enlarged in a dialog. It only
     // inspects, so it never changes shapes, the unsaved state or the drawing timer.
     startZoomSelection(e) {
@@ -757,13 +540,12 @@ class CanvasManager {
       if (this.zoomDialog && this.zoomDialog.open) this.zoomDialog.close();
     }
 
-    // Ends any gesture, lens or zoom without keeping it and leaves the canvas read only, e.g. when the image
+    // Ends any gesture or zoom without keeping it and leaves the canvas read only, e.g. when the image
     // is released while its page is open.
     stopInteraction() {
       if (this.originalAnnotation && this.selectedAnnotation) Object.assign(this.selectedAnnotation, this.originalAnnotation);
       this.closeZoomView();
       this.switchMode("rectangle");
-      if (this.usingLens) this.switchMode("magnifier");
       this.selectedAnnotation = null;
       this.resetDrawingState();
       this.readOnly = true;
@@ -878,7 +660,7 @@ class CanvasManager {
       this.canvas.tabIndex = 0;
       this.canvas.setAttribute("aria-label", "Medical image annotation canvas. Draw with the pointer. Delete removes the selected shape.");
       this.canvas.addEventListener("keydown", e => {
-        if (this.usingLens || this.readOnly || !this.selectedAnnotation || !["Delete", "Backspace"].includes(e.key)) return;
+        if (this.readOnly || !this.selectedAnnotation || !["Delete", "Backspace"].includes(e.key)) return;
         e.preventDefault();
         this.annotations = this.annotations.filter(annotation => annotation !== this.selectedAnnotation);
         this.selectedAnnotation = null;
@@ -888,7 +670,7 @@ class CanvasManager {
       this.canvas.addEventListener("pointerdown", e => {
         if (e.button !== 0 || !this.ready) return;
         // Zooming works while saved terms are reviewed too; it never changes shapes.
-        if (this.currentMode === "zoom" && !this.usingLens) {
+        if (this.currentMode === "zoom") {
           if (this.zoomSelection) return;
           e.preventDefault();
           this.canvas.setPointerCapture(e.pointerId);
@@ -957,7 +739,6 @@ class CanvasManager {
       }
       document.addEventListener("scroll", () => {
         this.updateToolsPosition(document.getElementById("image-container"));
-        if (this.usingLens) this.updateLens();
       }, true);
     }
 
@@ -966,8 +747,13 @@ class CanvasManager {
       const imageContainer = this.container.parentElement;
       const column = imageContainer.closest(".left-column");
       const viewport = imageContainer.closest(".image-viewport");
-      const availableWidth = Math.max(1, (viewport ? viewport.clientWidth : column ? column.clientWidth : window.innerWidth - 80) - 8);
-      const availableHeight = viewport ? Math.max(1, viewport.clientHeight - 8) : 520;
+      // The tool strip sits just right of the centred image, so keep its width (plus a gap) free on both sides.
+      const toolRoom = this.toolsContainer ? 2 * (this.toolsContainer.offsetWidth + 6) : 0;
+      const availableWidth = Math.max(1, (viewport ? viewport.clientWidth : column ? column.clientWidth : window.innerWidth - 80) - 8 - toolRoom);
+      // The buttons sit inside the viewport directly under the image, so their row is kept free below it.
+      const buttons = viewport?.querySelector?.(".buttons-section");
+      const buttonRoom = buttons ? buttons.offsetHeight + (parseFloat(getComputedStyle(viewport).rowGap) || 0) : 0;
+      const availableHeight = viewport ? Math.max(1, viewport.clientHeight - 8 - buttonRoom) : 520;
       const scale = Math.min(1, availableWidth / this.canvas.width, availableHeight / this.canvas.height);
       const width = this.canvas.width * scale, height = this.canvas.height * scale;
       this.canvas.style.width = `${width}px`;
@@ -1003,12 +789,12 @@ class CanvasManager {
     // Mouse event handlers
     updateCursor(point) {
       let cursor = "crosshair", hint = "Drag to draw an annotation.";
-      if (this.currentMode === "zoom" && this.ready && !this.usingLens) {
+      if (this.currentMode === "zoom" && this.ready) {
         cursor = "zoom-in";
         hint = "Drag a box over an area, or click a point, to see it enlarged.";
-      } else if (this.usingLens || !this.ready || this.readOnly) {
+      } else if (!this.ready || this.readOnly) {
         cursor = "default";
-        hint = this.usingLens ? "Inspection only. Click Magnifier again to return to drawing." : "";
+        hint = "";
       } else if (this.currentAction === "rotate") {
         cursor = ROTATE_CURSOR; hint = "Drag to rotate.";
       } else if (this.currentAction === "move") {
@@ -1046,8 +832,7 @@ class CanvasManager {
     }
 
     handleMouseDown(e) {
-      // Don't allow drawing when magnifier is active
-      if (this.usingLens || !this.ready || this.readOnly) return;
+      if (!this.ready || this.readOnly) return;
       const { x: mouseX, y: mouseY } = this.eventPoint(e);
       
       // Check for freehand delete button first
@@ -1158,7 +943,7 @@ class CanvasManager {
     }
   
     handleMouseMove(e) {
-      if (this.usingLens || !this.ready || this.readOnly) return;
+      if (!this.ready || this.readOnly) return;
       const { x: mouseX, y: mouseY } = this.eventPoint(e);
       this.updateCursor({x: mouseX, y: mouseY});
       
@@ -1276,7 +1061,7 @@ class CanvasManager {
     }
   
     handleMouseUp(e) {
-      if (this.usingLens || !this.ready || this.readOnly) return;
+      if (!this.ready || this.readOnly) return;
       let changed = false;
       
       // Handle end of resizing to ensure rotation is properly maintained
@@ -1410,66 +1195,6 @@ class CanvasManager {
       return this.getAnnotationCoordinatesJSON(ann);
     }
   
-    isLensEdge(point, rect) {
-      const radius = rect.width / 2;
-      const distance = Math.hypot(point.x - rect.left - radius, point.y - rect.top - radius);
-      return distance >= Math.max(0, radius - 10) && distance <= radius;
-    }
-
-    setupLensEventListeners() {
-      const lens = this.lens;
-      if (!lens) return;
-      let pointerId = null, center, initialRadius;
-      const updateCursor = point => {
-        if (this.draggingLens) { lens.style.cursor = "grabbing"; return; }
-        const rect = lens.getBoundingClientRect();
-        if (this.isResizingLens || this.isLensEdge(point, rect)) {
-          const angle = Math.atan2(point.y - rect.top - rect.height / 2, point.x - rect.left - rect.width / 2);
-          const direction = ((Math.round(angle / (Math.PI / 4)) % 4) + 4) % 4;
-          lens.style.cursor = ["ew-resize", "nwse-resize", "ns-resize", "nesw-resize"][direction];
-        } else lens.style.cursor = "grab";
-      };
-      lens.addEventListener("pointerdown", event => {
-        if (event.button !== 0 || pointerId !== null) return;
-        event.preventDefault(); event.stopPropagation();
-        pointerId = event.pointerId;
-        const rect = lens.getBoundingClientRect();
-        const point = {x: event.clientX, y: event.clientY};
-        center = {x: rect.left + rect.width / 2, y: rect.top + rect.height / 2};
-        this.isResizingLens = this.isLensEdge(point, rect);
-        this.draggingLens = !this.isResizingLens;
-        this.initialLensSize = this._lensSize;
-        initialRadius = Math.hypot(point.x - center.x, point.y - center.y);
-        this.lensOffset = {x: point.x - center.x, y: point.y - center.y};
-        lens.setPointerCapture(pointerId);
-        updateCursor(point);
-      });
-      lens.addEventListener("pointermove", event => {
-        if (pointerId !== null && event.pointerId !== pointerId) return;
-        const point = {x: event.clientX, y: event.clientY};
-        if (this.draggingLens) {
-          this.moveLensTo(point.x - this.lensOffset.x, point.y - this.lensOffset.y);
-        } else if (this.isResizingLens) {
-          const radius = Math.hypot(point.x - center.x, point.y - center.y);
-          this.moveLensTo(center.x, center.y, this.initialLensSize + 2 * (radius - initialRadius));
-        }
-        updateCursor(point);
-      });
-      const finish = event => {
-        if (pointerId === null || event.pointerId !== pointerId) return;
-        const captured = pointerId;
-        pointerId = null;
-        this.draggingLens = false;
-        this.isResizingLens = false;
-        if (lens.hasPointerCapture(captured)) lens.releasePointerCapture(captured);
-        updateCursor({x: event.clientX, y: event.clientY});
-      };
-      lens.addEventListener("pointerup", finish);
-      lens.addEventListener("pointercancel", finish);
-      lens.addEventListener("lostpointercapture", finish);
-      lens.finishInteraction = () => finish({pointerId, clientX: 0, clientY: 0});
-    }
-  
     // Add a helper method for handling resize end
     handleResizeEnd() {
       if (this.currentAction === "resize" && this.selectedAnnotation && this.originalAnnotation) {
@@ -1481,12 +1206,6 @@ class CanvasManager {
       }
     }
   
-    // Add this method to temporarily clear displayed annotations (for magnifier mode)
-    clearDisplayedAnnotations() {
-      // Temporarily hide annotations when using magnifier in professional mode
-      this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-      this.ctx.drawImage(this.sourceImage, 0, 0, this.canvas.width, this.canvas.height);
-    }
   }
   
   // Export the CanvasManager class
