@@ -2,9 +2,17 @@
 for details on configuring this project to bundle and minify static web assets. */
 
 a.navbar-brand {
-  white-space: normal;
-  text-align: center;
-  word-break: break-all;
+  display: inline-flex;
+  align-items: center;
+  padding-block: 0;
+  margin-right: 0;
+}
+
+/* The logo replaces the text title; its height matches the title's former line so the workspace keeps its room. */
+.brand-logo {
+  display: block;
+  width: auto;
+  height: 38px;
 }
 
 a {

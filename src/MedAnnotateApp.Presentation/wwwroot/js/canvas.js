@@ -1,3 +1,13 @@
+// Clockwise arrow (Bootstrap Icons "arrow-clockwise", MIT, bundled in lib/) shown over the rotation handle, with a
+// white outline so it stays visible on dark and light images. Browsers without SVG cursors fall back to "grab".
+const ROTATE_CURSOR = (() => {
+  const shape = "<path fill-rule='evenodd' d='M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2z'/>" +
+    "<path d='M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466'/>";
+  const svg = "<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='-2 -2 20 20'>" +
+    `<g fill='white' stroke='white' stroke-width='2.4' stroke-linejoin='round'>${shape}</g><g fill='black'>${shape}</g></svg>`;
+  return `url("data:image/svg+xml,${encodeURIComponent(svg)}") 12 12, grab`;
+})();
+
 // Canvas Manager Class
 class CanvasManager {
     constructor(canvasId, sourceImageId, containerId) {
@@ -449,37 +459,35 @@ class CanvasManager {
       this.ctx.strokeStyle = "white";
       this.ctx.stroke();
       
-      // Draw delete handle with X
-      const dHandle = handles.delete;
-      this.ctx.fillStyle = "white";
-      const half = this.screenPixels(6), full = half * 2;
-      this.ctx.fillRect(dHandle.x - half, dHandle.y - half, full, full);
-      this.ctx.lineWidth = this.screenPixels(1);
-      this.ctx.strokeStyle = "black";
-      this.ctx.strokeRect(dHandle.x - half, dHandle.y - half, full, full);
-      this.ctx.fillStyle = "black";
-      this.ctx.font = `${this.screenPixels(10)}px sans-serif`;
-      this.ctx.textAlign = "center";
-      this.ctx.textBaseline = "middle";
-      this.ctx.fillText("X", dHandle.x, dHandle.y);
+      this.drawDeleteHandle(handles.delete.x, handles.delete.y);
     }
-  
+
     drawFreehandHandles(ann) {
-      const handle = this.getFreehandDeleteHandle(ann);
-      const size = this.screenPixels(12);
-      const handleX = handle.x, handleY = handle.y;
-      
-      // Draw delete handle with X
+      const handle = this.getFreehandDeleteHandle(ann), half = this.deleteHandleSize() / 2;
+      this.drawDeleteHandle(handle.x + half, handle.y + half);
+    }
+
+    // Delete handle sized for a quick, sure click: an 18px white square with a bold drawn X.
+    deleteHandleSize() {
+      return this.screenPixels(18);
+    }
+
+    drawDeleteHandle(x, y) {
+      const half = this.deleteHandleSize() / 2, arm = half * 0.5;
       this.ctx.fillStyle = "white";
-      this.ctx.fillRect(handleX, handleY, size, size);
+      this.ctx.fillRect(x - half, y - half, half * 2, half * 2);
       this.ctx.lineWidth = this.screenPixels(1);
       this.ctx.strokeStyle = "black";
-      this.ctx.strokeRect(handleX, handleY, size, size);
-      this.ctx.fillStyle = "black";
-      this.ctx.font = `${this.screenPixels(10)}px sans-serif`;
-      this.ctx.textAlign = "center";
-      this.ctx.textBaseline = "middle";
-      this.ctx.fillText("X", handleX + size/2, handleY + size/2);
+      this.ctx.strokeRect(x - half, y - half, half * 2, half * 2);
+      this.ctx.beginPath();
+      this.ctx.moveTo(x - arm, y - arm);
+      this.ctx.lineTo(x + arm, y + arm);
+      this.ctx.moveTo(x + arm, y - arm);
+      this.ctx.lineTo(x - arm, y + arm);
+      this.ctx.lineWidth = this.screenPixels(2);
+      this.ctx.lineCap = "round";
+      this.ctx.stroke();
+      this.ctx.lineCap = "butt";
     }
   
     // Magnifier functions
@@ -720,9 +728,6 @@ class CanvasManager {
       ctx.imageSmoothingQuality = "high";
       ctx.clearRect(0, 0, view.width, view.height);
       ctx.drawImage(this.sourceImage, region.x, region.y, region.width, region.height, 0, 0, view.width, view.height);
-      const times = scale / onPage;
-      dialog.querySelector(".zoom-dialog-note").textContent = times < 1.05 ? "About the same size as on the page"
-        : `${times.toFixed(1).replace(/\.0$/, "")}× larger than on the page`;
       this.zoomedArea = box;
       if (!dialog.open) dialog.showModal();
     }
@@ -730,9 +735,9 @@ class CanvasManager {
     createZoomDialog() {
       const dialog = document.createElement("dialog");
       dialog.className = "annotation-dialog zoom-dialog";
-      dialog.setAttribute("aria-labelledby", "zoom-dialog-title");
-      dialog.innerHTML = '<div class="annotation-dialog-header"><div><h2 class="annotation-dialog-title" id="zoom-dialog-title">Enlarged area</h2>' +
-        '<p class="annotation-dialog-note zoom-dialog-note"></p></div><button type="button" class="btn-close" aria-label="Close"></button></div>' +
+      // No visible title: the enlarged image speaks for itself, so the header holds only the close button.
+      dialog.setAttribute("aria-label", "Enlarged area");
+      dialog.innerHTML = '<div class="annotation-dialog-header zoom-dialog-header"><button type="button" class="btn-close" aria-label="Close"></button></div>' +
         '<div class="zoom-dialog-body"><canvas role="img" aria-label="Enlarged part of the image"></canvas></div>';
       dialog.querySelector(".btn-close").addEventListener("click", () => dialog.close());
       // Only a press that starts and ends on the dark backdrop closes it, so a drag that leaves the dialog does not.
@@ -776,7 +781,7 @@ class CanvasManager {
         bl: { x: -hw, y: hh },
         br: { x: hw, y: hh },
         rotate: { x: 0, y: -hh - this.screenPixels(30) },
-        delete: { x: hw + this.screenPixels(10), y: -hh - this.screenPixels(10) },
+        delete: { x: hw + this.screenPixels(14), y: -hh - this.screenPixels(14) },
       };
       
       const handles = {};
@@ -789,7 +794,7 @@ class CanvasManager {
           y: ann.cy + local.x * sin + local.y * cos,
         };
         if (key === "delete" || key === "rotate") {
-          const margin = this.screenPixels(7);
+          const margin = this.screenPixels(key === "delete" ? 10 : 7);
           handles[key].x = this.clamp(handles[key].x, margin, this.canvas.width - margin);
           handles[key].y = this.clamp(handles[key].y, margin, this.canvas.height - margin);
         }
@@ -991,7 +996,7 @@ class CanvasManager {
     }
 
     getFreehandDeleteHandle(annotation) {
-      const bounds = this.getBoundingBox(annotation.points), gap = this.screenPixels(5), size = this.screenPixels(12);
+      const bounds = this.getBoundingBox(annotation.points), gap = this.screenPixels(5), size = this.deleteHandleSize();
       return { x: this.clamp(bounds.maxX + gap, 0, this.canvas.width - size), y: this.clamp(bounds.minY - gap, 0, this.canvas.height - size) };
     }
   
@@ -1004,24 +1009,25 @@ class CanvasManager {
       } else if (this.usingLens || !this.ready || this.readOnly) {
         cursor = "default";
         hint = this.usingLens ? "Inspection only. Click Magnifier again to return to drawing." : "";
-      } else if (this.currentAction === "move" || this.currentAction === "rotate") {
-        cursor = "grabbing";
-        hint = this.currentAction === "rotate" ? "Drag to rotate." : "Drag to move.";
+      } else if (this.currentAction === "rotate") {
+        cursor = ROTATE_CURSOR; hint = "Drag to rotate.";
+      } else if (this.currentAction === "move") {
+        cursor = "grabbing"; hint = "Drag to move.";
       } else if (this.currentAction !== "draw") {
         let corner = this.currentAction === "resize" ? this.activeHandle : null;
         const selected = this.selectedAnnotation;
         if (point && selected && selected.type === "rectangle") {
           const handles = this.getAnnotationHandles(selected);
           if (this.isPointNearHandle(point, handles.rotate)) {
-            cursor = "grab"; hint = "Drag to rotate.";
+            cursor = ROTATE_CURSOR; hint = "Drag to rotate.";
           } else {
             corner = corner || ['tl', 'tr', 'bl', 'br'].find(key => this.isPointNearHandle(point, handles[key]));
-            if (!corner && this.isPointNearHandle(point, handles.delete)) {
+            if (!corner && this.isPointNearHandle(point, handles.delete, 11)) {
               cursor = "pointer"; hint = "Delete this annotation.";
             }
           }
         } else if (point && selected && selected.type === "freehand") {
-          const handle = this.getFreehandDeleteHandle(selected), size = this.screenPixels(12);
+          const handle = this.getFreehandDeleteHandle(selected), size = this.deleteHandleSize();
           if (point.x >= handle.x && point.x <= handle.x + size && point.y >= handle.y && point.y <= handle.y + size) {
             cursor = "pointer"; hint = "Delete this annotation.";
           }
@@ -1047,7 +1053,7 @@ class CanvasManager {
       // Check for freehand delete button first
       if (this.selectedAnnotation && this.selectedAnnotation.type === "freehand") {
         const handle = this.getFreehandDeleteHandle(this.selectedAnnotation);
-        const handleX = handle.x, handleY = handle.y, size = this.screenPixels(12);
+        const handleX = handle.x, handleY = handle.y, size = this.deleteHandleSize();
         
         if (mouseX >= handleX && mouseX <= handleX + size &&
             mouseY >= handleY && mouseY <= handleY + size) {
@@ -1099,7 +1105,7 @@ class CanvasManager {
         }
 
         // Check delete handle
-        if (this.isPointNearHandle({ x: mouseX, y: mouseY }, handles.delete)) {
+        if (this.isPointNearHandle({ x: mouseX, y: mouseY }, handles.delete, 11)) {
           this.annotations = this.annotations.filter(a => a !== this.selectedAnnotation);
           this.selectedAnnotation = null;
           this.drawCanvas();

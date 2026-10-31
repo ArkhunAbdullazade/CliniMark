@@ -92,8 +92,9 @@ test('a corner beside the image edge resizes instead of deleting the shape',()=>
   const f=fixture();f.manager.setAnnotations([{type:'rectangle',cx:1100,cy:100,width:200,height:200,rotation:0}]);
   gesture(f.manager,f.event,[1100,100]);
   const handles=f.manager.getAnnotationHandles(f.manager.annotations[0]);
-  // In the corner of the image the delete handle is clamped to within eight screen pixels of the top-right corner.
-  assert.ok(f.manager.isPointNearHandle({x:1195,y:5},handles.tr)&&f.manager.isPointNearHandle({x:1195,y:5},handles.delete));
+  // In the corner of the image the delete handle is clamped ten screen pixels from each edge, so its 11px click
+  // area overlaps the top-right corner handle.
+  assert.ok(f.manager.isPointNearHandle({x:1195,y:5},handles.tr)&&f.manager.isPointNearHandle({x:1195,y:5},handles.delete,11));
   f.manager.handleMouseDown(f.event(1195,5));
   assert.equal(f.manager.currentAction,'resize');assert.equal(f.manager.annotations.length,1);
   f.manager.handleMouseUp(f.event(1195,5));
@@ -161,8 +162,13 @@ test('hover feedback distinguishes editing targets without changing saved coordi
   const handle=f.manager.getAnnotationHandles(f.manager.annotations[0]).tl;
   f.manager.handleMouseMove(f.event(handle.x,handle.y));
   const resizeCursor=f.canvas.style.cursor;
+  const rotate=f.manager.getAnnotationHandles(f.manager.annotations[0]).rotate;
+  f.manager.handleMouseMove(f.event(rotate.x,rotate.y));
+  const rotateCursor=f.canvas.style.cursor,rotateHint=f.canvas.title;
   assert.equal(typeof drawingCursor,'string');assert.notEqual(drawingCursor,moveCursor);
   assert.match(resizeCursor,/resize/);
+  // The rotation handle shows a clockwise-arrow cursor, falling back to grab.
+  assert.match(rotateCursor,/^url\("data:image\/svg\+xml,.+"\) 12 12, grab$/);assert.equal(rotateHint,'Drag to rotate.');
   assert.equal(f.manager.currentAction,'none');assert.equal(f.changes(),0);
   assert.equal(f.manager.getAllAnnotationsJSON(),before);
 });

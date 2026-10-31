@@ -117,28 +117,27 @@ test('a second finger cannot start or end another box mid-drag',()=>{
 });
 
 function stubDialog(f){
-  const view=f.element('canvas'),note={textContent:''};
-  const dialog={open:false,showModal(){this.open=true;},querySelector:selector=>selector==='canvas'?view:note};
+  const view=f.element('canvas');
+  // Only the canvas exists: the dialog shows no title or size note.
+  const dialog={open:false,showModal(){this.open=true;},querySelector:selector=>selector==='canvas'?view:null};
   f.manager.zoomDialog=dialog;
-  return{dialog,view,note};
+  return{dialog,view};
 }
 
 test('the enlarged view fills the dialog from the full-resolution image',()=>{
-  const f=fixture(),{dialog,view,note}=stubDialog(f);
+  const f=fixture(),{dialog,view}=stubDialog(f);
   f.openZoomView({x:200,y:100,width:300,height:200},f.element('div'));
   // Height is the limit: (900 * 0.9 - 88) / 200 = 3.61 CSS pixels per image pixel, 7.22x the page's 0.5.
   assert.equal(view.style.width,'1083px');assert.equal(view.style.height,'722px');
   assert.deepEqual([view.width,view.height],[1083,722]);
   assert.deepEqual(f.drawn.at(-1),[f.sourceImage,200,100,300,200,0,0,1083,722]);
-  assert.equal(note.textContent,'7.2× larger than on the page');
   assert.equal(dialog.open,true);
 });
 
 test('small areas stop at eight times their size on the page',()=>{
-  const f=fixture(),{view,note}=stubDialog(f);
+  const f=fixture(),{view}=stubDialog(f);
   f.openZoomView({x:10,y:10,width:20,height:20},f.element('div'));
   assert.equal(view.style.width,'80px');assert.equal(view.style.height,'80px');
-  assert.equal(note.textContent,'8× larger than on the page');
 });
 
 test('stopping interaction cancels a box, closes the view and disables every tool',()=>{

@@ -106,7 +106,7 @@ def main():
     assert len(paragraphs) == 1, "Expected one description paragraph"
     paragraph = paragraphs[0]
     text = paragraph.text()
-    assert text.strip() == SOURCE_DESCRIPTION + "\n\n" + DIAGNOSIS, "Preview fixture or description text changed"
+    assert text.strip() == SOURCE_DESCRIPTION + " " + DIAGNOSIS, "Preview fixture or description text changed"
     terms = [element for element in elements if element.has_class("keyword")]
     inline_terms = [element for element in paragraph.elements() if element.has_class("keyword")]
     assert terms == inline_terms, "Every term must appear inside the description paragraph"

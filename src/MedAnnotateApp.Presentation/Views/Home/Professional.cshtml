@@ -18,7 +18,7 @@
             <div class="description-panel">
                 <div class="header-text" data-keyword-count="@(medDataKeywords?.Count ?? 0)">
                     <p style="color:grey;">@DescriptionKeywords.Highlight(Model.ImageDescription, medDataKeywords)@if (!string.IsNullOrWhiteSpace(Model.Diagnosis) && Model.Diagnosis != "u" && Model.Diagnosis != "na")
-                        {<text>@("\n\nDiagnosis: " + Model.Diagnosis)</text>}</p>
+                        {<text>@(" Diagnosis: " + Model.Diagnosis)</text>}</p>
                 </div>
                 <div class="description-tools" role="group" aria-label="Description text">
                     <button type="button" class="description-tool" data-size-step="1" title="Larger text" aria-label="Larger description text">A+</button>
@@ -26,7 +26,7 @@
                     <button type="button" class="description-tool" data-description-open title="Read the whole description" aria-label="Read the whole description" aria-haspopup="dialog"><i class="bi bi-arrows-angle-expand" aria-hidden="true"></i></button>
                 </div>
             </div>
-            <div class="annotation-instructions">Draw a rectangle or closed freehand outline around the current term. Drag a shape to move it; use its corner handles to resize, the round handle to rotate, and X to delete. Saved terms can be selected for review.</div>
+            <div class="annotation-instructions annotation-instructions-emphasis">Draw a rectangular boundary box or a free contour around the term in red. Zoom, move, resize, rotate, and delete as needed.</div>
             <div id="annotation-status" class="annotation-status" role="status" aria-live="polite">Loading image and saved responses…</div>
 
             <div class="main-content">
@@ -129,7 +129,7 @@ else
     </div>
 }
 <div class="logout-section">
-    <a asp-controller="Identity" asp-action="Filters" class="btn btn-outline-secondary">Change filters</a>
+    <a asp-controller="Identity" asp-action="Filters" class="btn change-filters-button">Change filters</a>
     <div class="counter-display">
         <span>Team progress in selected filters: </span>
         <span id="counter-value">@counter</span>
