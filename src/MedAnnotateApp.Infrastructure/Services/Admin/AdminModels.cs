@@ -93,7 +93,7 @@ public sealed record CategoryOptions(IReadOnlyList<string> Specialities, IReadOn
 public sealed record LockHolder(string UserId, string Name, string? Email, DateTime? LockedAt);
 
 public sealed record SpecialistAnswer(
-    int Id, string? Keyword, string? Button, string? Coordinates, string? Comment, long? FirstDrawMs, long? DrawingMs,
+    int Id, string? Keyword, string? Button, string? Coordinates, string? Comment, string? TechnicalProblem, long? FirstDrawMs, long? DrawingMs,
     DateTime? CreatedAt, string? AnnotatorId, string AnnotatorName, bool SetComplete);
 
 public sealed record AnnotatorSet(string? UserId, string Name, int Answered, int Total, bool Complete, DateTime? LastSaveAt);
@@ -140,11 +140,16 @@ public sealed class ResponseQuery
 }
 
 public sealed record ResponseRow(
-    int Id, bool Student, int MedDataId, string? Term, string? Button, string? Comment, bool HasGeometry,
+    int Id, bool Student, int MedDataId, string? Term, string? Button, string? Comment, string? TechnicalProblem, bool HasGeometry,
     long? FirstDrawMs, long? DrawingMs, DateTime? CreatedAt, string? AnnotatorId, string AnnotatorName,
     bool SetComplete, string? Speciality, string? Modality);
 
 public sealed record AdminActionRow(long Id, DateTime At, string Actor, string Action, int? MedDataId, PersonRef? Target, string? Details);
+
+public sealed record ProblemRow(long Id, DateTime CreatedAt, string Kind, string Message, string? Term, int? MedDataId, PersonRef? Reporter,
+    string? Details, DateTime? ResolvedAt, string? ResolvedBy);
+
+public sealed record ProblemSummary(int Open, int Last24Hours);
 
 public sealed record ReleaseResult(bool Released, string Message, int KeptResponses = 0);
 

@@ -53,6 +53,12 @@
         <div class="stat-value">@s.StaleLocks <small>stale</small></div>
         <div class="stat-sub">@s.PartialLocks with partial specialist work · stale after @AdminUi.Hours(Model.StaleAfter)</div>
     </a>
+    @* Counted live rather than cached, so a new report shows on the next refresh. *@
+    <a class="admin-card stat-tile text-reset text-decoration-none @(Model.Problems.Open > 0 ? "stat-alert" : "")" asp-controller="Problems" asp-action="Index">
+        <div class="stat-label"><i class="bi bi-exclamation-triangle"></i>Technical problems</div>
+        <div class="stat-value">@Model.Problems.Open <small>open</small></div>
+        <div class="stat-sub">@Model.Problems.Last24Hours reported or logged in the last 24 h</div>
+    </a>
 </div>
 
 <div class="admin-grid admin-grid-2 mb-3">

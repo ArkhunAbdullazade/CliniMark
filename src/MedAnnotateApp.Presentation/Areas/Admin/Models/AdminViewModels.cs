@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.WebUtilities;
 
 namespace MedAnnotateApp.Presentation.Areas.Admin.Models;
 
-public sealed record DashboardViewModel(OverviewStats Stats, TimeSpan StaleAfter);
+public sealed record DashboardViewModel(OverviewStats Stats, TimeSpan StaleAfter, ProblemSummary Problems);
 
 public sealed record ImagesViewModel(Paged<ImageRow> Images, ImageQuery Query, CategoryOptions Categories);
 

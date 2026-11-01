@@ -42,6 +42,7 @@ public sealed class ResultsExportService
                 if (options.Identity != IdentityMode.None)
                     WriteParticipants(zip, options, people);
                 await WriteProgressAsync(zip, options.Format, completeSets, cancellationToken);
+                await WriteProblemReportsAsync(zip, options.Format, people, cancellationToken);
                 WriteReadme(zip, options);
             }
             file.Position = 0;
@@ -119,7 +120,7 @@ public sealed class ResultsExportService
         ResponseQuery query, string? annotatorEmail, CancellationToken cancellationToken)
     {
         table.Header([
-            "ResponseId", "ImageId", "Term", "Response", "Coordinates", "Comment", "MsUntilFirstDraw", "MsDrawingToSave", "SavedAtUtc",
+            "ResponseId", "ImageId", "Term", "Response", "Coordinates", "Comment", "TechnicalProblem", "MsUntilFirstDraw", "MsDrawingToSave", "SavedAtUtc",
             "SetComplete", .. AnnotatorHeaders(options.Identity), "Speciality", "Modality", "BodyRegion", "Diagnosis"]);
         var answers = AdminQueryService.FilterSpecialist(context.AnnotatedMedDatas.AsNoTracking(), query, annotatorEmail).OrderBy(answer => answer.Id);
         await foreach (var answer in answers.AsAsyncEnumerable().WithCancellation(cancellationToken))
@@ -130,7 +131,7 @@ public sealed class ResultsExportService
             var (first, drawing) = ResponseTimings.Parse(answer.Timestamps);
             table.Row([
                 answer.Id, answer.MedDataId, answer.ExtractedKeyword, answer.PressedButton, answer.BoxCoordinates, answer.Comment,
-                first, drawing, answer.CreatedAt, complete,
+                answer.TechnicalProblem, first, drawing, answer.CreatedAt, complete,
                 .. AnnotatorValues(options.Identity, people.ByEmail(answer.Email), answer.Position, answer.ClinicalExperience),
                 answer.Speciality, answer.Modality, answer.BodyRegion, answer.Diagnosis]);
         }
@@ -191,6 +192,16 @@ public sealed class ResultsExportService
             DateTime.UtcNow);
     }
 
+    // Problem reports carry account ids only, like the admin log, so they are safe in every identity mode.
+    private async Task WriteProblemReportsAsync(ZipArchive zip, ExportFormat format, People people, CancellationToken cancellationToken)
+    {
+        using var table = Entry(zip, "problem_reports", format);
+        table.Header("ReportId", "ReportedAtUtc", "Kind", "ImageId", "Term", "Message", "Details", "ReporterId", "ReporterRole", "ResolvedAtUtc");
+        await foreach (var report in context.ProblemReports.AsNoTracking().OrderBy(report => report.Id).AsAsyncEnumerable().WithCancellation(cancellationToken))
+            table.Row(report.Id, report.CreatedAt, report.Kind, report.MedDataId, report.Term, report.Message, report.Details,
+                report.UserId, people.Ref(report.UserId)?.Role, report.ResolvedAt);
+    }
+
     private static void WriteReadme(ZipArchive zip, ExportOptions options)
     {
         var entry = zip.CreateEntry("README.txt", CompressionLevel.Optimal);
@@ -229,10 +240,13 @@ public sealed class ResultsExportService
                               Uncertain/Skip or Not Visible/Abstract (no geometry). SetComplete is true when that
                               specialist answered every term of the image; incomplete sets come from released locks.
                               MsUntilFirstDraw / MsDrawingToSave are browser timings, empty when nothing was drawn.
+                              TechnicalProblem is the specialist's report of a technical issue with that term, if any.
             student_annotations
                               one row per labelled group; students submit every group of an image at once.
             participants      annotator profiles (omitted when identity is none)
             progress          counts at export time
+            problem_reports   technical problems: reports typed by participants (user-report) and errors their pages
+                              logged automatically (image-load-error, save-error, script-error). Account ids only.
 
             Coordinates are JSON in original image pixels: {"version":1,"coordinateSystem":"image-pixels",
             "imageWidth":W,"imageHeight":H,"annotations":[{"type":"rectangle"|"freehand","points":[[x,y],...]}]}.

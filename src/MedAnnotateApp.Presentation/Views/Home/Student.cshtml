@@ -72,6 +72,24 @@
                 </div>
             </div>
 
+            @* Always works, even when the image or tools do not: the report goes straight to the study team. *@
+            <div class="note-panels" data-note-panels>
+                <div class="note-toggles note-toggles-single">
+                    <button type="button" class="note-toggle" aria-expanded="false" aria-controls="problem-panel" data-note-toggle="problem-panel">
+                        <i class="bi bi-exclamation-triangle" aria-hidden="true"></i> Report a technical problem <span class="note-dot" aria-hidden="true"></span>
+                    </button>
+                </div>
+                <div class="note-panel" id="problem-panel">
+                    <div class="note-panel-inner" data-problem-report>
+                        <label for="technical-problem" class="visually-hidden">Technical problem with this image</label>
+                        <textarea class="form-control" id="technical-problem" maxlength="4000" placeholder="Describe a technical problem"></textarea>
+                        <div class="problem-actions">
+                            <span class="problem-status" data-problem-status role="status" aria-live="polite">Sent straight to the study team.</span>
+                            <button type="button" class="problem-send" data-problem-send><i class="bi bi-send" aria-hidden="true"></i> Send now</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
             <div class="annotation-section">
                 <div class="annotations-header">
                     <h4>Annotation Groups</h4>
@@ -118,8 +136,11 @@ else
     window.annotatedMedData = @Html.Raw(Json.Serialize(AnnotationImage.From(Model)));
 </script>
 
+@* First, so it can report errors from every script after it. *@
+<script src="~/js/problemReport.js" asp-append-version="true"></script>
 <script src="~/js/annotationGeometry.js" asp-append-version="true"></script>
 <script src="~/js/canvas.js" asp-append-version="true"></script>
 <script src="~/js/studentCanvas.js" asp-append-version="true"></script>
 <script src="~/js/assignmentWatch.js" asp-append-version="true"></script>
 <script src="~/js/studentPage.js" asp-append-version="true"></script>
+<script src="~/js/notePanels.js" asp-append-version="true" defer></script>

@@ -6,8 +6,9 @@ using Microsoft.Extensions.Options;
 namespace MedAnnotateApp.Infrastructure.Services.Admin;
 
 /// <summary>
-/// Every 15 minutes, releases empty locks left idle past Admin:EmptyLockReleaseHours (12 by default, matching the
-/// sign-in expiry, so the holder could not have saved anyway). Locks with partial work are left for the admin.
+/// Every 15 minutes, releases empty locks left idle past Admin:EmptyLockReleaseHours (12 by default). An open annotation
+/// page refreshes its lock time in the background, so only images whose page was closed are ever released; nobody
+/// annotating is timed out. Locks with partial work are left for the admin.
 /// </summary>
 public sealed class LockSweeper(IServiceScopeFactory scopes, IOptions<AdminOptions> options, ILogger<LockSweeper> logger) : BackgroundService
 {

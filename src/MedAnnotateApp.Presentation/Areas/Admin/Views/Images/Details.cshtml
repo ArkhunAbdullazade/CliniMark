@@ -183,7 +183,7 @@
                                 else { @answer.AnnotatorName }
                                 @if (!answer.SetComplete) { <span class="state state-idle ms-1">incomplete set</span> }
                             </td>
-                            <td class="small d-none d-md-table-cell">@answer.Comment</td>
+                            <td class="small d-none d-md-table-cell">@answer.Comment@if (!string.IsNullOrWhiteSpace(answer.TechnicalProblem)) { <div class="technical-problem"><i class="bi bi-exclamation-triangle" aria-hidden="true"></i> Technical problem: @answer.TechnicalProblem</div> }</td>
                             <td class="num d-none d-lg-table-cell">@AdminUi.Seconds(answer.FirstDrawMs)</td>
                             <td class="num d-none d-lg-table-cell">@AdminUi.Seconds(answer.DrawingMs)</td>
                             <td class="text-nowrap d-none d-sm-table-cell"><time datetime="@AdminUi.Iso(answer.CreatedAt)" data-local="datetime"></time></td>

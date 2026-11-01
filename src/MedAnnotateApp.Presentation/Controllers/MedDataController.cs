@@ -1,9 +1,11 @@
 using MedAnnotateApp.Core.Models;
 using MedAnnotateApp.Core.Repositories;
 using MedAnnotateApp.Presentation.Dtos;
+using MedAnnotateApp.Presentation.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace MedAnnotateApp.Presentation.Controllers;
 
@@ -42,7 +44,8 @@ public class MedDataController : Controller
                 ExtractedKeyword = dto.ExtractedKeyword,
                 Timestamps = dto.Timestamps,
                 PressedButton = dto.PressedButton,
-                Comment = dto.Comment
+                Comment = dto.Comment,
+                TechnicalProblem = dto.TechnicalProblem
             });
             return SaveResult(result);
         }
@@ -80,7 +83,7 @@ public class MedDataController : Controller
         return Json(new
         {
             success = true,
-            annotations = annotations.Select(item => new { item.ExtractedKeyword, item.PressedButton, item.BoxCoordinates, item.Comment })
+            annotations = annotations.Select(item => new { item.ExtractedKeyword, item.PressedButton, item.BoxCoordinates, item.Comment, item.TechnicalProblem })
         });
     }
 
@@ -89,10 +92,10 @@ public class MedDataController : Controller
     public async Task<IActionResult> AssignmentStatus([FromQuery] int medDataId)
     {
         if (medDataId <= 0) return BadRequest(new { success = false, message = "Invalid image id." });
-        // Claims only, so the open page's background check costs one indexed read and no user lookup.
+        // Claims only, so the open page's background check costs one indexed query and no user lookup.
         var userId = userManager.GetUserId(User);
         if (userId == null) return Unauthorized(new { success = false });
-        var assigned = await medDataRepository.IsAssignedAsync(medDataId, userId, User.IsInRole("Medical_Student"));
+        var assigned = await medDataRepository.RefreshAssignmentAsync(medDataId, userId, User.IsInRole("Medical_Student"));
         return Json(new { success = true, assigned });
     }
 
@@ -120,6 +123,32 @@ public class MedDataController : Controller
         {
             logger.LogError(exception, "Student annotation save failed for user {UserId}.", user.Id);
             return StatusCode(503, new { success = false, message = "The annotations could not be saved. Keep this page open and retry." });
+        }
+    }
+
+    // Problem reports never depend on the image, the tools or the assignment, so they arrive even when those are broken.
+    [HttpPost]
+    [Authorize(Roles = "Professional,Medical_Student")]
+    [EnableRateLimiting(ProblemReportRateLimit.PolicyName)]
+    [RequestSizeLimit(64_000)]
+    public async Task<IActionResult> ReportProblem([FromBody] ProblemReportDto? dto)
+    {
+        if (!ModelState.IsValid || dto == null || !ProblemReport.Kinds.Contains(dto.Kind)
+            || (dto.Kind == ProblemReport.UserReport && string.IsNullOrWhiteSpace(dto.Message)))
+            return BadRequest(new { success = false, message = "Describe the problem before sending it." });
+        try
+        {
+            await medDataRepository.AddProblemReportAsync(new ProblemReport
+            {
+                CreatedAt = DateTime.UtcNow, UserId = userManager.GetUserId(User), MedDataId = dto.MedDataId > 0 ? dto.MedDataId : null,
+                Kind = dto.Kind!, Term = dto.Term?.Trim(), Message = dto.Message?.Trim() ?? string.Empty, Details = dto.Details
+            });
+            return Json(new { success = true });
+        }
+        catch (Exception exception)
+        {
+            logger.LogError(exception, "Problem report could not be stored for image {MedDataId}.", dto.MedDataId);
+            return StatusCode(503, new { success = false, message = "The report could not be sent. Keep this page open and try again." });
         }
     }
 

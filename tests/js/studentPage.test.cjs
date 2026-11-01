@@ -8,6 +8,9 @@ const source = fs.readFileSync(path.join(__dirname,
 const StudentCanvas = vm.runInNewContext(fs.readFileSync(path.join(__dirname,
   '../../src/MedAnnotateApp.Presentation/wwwroot/js/studentCanvas.js'), 'utf8') + '\nStudentCanvasManager');
 
+// Browser events the page sends: failed requests go to problemReport.js, inputs refresh the note dots.
+class FakeEvent { constructor(type, init = {}) { this.type = type; this.detail = init.detail; } }
+
 class Element {
   constructor() { this.children = []; this.listeners = {}; this.dataset = {}; this.textContent = ''; }
   addEventListener(name, callback) { (this.listeners[name] ||= []).push(callback); }
@@ -39,7 +42,9 @@ function page(response, options = {}) {
   }
   const context = {
     window: {annotatedMedData: {id: 1}, addEventListener(name, callback) { events[name] = callback; }, watchAssignment: options.watch},
+    CustomEvent: FakeEvent, Event: FakeEvent,
     document: {addEventListener(name, callback) { if (name === 'DOMContentLoaded') onReady = callback; },
+      dispatchEvent() {},
       getElementById: id => elements[id], querySelector: () => ({value: 'synthetic-csrf'}),
       createElement: () => new Element()},
     StudentCanvasManager, confirm: () => true, location: {},

@@ -34,18 +34,44 @@ main[role="main"] { height: 100%; min-height: 0; padding-bottom: 0 !important; }
 .annotation-workspace .metadata-item .label { min-width: 0; font-size: inherit; line-height: inherit; }
 .annotation-workspace .metadata-item .value { min-width: 0; overflow-wrap: anywhere; }
 /* Comments get a compact, fixed share of the column instead of filling it to the bottom. */
-.annotation-workspace .comments-section { flex: 0 1 auto; height: clamp(120px, 26vh, 220px); min-height: 60px; overflow: hidden; border-radius: var(--box-radius); }
-.comments-section label { flex: 0 0 auto; width: 100%; padding: 8px 12px; margin: 0; border-bottom: 1px solid #f0f0f0; color: #333; font-size: .85rem; font-weight: 600; }
-.comments-section textarea { flex: 1 1 0; min-height: 0; height: auto; line-height: 1.4; }
-/* The description scrolls beside its text size and read-in-full controls. Its height is fixed at five lines of the
+/* Comments and Report a technical problem: two buttons whose panels slide down beneath them (see notePanels.js). */
+.note-panels { flex: 0 0 auto; display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
+.note-toggles { display: grid; grid-template-columns: auto 1fr; gap: 6px; }
+.note-toggle { position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 34px; padding: 6px 10px; color: #a9000e; background: #fff; border: 1.5px solid #a9000e; border-radius: var(--control-radius); font-size: .82rem; font-weight: 500; line-height: 1.2; text-align: center; cursor: pointer; transition: background-color .15s ease, color .15s ease; }
+.note-toggle:hover, .note-toggle.open { color: #fff; background: #a9000e; }
+.note-toggle:disabled { opacity: .5; cursor: not-allowed; }
+/* A dot shows that a box holds text even while its panel is closed. */
+.note-dot { display: none; width: 8px; height: 8px; border-radius: 50%; background: #e0a800; box-shadow: 0 0 0 2px #fff; }
+.note-panels:has(#comments:not(:placeholder-shown)) [data-note-toggle="comments-panel"] .note-dot,
+.note-panels:has(#technical-problem:not(:placeholder-shown)) [data-note-toggle="problem-panel"] .note-dot { display: inline-block; }
+/* The panel's row grows from 0 to its content height, so it slides open smoothly without a fixed height. */
+.note-panel { display: grid; grid-template-rows: 0fr; opacity: 0; transform: translateY(-6px); transition: grid-template-rows .22s ease-out, opacity .18s ease-out, transform .22s ease-out; }
+.note-panel.open { grid-template-rows: 1fr; opacity: 1; transform: none; }
+.note-panel-inner { min-height: 0; overflow: hidden; padding: 2px; }
+.note-panel textarea { display: block; width: 100%; height: clamp(110px, 22vh, 200px); padding: 8px 10px; border: 1px solid #a9000e; border-radius: var(--box-radius); box-shadow: 0 1px 5px rgba(0, 0, 0, .1); font-size: .85rem; line-height: 1.4; resize: none; }
+#problem-panel textarea { border-color: #c4621b; }
+.note-panel textarea:focus { border-color: #a9000e; box-shadow: 0 0 0 2px rgba(169, 0, 14, .18); outline: none; }
+.note-panel textarea:disabled { background: #f6f6f6; }
+.note-toggles-single { grid-template-columns: 1fr; }
+/* Send now and its status under the problem report box. */
+.problem-actions { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 6px; }
+.problem-status { flex: 1 1 auto; min-width: 0; color: #5b5b5b; font-size: .75rem; line-height: 1.3; }
+.problem-status[data-state="sent"] { color: #0f6e4c; font-weight: 500; }
+.problem-status[data-state="error"] { color: #a9000e; font-weight: 500; }
+.problem-send { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; color: #fff; background: #a9000e; border: 0; border-radius: var(--control-radius); font-size: .82rem; font-weight: 500; cursor: pointer; transition: background-color .12s ease; }
+.problem-send:hover:not(:disabled) { background: #8f000c; }
+.problem-send:disabled { opacity: .6; cursor: progress; }
+.problem-send:focus-visible { outline: 2px solid #a9000e; outline-offset: 2px; }
+/* The description scrolls beside its text size and read-in-full controls. Its height is fixed at six lines of the
    default text size, enough for a typical 44-word description; A+ and A− change only the text, never the box. */
-.description-panel { --description-lines: 5; display: flex; flex: 0 0 auto; width: 100%; min-height: 0; height: calc(var(--description-lines) * 1.25 * .85rem + 12px); max-height: 30%; margin-bottom: 4px; background: #fff; border: 1px solid #a9000e; border-radius: var(--box-radius); box-shadow: 0 1px 5px rgba(0, 0, 0, .1); }
+.description-panel { --description-lines: 6; display: flex; flex: 0 0 auto; width: 100%; min-height: 0; height: calc(var(--description-lines) * 1.25 * .95rem + 12px); max-height: 30%; margin-bottom: 4px; background: #fff; border: 1px solid #a9000e; border-radius: var(--box-radius); box-shadow: 0 1px 5px rgba(0, 0, 0, .1); }
 .description-panel .header-text { flex: 1 1 auto; width: auto; min-width: 0; min-height: 0; height: auto; margin: 0; padding-block: 5px; border: 0; border-radius: var(--box-radius) 0 0 var(--box-radius); box-shadow: none; overflow: auto; align-items: flex-start; cursor: zoom-in; }
-.header-text p { white-space: pre-wrap; font-size: var(--description-size, .85rem); line-height: 1.25; color: #595959 !important; }
+.header-text p { white-space: pre-wrap; font-size: var(--description-size, .95rem); line-height: 1.25; color: #595959 !important; }
 .description-tools { flex: 0 0 auto; display: flex; flex-direction: column; justify-content: center; gap: 3px; padding: 3px 4px; border-left: 1px solid #f1e4e5; }
-.description-tool { flex: 0 1 22px; display: inline-flex; align-items: center; justify-content: center; width: 28px; min-height: 16px; padding: 0; color: #333; background: #fff; border: 1px solid #d8d4d4; border-radius: 4px; font-size: .72rem; font-weight: 600; line-height: 1; cursor: pointer; transition: background-color .12s ease, border-color .12s ease; }
-.description-tool:hover:not(:disabled) { background-color: #f6f2f2; border-color: #bda7a9; }
-.description-tool:disabled { color: #b8b8b8; cursor: not-allowed; }
+/* Text size and read-in-full buttons are red, like the app's other actions. */
+.description-tool { flex: 0 1 22px; display: inline-flex; align-items: center; justify-content: center; width: 28px; min-height: 16px; padding: 0; color: #fff; background: #a9000e; border: 1px solid #a9000e; border-radius: 4px; font-size: .72rem; font-weight: 600; line-height: 1; cursor: pointer; transition: background-color .12s ease, border-color .12s ease; }
+.description-tool:hover:not(:disabled) { background-color: #8f000c; border-color: #8f000c; }
+.description-tool:disabled { color: #fff; background-color: #e3b8bd; border-color: #e3b8bd; cursor: not-allowed; }
 .description-tool .bi { font-size: .78rem; }
 .annotation-instructions { flex: 0 0 auto; width: 100%; font-size: .73rem; line-height: 1.2; margin: 2px 0 4px; }
 .header-text .keyword { cursor: pointer; font-weight: bold; }
@@ -77,7 +103,6 @@ main[role="main"] { height: 100%; min-height: 0; padding-bottom: 0 !important; }
 .annotation-workspace :is(button, a, input, textarea):focus-visible,
 .tools-container button:focus-visible,
 .floating-textbox :is(input, button):focus-visible { outline: 2px solid #a9000e; outline-offset: 2px; }
-.comments-section textarea:focus-visible { outline-offset: -2px; }
 .tools-container { gap: 6px; padding: 6px; border-radius: var(--control-radius); }
 .tools-container .tool-button { width: 38px; height: 38px; padding: 5px; border-radius: var(--control-radius); background-color: #fff; border-color: #d8d4d4; transition: background-color .12s ease, border-color .12s ease; }
 .tools-container .tool-button img { width: 24px; height: 24px; }
@@ -150,6 +175,7 @@ main[role="main"] { height: 100%; min-height: 0; padding-bottom: 0 !important; }
   .floating-textbox { animation: none; }
   .annotation-item, .annotation-actions button { transition: none; }
   .tools-container .tool-button, .tools-container .tool-button::after { transition: none; }
+  .note-panel, .note-toggle { transition: none; }
   .description-tool, .annotation-dialog-action { transition: none; }
   .annotation-dialog[open] { animation: none; }
 }
@@ -166,6 +192,6 @@ main[role="main"] { height: 100%; min-height: 0; padding-bottom: 0 !important; }
   .buttons-section .button, .buttons-section .primary-button, .buttons-section .filters-button { font-size: .75rem; padding: 4px 6px; }
 }
 @media (max-height: 600px) {
-  .description-panel { --description-lines: 4; }
+  .description-panel { --description-lines: 5; }
   .annotation-instructions { font-size: .68rem; }
 }

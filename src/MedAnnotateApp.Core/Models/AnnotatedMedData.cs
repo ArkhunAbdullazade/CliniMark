@@ -22,6 +22,8 @@ public class AnnotatedMedData
     public string? PressedButton { get; set; }
     public string? Timestamps { get; set; }
     public string? Comment { get; set; }
+    // What went wrong technically while answering this term (image, tools, page), kept apart from clinical comments.
+    public string? TechnicalProblem { get; set; }
     public DateTime? CreatedAt { get; set; }
 
     // UserData

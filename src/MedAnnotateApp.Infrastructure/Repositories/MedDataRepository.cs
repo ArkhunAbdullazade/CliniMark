@@ -92,8 +92,8 @@ public class MedDataRepository : IMedDataRepository
         if (string.IsNullOrWhiteSpace(user.Email))
             return Failure("Your account needs an email address.");
         var keyword = annotation.ExtractedKeyword?.Trim();
-        if (string.IsNullOrEmpty(keyword) || (annotation.Comment?.Length ?? 0) > 4000)
-            return Failure("Choose a valid term and keep comments below 4,000 characters.");
+        if (string.IsNullOrEmpty(keyword) || (annotation.Comment?.Length ?? 0) > 4000 || (annotation.TechnicalProblem?.Length ?? 0) > 4000)
+            return Failure("Choose a valid term and keep comments and problem reports below 4,000 characters.");
         if (annotation.PressedButton is not ("Save and Next Term" or "Uncertain/Skip" or "Not Visible/Abstract"))
             return Failure("Choose a valid annotation response.");
         if (annotation.PressedButton == "Save and Next Term")
@@ -222,13 +222,29 @@ public class MedDataRepository : IMedDataRepository
             .Where(item => item.MedDataId == medDataId && item.Email == user.Email).OrderBy(item => item.Id).ToListAsync();
     }
 
-    // Polled by open annotation pages: a single primary-key read that never takes the workflow lock.
-    public Task<bool> IsAssignedAsync(int medDataId, string userId, bool isStudent)
+    // Polled by open annotation pages, and never takes the workflow lock. It also refreshes the lock time, at most every
+    // few minutes, so an image stays reserved for as long as its page is open: there is no time limit on annotating,
+    // and the idle-lock sweeper only releases images whose page has been closed.
+    public async Task<bool> RefreshAssignmentAsync(int medDataId, string userId, bool isStudent)
     {
-        var image = context.MedDatas.AsNoTracking().Where(item => item.Id == medDataId);
-        return isStudent
-            ? image.AnyAsync(item => item.LockedByStudentUserId == userId)
-            : image.AnyAsync(item => item.LockedByUserId == userId);
+        var now = DateTime.UtcNow;
+        var due = now - TimeSpan.FromMinutes(5);
+        var image = context.MedDatas.Where(item => item.Id == medDataId);
+        if (isStudent)
+        {
+            var held = image.Where(item => item.LockedByStudentUserId == userId);
+            return await held.Where(item => item.StudentLockedAt == null || item.StudentLockedAt < due)
+                .ExecuteUpdateAsync(set => set.SetProperty(item => item.StudentLockedAt, now)) > 0 || await held.AnyAsync();
+        }
+        var own = image.Where(item => item.LockedByUserId == userId);
+        return await own.Where(item => item.LockedAt == null || item.LockedAt < due)
+            .ExecuteUpdateAsync(set => set.SetProperty(item => item.LockedAt, now)) > 0 || await own.AnyAsync();
+    }
+
+    public async Task AddProblemReportAsync(ProblemReport report)
+    {
+        context.ProblemReports.Add(report);
+        await context.SaveChangesAsync();
     }
 
     public async Task<bool> UpdateLock(int medDataId, string keywordStates, bool isAnnotationStarted, bool isStudent, string userId)
@@ -357,7 +373,8 @@ public class MedDataRepository : IMedDataRepository
     private static bool SameResponse(AnnotatedMedData existing, AnnotatedMedData incoming) =>
         existing.PressedButton == incoming.PressedButton
         && (existing.BoxCoordinates ?? "") == (incoming.BoxCoordinates ?? "")
-        && (existing.Comment ?? "") == (incoming.Comment ?? "");
+        && (existing.Comment ?? "") == (incoming.Comment ?? "")
+        && (existing.TechnicalProblem ?? "") == (incoming.TechnicalProblem ?? "");
 
     private static AnnotationSaveResult Failure(string message, bool conflict = false) => new(false, message, conflict);
 

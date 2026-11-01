@@ -201,6 +201,9 @@ namespace MedAnnotateApp.Presentation.Migrations
                     b.Property<string>("Speciality")
                         .HasColumnType("text");
 
+                    b.Property<string>("TechnicalProblem")
+                        .HasColumnType("text");
+
                     b.Property<string>("Timestamps")
                         .HasColumnType("text");
 
@@ -316,6 +319,52 @@ namespace MedAnnotateApp.Presentation.Migrations
                     b.HasIndex("MedDataId");
 
                     b.ToTable("MedDataKeywords");
+                });
+
+            modelBuilder.Entity("MedAnnotateApp.Core.Models.ProblemReport", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Details")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int?>("MedDataId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Message")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("ResolvedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ResolvedByUserId")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Term")
+                        .HasColumnType("text");
+
+                    b.Property<string>("UserId")
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("ResolvedAt");
+
+                    b.ToTable("ProblemReports");
                 });
 
             modelBuilder.Entity("MedAnnotateApp.Core.Models.User", b =>

@@ -7,6 +7,9 @@ const vm = require('node:vm');
 const source = fs.readFileSync(path.join(__dirname,
   '../../src/MedAnnotateApp.Presentation/wwwroot/js/professionalPage.js'), 'utf8');
 
+// Browser events the page sends: failed requests go to problemReport.js, inputs refresh the note dots.
+class FakeEvent { constructor(type, init = {}) { this.type = type; this.detail = init.detail; } }
+
 class Element {
   constructor(text = '', keyword) {
     this.textContent = text;
@@ -33,6 +36,7 @@ class Element {
     for (const callback of this.listeners[name] || []) await callback(event);
   }
   click() { return this.fire('click'); }
+  dispatchEvent(event) { (this.dispatched ||= []).push(event); }
 }
 
 async function page(occurrences, expectedCount, options = {}) {
@@ -40,7 +44,7 @@ async function page(occurrences, expectedCount, options = {}) {
   const saveAnnotation = options.saveAnnotation;
   const events = {};
   const elements = Object.fromEntries(['annotation-status', 'next-button', 'skip-button',
-    'not-present-button', 'comments', 'image-container'].map(id => [id, new Element()]));
+    'not-present-button', 'comments', 'technical-problem', 'image-container'].map(id => [id, new Element()]));
   const header = new Element();
   header.dataset.keywordCount = String(expectedCount);
   let onReady;
@@ -60,9 +64,12 @@ async function page(occurrences, expectedCount, options = {}) {
     getAllAnnotationsJSON() { return 'synthetic image-coordinate envelope'; }
     loadCoordinates(coordinates) { this.loaded = coordinates; }
   }
+  const requestErrors = [];
   const context = {
     window: {annotatedMedData: {id: 1}, addEventListener(name, callback) { events[name] = callback; }, watchAssignment: options.watch},
+    CustomEvent: FakeEvent, Event: FakeEvent,
     document: {
+      dispatchEvent: event => { if (event.type === 'annotationrequesterror') requestErrors.push(event.detail); },
       addEventListener(name, callback) { if (name === 'DOMContentLoaded') onReady = callback; },
       createElement: tag => Object.assign(new Element(), {tagName: tag.toUpperCase()}),
       getElementById: id => elements[id],
@@ -86,7 +93,7 @@ async function page(occurrences, expectedCount, options = {}) {
     events.beforeunload({preventDefault() { warned = true; }});
     return warned;
   };
-  return {elements, calls, manager: context.window.canvasManager, warnsBeforeLeaving};
+  return {elements, calls, manager: context.window.canvasManager, warnsBeforeLeaving, requestErrors};
 }
 
 test('inline repeated phrases advance once per canonical term in description order', async () => {
@@ -370,4 +377,28 @@ test('zoom to area shows its own hint and restores the specialist status afterwa
   manager.onInspectionChange(false, 'zoom');
   assert.equal(status.textContent, before);
   assert.equal(status.dataset.state, 'ready');
+});
+
+test('an unsent technical problem report is saved with the term, separately from the comment, and never blocks the term', async () => {
+  const {elements, calls, manager} = await page([new Element('lesion', 'lesion')], 1);
+  const status = elements['annotation-status'], problem = elements['technical-problem'];
+  problem.value = '  The image loaded blurred  ';
+  await problem.fire('input');
+  assert.equal(status.dataset.state, 'ready', 'The report has its own status line and Send now button');
+  elements.comments.value = 'Clinical note';
+  await elements['skip-button'].click();
+  const body = JSON.parse(calls.find(call => call.url === '/MedData/ProcessAnnotatedMedData').body);
+  assert.equal(body.TechnicalProblem, 'The image loaded blurred');
+  assert.equal(body.Comment, 'Clinical note');
+  assert.equal(problem.value, '');
+  assert.equal(elements.comments.value, '');
+  assert.equal(manager.annotations.length, 0);
+});
+
+test('the problem box stays usable when the image never loads, and failed requests are logged automatically', async () => {
+  const {elements, requestErrors} = await page([new Element('lesion', 'lesion')], 1,
+    {imageReady: false, loadHistory: () => ({ok: false, status: 503, json: async () => ({success: false, message: 'Database unavailable.'})})});
+  assert.equal(elements['technical-problem'].disabled, false);
+  assert.equal(elements.comments.disabled, true);
+  assert.deepEqual(requestErrors.map(error => [error.action, error.status]), [['Loading saved answers', 503]]);
 });

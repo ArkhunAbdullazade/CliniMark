@@ -1,16 +1,18 @@
 "use strict";
 
 // Notices when the open image stops being assigned to this account (released by the study team, or by the idle
-// lock sweeper), so nobody keeps annotating work that can no longer be saved. Checks only run while the person is
-// using the page, so an unattended tab neither polls the server nor keeps its sign-in alive.
+// lock sweeper), so nobody keeps annotating work that can no longer be saved. Checks run often while the person is
+// using the page. A slow heartbeat also runs while the page is open, even unattended or in a background tab: each
+// check refreshes the image's lock time, so there is no time limit on annotating, and only images whose page was
+// closed are ever released by the sweeper.
 (() => {
-  const CHECK_EVERY = 20000, IDLE_AFTER = 5 * 60000;
+  const CHECK_EVERY = 20000, IDLE_AFTER = 5 * 60000, HEARTBEAT_EVERY = 10 * 60000;
   const INPUT_EVENTS = ["pointerdown", "pointermove", "keydown", "wheel"];
 
   function watchAssignment({imageId, busy, onReleased, message}) {
     let lastInput = Date.now(), inFlight = false, stopped = false;
-    const check = async () => {
-      if (stopped || inFlight || busy() || document.hidden) return;
+    const check = async (heartbeat = false) => {
+      if (stopped || inFlight || busy() || (document.hidden && !heartbeat)) return;
       inFlight = true;
       try {
         const response = await fetch(`/MedData/AssignmentStatus?medDataId=${encodeURIComponent(imageId)}`,
@@ -29,12 +31,14 @@
     };
     const visible = () => { if (!document.hidden) check(); };
     const timer = setInterval(() => { if (Date.now() - lastInput < IDLE_AFTER) check(); }, CHECK_EVERY);
+    const heartbeat = setInterval(() => check(true), HEARTBEAT_EVERY);
     INPUT_EVENTS.forEach(name => document.addEventListener(name, input, {capture: true, passive: true}));
     document.addEventListener("visibilitychange", visible);
 
     function stop() {
       stopped = true;
       clearInterval(timer);
+      clearInterval(heartbeat);
       INPUT_EVENTS.forEach(name => document.removeEventListener(name, input, {capture: true}));
       document.removeEventListener("visibilitychange", visible);
     }

@@ -35,12 +35,21 @@ public sealed class DescriptionKeywordsTests
     }
 
     [Fact]
-    public void RepeatedAndDifferentlyCasedOccurrencesKeepTheirCanonicalTerm()
+    public void RepeatedTermIsHighlightedOnlyAtItsFirstOccurrence()
     {
-        var html = Render("Lesion and LESION", ["lesion"]);
-        Assert.Equal(["lesion", "lesion"], Keywords(html));
-        Assert.Equal("Lesion and LESION", PlainText(html));
-        Assert.Equal(2, Regex.Matches(html, "id=\"keyword-[^\"]+\"").Select(match => match.Value).Distinct().Count());
+        var html = Render("Lesion and LESION, then a lesion again", ["lesion"]);
+        Assert.Equal(["lesion"], Keywords(html));
+        Assert.Contains(">Lesion</span>", html);
+        Assert.Equal("Lesion and LESION, then a lesion again", PlainText(html));
+        Assert.Single(Regex.Matches(html, "id=\"keyword-[^\"]+\""));
+    }
+
+    [Fact]
+    public void EachOfSeveralRepeatedTermsIsHighlightedOnce()
+    {
+        var html = Render("A mass near the boundary; the mass crosses the boundary.", ["mass", "boundary"]);
+        Assert.Equal(["mass", "boundary"], Keywords(html));
+        Assert.Equal("A mass near the boundary; the mass crosses the boundary.", PlainText(html));
     }
 
     [Fact]

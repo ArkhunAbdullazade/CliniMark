@@ -1,0 +1,75 @@
+@model Paged<ProblemRow>
+@{
+    ViewData["Title"] = "Problems";
+    ViewData["Subtitle"] = "Technical problems reported by participants, and errors their pages logged automatically, newest first.";
+    var showAll = ViewData["ShowAll"] as bool? == true;
+    var returnUrl = Context.Request.Path + Context.Request.QueryString;
+    (string Label, string Icon, string Css) Kind(string kind) => kind switch
+    {
+        ProblemReport.UserReport => ("Reported by participant", "bi-chat-left-text", "answer-uncertain"),
+        ProblemReport.ImageLoadError => ("Image did not load", "bi-image", "answer-error"),
+        ProblemReport.SaveError => ("Save failed", "bi-cloud-slash", "answer-error"),
+        ProblemReport.ScriptError => ("Page error", "bi-bug", "answer-error"),
+        _ => (kind, "bi-question-circle", "answer-none")
+    };
+}
+
+<section class="admin-card">
+    <ul class="nav nav-tabs px-3 pt-2">
+        <li class="nav-item"><a class="nav-link @(showAll ? "" : "active")" asp-action="Index">Open</a></li>
+        <li class="nav-item"><a class="nav-link @(showAll ? "active" : "")" asp-action="Index" asp-route-all="true">All, including resolved</a></li>
+    </ul>
+    @if (Model.Total == 0)
+    {
+        <div class="empty-state"><i class="bi bi-check2-circle"></i>@(showAll ? "No problems have been reported." : "No open problems.")</div>
+    }
+    else
+    {
+        <div class="admin-table-wrap">
+            <table class="table admin-table align-middle">
+                <thead><tr><th>When</th><th>Problem</th><th>Image</th><th class="d-none d-md-table-cell">Participant</th><th class="d-none d-lg-table-cell">Details</th><th></th></tr></thead>
+                <tbody>
+                    @foreach (var row in Model.Items)
+                    {
+                        var kind = Kind(row.Kind);
+                        <tr>
+                            <td class="text-nowrap"><time datetime="@AdminUi.Iso(row.CreatedAt)" data-local="datetime"></time></td>
+                            <td>
+                                <span class="answer @kind.Css"><i class="bi @kind.Icon" aria-hidden="true"></i>@kind.Label</span>
+                                @if (!string.IsNullOrWhiteSpace(row.Message)) { <div class="problem-message">@row.Message</div> }
+                                @if (!string.IsNullOrWhiteSpace(row.Term)) { <div class="muted small">Term: @row.Term</div> }
+                            </td>
+                            <td>
+                                @if (row.MedDataId is int imageId)
+                                {
+                                    <a class="fw-semibold" asp-controller="Images" asp-action="Details" asp-route-id="@imageId">#@imageId</a>
+                                }
+                            </td>
+                            <td class="d-none d-md-table-cell">
+                                @if (row.Reporter != null)
+                                {
+                                    <a asp-controller="Participants" asp-action="Details" asp-route-id="@row.Reporter.Id">@row.Reporter.Name</a>
+                                }
+                            </td>
+                            <td class="mono small muted d-none d-lg-table-cell"><div class="truncate" title="@row.Details">@row.Details</div></td>
+                            <td class="text-end text-nowrap">
+                                <form method="post" asp-action="SetResolved" asp-route-id="@row.Id" asp-route-resolved="@(row.ResolvedAt == null)" asp-route-returnUrl="@returnUrl">
+                                    @if (row.ResolvedAt == null)
+                                    {
+                                        <button type="submit" class="btn btn-sm btn-outline-success"><i class="bi bi-check2" aria-hidden="true"></i> Resolved</button>
+                                    }
+                                    else
+                                    {
+                                        <span class="muted small me-2" title="Resolved by @row.ResolvedBy">Resolved <time datetime="@AdminUi.Iso(row.ResolvedAt)" data-local="relative"></time></span>
+                                        <button type="submit" class="btn btn-sm btn-outline-secondary">Reopen</button>
+                                    }
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+    <partial name="_Pager" model='(Model.Page, Model.Pages, Model.Total, Model.PageSize, "reports")' />
+</section>

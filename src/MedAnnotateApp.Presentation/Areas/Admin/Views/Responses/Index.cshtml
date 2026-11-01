@@ -147,7 +147,7 @@
                             </td>
                             @if (!q.IsStudent)
                             {
-                                <td class="small d-none d-xl-table-cell"><div class="truncate" title="@row.Comment">@row.Comment</div></td>
+                                <td class="small d-none d-xl-table-cell"><div class="truncate" title="@row.Comment">@row.Comment</div>@if (!string.IsNullOrWhiteSpace(row.TechnicalProblem)) { <div class="technical-problem"><i class="bi bi-exclamation-triangle" aria-hidden="true"></i> Technical problem: <span class="truncate" title="@row.TechnicalProblem">@row.TechnicalProblem</span></div> }</td>
                                 <td class="num d-none d-lg-table-cell">@AdminUi.Seconds(row.FirstDrawMs)</td>
                                 <td class="num d-none d-lg-table-cell">@AdminUi.Seconds(row.DrawingMs)</td>
                             }

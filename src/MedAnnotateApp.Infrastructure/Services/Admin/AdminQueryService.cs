@@ -200,7 +200,7 @@ public sealed class AdminQueryService
             {
                 var person = people.ByEmail(answer.Email);
                 var (first, drawing) = ResponseTimings.Parse(answer.Timestamps);
-                return new SpecialistAnswer(answer.Id, answer.ExtractedKeyword, answer.PressedButton, answer.BoxCoordinates, answer.Comment,
+                return new SpecialistAnswer(answer.Id, answer.ExtractedKeyword, answer.PressedButton, answer.BoxCoordinates, answer.Comment, answer.TechnicalProblem,
                     first, drawing, answer.CreatedAt, person?.Id, person?.DisplayName ?? "Removed account", complete.Contains(person?.Id));
             }).ToList(),
             sets,
@@ -338,7 +338,7 @@ public sealed class AdminQueryService
             return new Paged<ResponseRow>(rows.Select(item =>
             {
                 var person = people.ByEmail(item.Email);
-                return new ResponseRow(item.Id, true, item.MedDataId, item.TextualAnnotation, null, null, !string.IsNullOrWhiteSpace(item.Coordinates),
+                return new ResponseRow(item.Id, true, item.MedDataId, item.TextualAnnotation, null, null, null, !string.IsNullOrWhiteSpace(item.Coordinates),
                     null, null, item.CreatedAt, person?.Id, person?.DisplayName ?? "Removed account", true, item.Speciality, item.Modality);
             }).ToList(), page, PageSize, total);
         }
@@ -372,7 +372,7 @@ public sealed class AdminQueryService
         {
             var person = people.ByEmail(item.Email);
             var (first, drawing) = ResponseTimings.Parse(item.Timestamps);
-            return new ResponseRow(item.Id, false, item.MedDataId, item.ExtractedKeyword, item.PressedButton, item.Comment,
+            return new ResponseRow(item.Id, false, item.MedDataId, item.ExtractedKeyword, item.PressedButton, item.Comment, item.TechnicalProblem,
                 !string.IsNullOrWhiteSpace(item.BoxCoordinates), first, drawing, item.CreatedAt, person?.Id,
                 person?.DisplayName ?? "Removed account", completeSets.Contains((item.MedDataId, AdminData.Normalize(item.Email))),
                 item.Speciality, item.Modality);
@@ -394,6 +394,30 @@ public sealed class AdminQueryService
             row.Action, row.MedDataId, people.Ref(row.TargetUserId), row.Details)).ToList(), page, PageSize, total);
     }
 
+    /// <summary>Problem reports, newest first: open ones only, or all of them including resolved ones.</summary>
+    public async Task<Paged<ProblemRow>> GetProblemsAsync(bool includeResolved, int page, CancellationToken cancellationToken = default)
+    {
+        var reports = context.ProblemReports.AsNoTracking().Where(report => includeResolved || report.ResolvedAt == null);
+        var total = await reports.CountAsync(cancellationToken);
+        page = ClampPage(page, total);
+        var rows = await reports.OrderByDescending(report => report.Id).Skip((page - 1) * PageSize).Take(PageSize).ToListAsync(cancellationToken);
+        var people = await AdminData.LoadPeopleAsync(context, cancellationToken);
+        var resolverIds = rows.Select(row => row.ResolvedByUserId).OfType<string>().Distinct().ToList();
+        var resolvers = await context.Users.AsNoTracking().Where(user => resolverIds.Contains(user.Id))
+            .Select(user => new { user.Id, user.Email }).ToDictionaryAsync(user => user.Id, user => user.Email ?? "Admin", cancellationToken);
+        return new Paged<ProblemRow>(rows.Select(row => new ProblemRow(row.Id, row.CreatedAt, row.Kind, row.Message, row.Term, row.MedDataId,
+            people.Ref(row.UserId), row.Details, row.ResolvedAt,
+            row.ResolvedByUserId == null ? null : resolvers.GetValueOrDefault(row.ResolvedByUserId, "Removed admin"))).ToList(), page, PageSize, total);
+    }
+
+    public async Task<ProblemSummary> GetProblemSummaryAsync(CancellationToken cancellationToken = default)
+    {
+        var since = DateTime.UtcNow.AddHours(-24);
+        return new ProblemSummary(
+            await context.ProblemReports.CountAsync(report => report.ResolvedAt == null, cancellationToken),
+            await context.ProblemReports.CountAsync(report => report.CreatedAt >= since, cancellationToken));
+    }
+
     internal static IQueryable<AnnotatedMedData> FilterSpecialist(IQueryable<AnnotatedMedData> answers, ResponseQuery query, string? annotatorEmail)
     {
         if (annotatorEmail != null) answers = answers.Where(item => item.Email == annotatorEmail);
@@ -402,7 +426,8 @@ public sealed class AdminQueryService
         {
             var term = query.Term.Trim().ToLower();
             answers = answers.Where(item => (item.ExtractedKeyword != null && item.ExtractedKeyword.ToLower().Contains(term))
-                || (item.Comment != null && item.Comment.ToLower().Contains(term)));
+                || (item.Comment != null && item.Comment.ToLower().Contains(term))
+                || (item.TechnicalProblem != null && item.TechnicalProblem.ToLower().Contains(term)));
         }
         var (from, to) = DateRange(query);
         if (from != null) answers = answers.Where(item => item.CreatedAt >= from);

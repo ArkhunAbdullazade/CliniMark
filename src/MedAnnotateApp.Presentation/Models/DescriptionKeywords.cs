@@ -7,14 +7,18 @@ namespace MedAnnotateApp.Presentation.Models;
 public static class DescriptionKeywords
 {
     // Match the original description only. Diagnosis is separate display text.
+    // Each term is highlighted once, at its first occurrence: one term means one set of annotations, and later
+    // repeats stay plain text so they never look like extra work.
     public static IHtmlContent Highlight(string? description, IReadOnlyList<string?>? keywords)
     {
         var text = DescriptionText(description);
         var content = new HtmlContentBuilder();
         var position = 0;
         var occurrence = 0;
+        var highlighted = new HashSet<string>(StringComparer.Ordinal);
         foreach (var match in Matches(text, keywords))
         {
+            if (!highlighted.Add(match.Term)) continue;
             content.Append(text[position..match.Position]);
             var span = new TagBuilder("span");
             span.AddCssClass("keyword not_annotated_keyword");

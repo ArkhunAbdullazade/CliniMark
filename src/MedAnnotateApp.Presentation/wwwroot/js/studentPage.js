@@ -103,6 +103,8 @@ document.addEventListener("DOMContentLoaded", () => {
       if(!response.ok || !result.success)throw Object.assign(new Error(result.message || "Save failed. All groups are still on this page."),{status:response.status});
       dirty=false;saving=false;navigating=true;location.href=result.redirectUrl || "/Home/Student";
     } catch(error){
+      // Logged for the study team automatically (problemReport.js).
+      document.dispatchEvent(new CustomEvent("annotationrequesterror",{detail:{action:"Submitting annotations",message:error.message,status:error.status}}));
       saving=false;manager.baseManager.readOnly=false;submit.textContent="Submit Annotations";updateList();showStatus(error.message,"error");
       // A conflict may mean the image was released, so confirm it now rather than at the next check.
       if(error.status===409)watch?.check();

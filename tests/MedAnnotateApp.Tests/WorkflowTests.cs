@@ -142,6 +142,30 @@ public sealed class WorkflowTests
     }
 
     [Fact]
+    public async Task TechnicalProblemIsSavedWithTheTermAndCannotBeChangedByAResubmission()
+    {
+        await using var db = await WorkflowDatabase.CreateAsync();
+        await db.AssignAsync();
+        var report = Response(1);
+        report.TechnicalProblem = "The image loaded blurred";
+        Assert.True((await db.Repository.SaveProfessionalAsync(db.Owner, report)).Success);
+        var retry = Response(1);
+        retry.TechnicalProblem = "The image loaded blurred";
+        Assert.True((await db.Repository.SaveProfessionalAsync(db.Owner, retry)).Success);
+        var changed = Response(1);
+        changed.TechnicalProblem = "A different report from a second tab";
+        Assert.True((await db.Repository.SaveProfessionalAsync(db.Owner, changed)).Conflict);
+        var tooLong = Response(1);
+        tooLong.ExtractedKeyword = "boundary";
+        tooLong.TechnicalProblem = new string('x', 4001);
+        Assert.False((await db.Repository.SaveProfessionalAsync(db.Owner, tooLong)).Success);
+        db.Context.ChangeTracker.Clear();
+        var saved = Assert.Single(await db.Context.AnnotatedMedDatas.ToListAsync());
+        Assert.Equal("The image loaded blurred", saved.TechnicalProblem);
+        Assert.Null(saved.Comment);
+    }
+
+    [Fact]
     public async Task OtherUserCannotSaveCompleteReadOrUnlockOwnedImage()
     {
         await using var db = await WorkflowDatabase.CreateAsync();

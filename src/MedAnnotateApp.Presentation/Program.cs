@@ -64,13 +64,16 @@ if (!string.IsNullOrWhiteSpace(dataProtectionKeysPath))
 }
 
 builder.Services.AddDistributedMemoryCache(); // One web instance; session loss requires entering the shared gate again.
+// Clinicians can take as long as they need: neither the gate session nor the sign-in runs out while the browser stays
+// open. Both cookies still end when the browser is closed, so a shared hospital computer does not stay signed in.
+var noTimeLimit = TimeSpan.FromDays(3650);
 builder.Services.AddSession(options =>
 {
     options.Cookie.HttpOnly = true;
     options.Cookie.IsEssential = true;
     options.Cookie.SecurePolicy = builder.Environment.IsDevelopment() ? CookieSecurePolicy.SameAsRequest : CookieSecurePolicy.Always;
     options.Cookie.SameSite = SameSiteMode.Lax;
-    options.IdleTimeout = TimeSpan.FromHours(12);
+    options.IdleTimeout = noTimeLimit;
 });
 
 builder.Services.AddControllersWithViews(options => options.Filters.Add(new AutoValidateAntiforgeryTokenAttribute()))
@@ -103,9 +106,15 @@ if (accessAttemptLimit < 1)
 builder.Services.AddRateLimiter(options =>
 {
     options.AddPolicy(ResearchAccessRateLimit.PolicyName, context => ResearchAccessRateLimit.Partition(context, accessAttemptLimit));
+    options.AddPolicy(ProblemReportRateLimit.PolicyName, ProblemReportRateLimit.Partition);
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
     options.OnRejected = async (context, token) =>
-        await context.HttpContext.Response.WriteAsync("Too many access attempts. Wait ten minutes and try again.", token);
+    {
+        if (context.HttpContext.Request.Path.StartsWithSegments("/MedData"))
+            await context.HttpContext.Response.WriteAsJsonAsync(new { success = false, message = "Too many problem reports in a short time. Wait a few minutes and try again." }, token);
+        else
+            await context.HttpContext.Response.WriteAsync("Too many access attempts. Wait ten minutes and try again.", token);
+    };
 });
 
 builder.Services.AddDbContext<MedDataDbContext>(options =>
@@ -137,7 +146,7 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.Cookie.SecurePolicy = builder.Environment.IsDevelopment() ? CookieSecurePolicy.SameAsRequest : CookieSecurePolicy.Always;
     options.Cookie.Name = "MedAnnotateAuth";
     options.SlidingExpiration = true;
-    options.ExpireTimeSpan = TimeSpan.FromHours(12);
+    options.ExpireTimeSpan = noTimeLimit;
     options.Events.OnRedirectToLogin = context =>
     {
         if (context.Request.Path.StartsWithSegments("/MedData"))
@@ -172,6 +181,7 @@ builder.Services.AddMemoryCache();
 builder.Services.Configure<AdminOptions>(builder.Configuration.GetSection(AdminOptions.Section));
 builder.Services.AddScoped<AdminQueryService>();
 builder.Services.AddScoped<AssignmentAdminService>();
+builder.Services.AddScoped<ProblemAdminService>();
 builder.Services.AddScoped<ParticipantAdminService>();
 builder.Services.AddScoped<ResultsExportService>();
 // No overall timeout: the service limits each attempt itself.

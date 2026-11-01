@@ -195,7 +195,7 @@ public sealed class AdminServicesTests
 
         var files = await ReadArchiveAsync(await db.Export.CreateArchiveAsync(new ExportOptions { Identity = identity }));
 
-        var expected = new List<string> { "README.txt", "images.csv", "progress.csv", "specialist_responses.csv", "student_annotations.csv" };
+        var expected = new List<string> { "README.txt", "images.csv", "problem_reports.csv", "progress.csv", "specialist_responses.csv", "student_annotations.csv" };
         if (identity != IdentityMode.None) expected.Add("participants.csv");
         Assert.Equal(expected.Order(), files.Keys.Order());
         Assert.Equal(identity == IdentityMode.Full, files.Values.Any(text => text.Contains("first@example.test")));
@@ -243,7 +243,7 @@ public sealed class AdminServicesTests
 
         using var zip = new ZipArchive(new MemoryStream(archive), ZipArchiveMode.Read);
         Assert.Equal(["README.txt", "images" + extension, "images/1.jpg", "images/2.png", "images/3.jpg", "images_manifest" + extension,
-            "participants" + extension, "progress" + extension, "specialist_responses" + extension, "student_annotations" + extension],
+            "participants" + extension, "problem_reports" + extension, "progress" + extension, "specialist_responses" + extension, "student_annotations" + extension],
             zip.Entries.Select(entry => entry.FullName).Order(StringComparer.Ordinal));
         Assert.Equal(files[1], EntryBytes(zip, "images/1.jpg"));
         Assert.Equal(files[2], EntryBytes(zip, "images/2.png"));
@@ -410,6 +410,60 @@ public sealed class AdminServicesTests
     }
 
     [Fact]
+    public async Task OpenPageHeartbeatKeepsALongIdleEmptyLockFromTheSweeper()
+    {
+        await using var db = await AdminDatabase.CreateAsync();
+        await db.AssignAsync(db.Second);
+        var now = DateTime.UtcNow;
+        var image = await db.Context.MedDatas.SingleAsync(item => item.LockedByUserId == db.Second.Id);
+        image.LockedAt = now.AddHours(-13);
+        await db.Context.SaveChangesAsync();
+        db.Context.ChangeTracker.Clear();
+
+        // The open page checks in: the lock time is refreshed, so the sweeper leaves it alone however long the clinician takes.
+        Assert.True(await db.Repository.RefreshAssignmentAsync(image.Id, db.Second.Id, false));
+        Assert.False(await db.Repository.RefreshAssignmentAsync(image.Id, db.First.Id, false));
+        Assert.Equal(0, await db.Assignments.ReleaseIdleEmptyLocksAsync(TimeSpan.FromHours(12), now));
+        var refreshed = await db.Context.MedDatas.AsNoTracking().SingleAsync(item => item.Id == image.Id);
+        Assert.Equal(db.Second.Id, refreshed.LockedByUserId);
+        Assert.True(refreshed.LockedAt > now.AddMinutes(-1));
+    }
+
+    [Fact]
+    public async Task ProblemReportsAreListedResolvedWithAuditCountedAndExported()
+    {
+        await using var db = await AdminDatabase.CreateAsync();
+        var problems = new ProblemAdminService(db.Context);
+        await db.Repository.AddProblemReportAsync(new ProblemReport
+            { CreatedAt = DateTime.UtcNow, UserId = db.First.Id, MedDataId = 1, Kind = ProblemReport.UserReport, Term = "lesion", Message = "Image is blurred" });
+        await db.Repository.AddProblemReportAsync(new ProblemReport
+            { CreatedAt = DateTime.UtcNow.AddDays(-2), UserId = db.Student.Id, MedDataId = 2, Kind = ProblemReport.ImageLoadError, Message = "The study image did not load." });
+
+        var open = await db.Queries.GetProblemsAsync(false, 1);
+        Assert.Equal(2, open.Total);
+        Assert.Equal(ProblemReport.ImageLoadError, open.Items[0].Kind);
+        var typed = Assert.Single(open.Items, item => item.Kind == ProblemReport.UserReport);
+        Assert.Equal("Image is blurred", typed.Message);
+        Assert.Equal("lesion", typed.Term);
+        Assert.Equal(db.First.Id, typed.Reporter!.Id);
+        Assert.Equal(new ProblemSummary(2, 1), await db.Queries.GetProblemSummaryAsync());
+
+        var resolved = await problems.SetResolvedAsync(typed.Id, true, db.Admin.Id);
+        Assert.True(resolved.Released);
+        Assert.False((await problems.SetResolvedAsync(typed.Id, true, db.Admin.Id)).Released);
+        Assert.Equal(1, (await db.Queries.GetProblemsAsync(false, 1)).Total);
+        var all = await db.Queries.GetProblemsAsync(true, 1);
+        Assert.Equal(2, all.Total);
+        Assert.Equal(db.Admin.Email, all.Items.Single(item => item.Id == typed.Id).ResolvedBy);
+        Assert.Equal("resolve-problem", (await db.Context.AdminActions.SingleAsync()).Action);
+
+        var csv = await ReadArchiveAsync(await db.Export.CreateArchiveAsync(new ExportOptions { Identity = IdentityMode.None }));
+        Assert.Contains("Image is blurred", csv["problem_reports.csv"]);
+        Assert.Contains("image-load-error", csv["problem_reports.csv"]);
+        Assert.DoesNotContain(db.First.Email!, csv["problem_reports.csv"]);
+    }
+
+    [Fact]
     public async Task ExportsKeepCoordinatesByteForByte()
     {
         await using var db = await AdminDatabase.CreateAsync();
@@ -441,7 +495,7 @@ public sealed class AdminServicesTests
         Assert.Null(image.LockedByUserId);
         Assert.Null(image.LockedByStudentUserId);
         Assert.Equal(1, await db.Context.AnnotatedMedDatas.CountAsync());
-        Assert.False(await db.Repository.IsAssignedAsync(1, db.First.Id, false));
+        Assert.False(await db.Repository.RefreshAssignmentAsync(1, db.First.Id, false));
         var late = await db.Repository.SaveProfessionalAsync(db.First, Answer("margin"));
         Assert.False(late.Success);
         Assert.True(late.Conflict);

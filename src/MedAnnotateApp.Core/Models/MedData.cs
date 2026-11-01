@@ -19,7 +19,8 @@ public class MedData
 
     public string? LockedByUserId { get; set; }
     public string? LockedByStudentUserId { get; set; }
-    // When the holder last opened the image; empty locks idle past Admin:EmptyLockReleaseHours are released.
+    // When the holder last opened the image or their open page last checked in; empty locks idle past
+    // Admin:EmptyLockReleaseHours (their page closed that long) are released.
     public DateTime? LockedAt { get; set; }
     public DateTime? StudentLockedAt { get; set; }
     

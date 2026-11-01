@@ -769,7 +769,7 @@ class CanvasManager {
     reportImageError(message) {
       const status = document.getElementById("annotation-status");
       if (status) { status.textContent = message; status.dataset.state = "error"; }
-      this.canvas.dispatchEvent(new CustomEvent("annotationimageerror"));
+      this.canvas.dispatchEvent(new CustomEvent("annotationimageerror", {detail: {message}}));
     }
 
     screenPixels(value) {

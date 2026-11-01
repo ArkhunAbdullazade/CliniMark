@@ -169,17 +169,17 @@ public sealed class WorkflowLifecycleTests
     {
         await using var database = await LifecycleDatabase.CreateAsync();
         var owner = student ? database.Student : database.Owner;
-        Assert.False(await database.Repository.IsAssignedAsync(1, owner.Id, student));
+        Assert.False(await database.Repository.RefreshAssignmentAsync(1, owner.Id, student));
         await database.AssignAsync(owner, student);
 
-        Assert.True(await database.Repository.IsAssignedAsync(1, owner.Id, student));
-        Assert.False(await database.Repository.IsAssignedAsync(1, owner.Id, !student));
-        Assert.False(await database.Repository.IsAssignedAsync(1, database.Other.Id, student));
-        Assert.False(await database.Repository.IsAssignedAsync(2, owner.Id, student));
+        Assert.True(await database.Repository.RefreshAssignmentAsync(1, owner.Id, student));
+        Assert.False(await database.Repository.RefreshAssignmentAsync(1, owner.Id, !student));
+        Assert.False(await database.Repository.RefreshAssignmentAsync(1, database.Other.Id, student));
+        Assert.False(await database.Repository.RefreshAssignmentAsync(2, owner.Id, student));
 
         var release = await new AssignmentAdminService(database.Context).ReleaseAsync(1, student, owner.Id, database.Other.Id);
         Assert.True(release.Released);
-        Assert.False(await database.Repository.IsAssignedAsync(1, owner.Id, student));
+        Assert.False(await database.Repository.RefreshAssignmentAsync(1, owner.Id, student));
     }
 
     private static AnnotatedMedData Response(string keyword) => new()

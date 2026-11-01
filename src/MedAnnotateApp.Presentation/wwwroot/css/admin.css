@@ -144,6 +144,9 @@ html { font-size: 14px; }
 .admin-card-body { padding: 1rem 1.25rem 1.25rem; }
 .admin-grid { display: grid; gap: 1rem; }
 .admin-grid-tiles { grid-template-columns: repeat(auto-fill, minmax(min(100%, 200px), 1fr)); }
+/* A dashboard tile that needs attention, such as open problem reports. */
+.stat-alert { border-left: 3px solid #a9000e; }
+.stat-alert .stat-value { color: #a9000e; }
 .admin-grid-2 { grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); }
 
 .stat-tile { padding: 1rem 1.2rem; display: flex; flex-direction: column; }
@@ -187,6 +190,9 @@ a.stat-tile:hover { border-color: var(--brand-tint-border); box-shadow: 0 .35rem
 .thumb { display: block; width: 64px; height: 48px; object-fit: cover; border: 1px solid var(--line); border-radius: 6px; background: #eef0f2; }
 .muted { color: var(--muted); }
 .truncate { max-width: 22rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* A specialist's technical problem report, shown under the comment so it stands out from clinical notes. */
+.technical-problem { margin-top: 2px; color: #a3410f; font-weight: 500; }
+.technical-problem .truncate { display: inline-block; max-width: 18rem; vertical-align: bottom; }
 .selections .truncate { max-width: 15rem; }
 .mono { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: .85em; }
 
@@ -212,6 +218,9 @@ a.stat-tile:hover { border-color: var(--brand-tint-border); box-shadow: 0 .35rem
 .answer-uncertain { background: #fdeee6; color: #a3410f; }
 .answer-notvisible { background: #e3f6ef; color: #0f6e4c; }
 .answer-none { background: #f1f3f5; color: #555; }
+/* Errors a participant's page logged automatically. */
+.answer-error { background: #fdecee; color: #a9000e; }
+.problem-message { margin-top: 4px; max-width: 34rem; white-space: pre-wrap; overflow-wrap: anywhere; }
 .role-pill { display: inline-flex; align-items: center; gap: .4rem; font-size: .85rem; white-space: nowrap; }
 
 /* Image detail */

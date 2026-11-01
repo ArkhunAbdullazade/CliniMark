@@ -16,6 +16,7 @@ public class MedDataDbContext : IdentityDbContext<User, IdentityRole, string>
     public DbSet<AnnotatedMedData> AnnotatedMedDatas => Set<AnnotatedMedData>();
     public DbSet<AnnotatedByStudentsMedData> AnnotatedByStudentsMedDatas => Set<AnnotatedByStudentsMedData>();
     public DbSet<AdminAction> AdminActions => Set<AdminAction>();
+    public DbSet<ProblemReport> ProblemReports => Set<ProblemReport>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -43,5 +44,7 @@ public class MedDataDbContext : IdentityDbContext<User, IdentityRole, string>
         modelBuilder.Entity<AnnotatedByStudentsMedData>().HasIndex(annotation => annotation.MedDataId);
         modelBuilder.Entity<AnnotatedByStudentsMedData>().HasIndex(annotation => annotation.CreatedAt);
         modelBuilder.Entity<AdminAction>().HasIndex(action => action.At);
+        modelBuilder.Entity<ProblemReport>().HasIndex(report => report.CreatedAt);
+        modelBuilder.Entity<ProblemReport>().HasIndex(report => report.ResolvedAt);
     }
 }

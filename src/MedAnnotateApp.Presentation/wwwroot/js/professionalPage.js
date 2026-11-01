@@ -63,6 +63,12 @@ document.addEventListener("DOMContentLoaded", () => {
   const skip = document.getElementById("skip-button");
   const absent = document.getElementById("not-present-button");
   const comments = document.getElementById("comments");
+  // Saved with the term like the comment, but kept separate so technical issues never mix with clinical notes. It can
+  // also be sent at once (problemReport.js), so it never depends on the image or the tools working.
+  const problem = document.getElementById("technical-problem");
+  // Failed saves and loads are logged for the study team automatically (problemReport.js).
+  const requestFailed = (action, error) => document.dispatchEvent(new CustomEvent("annotationrequesterror",
+    {detail: {action, message: error.message, status: error.status}}));
   const occurrences = [...document.querySelectorAll(".header-text .keyword")];
   // Repeated phrases share one response; progress follows their first appearance in the text.
   const terms = occurrences.filter((term, index) => occurrences.findIndex(other => other.dataset.keyword === term.dataset.keyword) === index);
@@ -88,6 +94,7 @@ document.addEventListener("DOMContentLoaded", () => {
     next.disabled = released || saving || !initialized || !manager.ready || (!complete && (reviewIndex !== -1 || !manager.annotations.length || manager.currentAction !== "none"));
     skip.disabled = absent.disabled = released || saving || !initialized || !manager.ready || complete || reviewIndex !== -1 || manager.annotations.length > 0;
     comments.disabled = released || !initialized || !manager.ready || saving || reviewIndex !== -1 || complete;
+    problem.disabled = saving;
     manager.readOnly = released || !initialized || !manager.ready || saving || reviewIndex !== -1 || complete;
     occurrences.forEach(term => {
       const i = terms.findIndex(first => first.dataset.keyword === term.dataset.keyword);
@@ -125,7 +132,7 @@ document.addEventListener("DOMContentLoaded", () => {
         history = result.annotations || [];
         historyLoaded = true;
         window.hasAnnotatedCurrentImage = history.length > 0;
-      } catch (error) { showStatus(error.message, "error"); buttons(); return; }
+      } catch (error) { requestFailed("Loading saved answers", error); showStatus(error.message, "error"); buttons(); return; }
       finally { historyLoading = false; }
     }
     if (!manager.ready) return;
@@ -181,14 +188,16 @@ document.addEventListener("DOMContentLoaded", () => {
     try { if (action === "Save and Next Term") coordinates = manager.getAllAnnotationsJSON(); }
     catch (error) { showStatus(error.message, "error"); return; }
     const elapsed = firstDraw ? `(${Math.max(0,firstDraw-started)},${Math.max(0,Date.now()-firstDraw)})` : "(0,0)";
-    const payload = {Id:assignmentId,BoxCoordinates:coordinates,ExtractedKeyword:termName(currentIndex),PressedButton:action,Comment:comments.value.trim(),Timestamps:elapsed};
+    const payload = {Id:assignmentId,BoxCoordinates:coordinates,ExtractedKeyword:termName(currentIndex),PressedButton:action,Comment:comments.value.trim(),TechnicalProblem:problem.value.trim(),Timestamps:elapsed};
     saving = true; buttons(); showStatus("Saving… keep this page open.", "saving");
     try {
       await request("/MedData/ProcessAnnotatedMedData", {method:"POST",body:JSON.stringify(payload)});
-      history.push({extractedKeyword:payload.ExtractedKeyword,boxCoordinates:coordinates,pressedButton:action,comment:payload.Comment});
+      history.push({extractedKeyword:payload.ExtractedKeyword,boxCoordinates:coordinates,pressedButton:action,comment:payload.Comment,technicalProblem:payload.TechnicalProblem});
       window.hasAnnotatedCurrentImage = true;
+      // The problem report went with this answer, so the box starts empty for the next term.
+      problem.value = ""; problem.dispatchEvent(new Event("input", {bubbles: true}));
       saving = false; showCurrent();
-    } catch (error) { saving = false; buttons(); showStatus(error.message, "error"); lockLost(error); }
+    } catch (error) { requestFailed(`Saving ${payload.ExtractedKeyword}`, error); saving = false; buttons(); showStatus(error.message, "error"); lockLost(error); }
   }
   // A conflict may mean the image was released, so confirm it now rather than at the next check.
   const lockLost = error => { if (error.status === 409) watch?.check(); };
@@ -199,7 +208,7 @@ document.addEventListener("DOMContentLoaded", () => {
     try {
       await request(`/MedData/NextImage?medDataId=${encodeURIComponent(assignmentId)}`,{method:"PUT"});
       saving = false; dirty = false; navigating = true; location.reload();
-    } catch (error) { saving = false; buttons(); showStatus(error.message,"error"); lockLost(error); }
+    } catch (error) { requestFailed("Moving to the next image", error); saving = false; buttons(); showStatus(error.message,"error"); lockLost(error); }
   });
   skip.addEventListener("click", () => save("Uncertain/Skip"));
   absent.addEventListener("click", () => save("Not Visible/Abstract"));

@@ -10,7 +10,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const reader = dialog.querySelector(".description-dialog-text");
   const termNote = document.getElementById("description-dialog-term");
   const scales = {
-    panel: {element: panel, sizes: [0.75, 0.85, 1, 1.15, 1.3, 1.5], step: 1},
+    panel: {element: panel, sizes: [0.8, 0.95, 1.1, 1.25, 1.4, 1.6], step: 1},
     dialog: {element: dialog, sizes: [1, 1.125, 1.25, 1.4, 1.6, 1.8], step: 1}
   };
   const storageKey = name => `medannotate.description-size.${name}`;

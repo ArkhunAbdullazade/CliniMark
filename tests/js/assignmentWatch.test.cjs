@@ -41,7 +41,8 @@ function harness({busy = () => false} = {}) {
     tick: async () => { timers[0]?.(); await flush(); },
     fire: async name => { for (const callback of [...(listeners[name] || [])]) callback(); await flush(); },
     advance: ms => { now += ms; },
-    stopped: () => timers[0] === null && !listeners.pointermove?.size && !listeners.visibilitychange?.size,
+    heartbeat: async () => { timers[1]?.(); await flush(); },
+    stopped: () => timers[0] === null && timers[1] === null && !listeners.pointermove?.size && !listeners.visibilitychange?.size,
     reloaded: () => reloaded};
 }
 
@@ -120,4 +121,18 @@ test('only one check is in flight at a time', async () => {
   finish(); await flush(); await flush();
   await h.watch.check();
   assert.equal(h.requests.length, 2);
+});
+
+test('a slow heartbeat keeps checking an unattended or hidden page, so its image stays reserved without a time limit', async () => {
+  const h = harness();
+  h.advance(6 * 60000);
+  h.document.hidden = true;
+  await h.tick();
+  assert.equal(h.requests.length, 0, 'The frequent check pauses while unattended');
+  await h.heartbeat();
+  assert.equal(h.requests.length, 1, 'The heartbeat still checks in, which refreshes the lock time');
+  h.responses.push(answer(false));
+  await h.heartbeat();
+  assert.equal(h.released.length, 1, 'A release found by the heartbeat is still reported');
+  assert.equal(h.stopped(), true);
 });

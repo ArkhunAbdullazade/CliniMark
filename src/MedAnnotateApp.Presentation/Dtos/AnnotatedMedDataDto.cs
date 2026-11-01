@@ -27,5 +27,7 @@ public class AnnotatedMedDataDto
     public string? Timestamps { get; set; }
     [StringLength(4000)]
     public string? Comment { get; set; }
+    [StringLength(4000)]
+    public string? TechnicalProblem { get; set; }
     public string? KeywordStates { get; set; }
 }
