@@ -1,76 +1,43 @@
 @model MedAnnotateApp.Presentation.Dtos.LoginDto
 
 @{
-    ViewBag.Title = "Login";
+    ViewBag.Title = "Sign in";
 }
 
 <link rel="stylesheet" href="~/css/authForms.css" asp-append-version="true" />
+<link rel="stylesheet" href="~/lib/bootstrap-icons/font/bootstrap-icons.min.css" />
 
-<section class="centered auth-page">
-    <div class="container">
-        <div class="row justify-content-center">
-            <div class="col-md-11">
-                <div class="card shadow-lg p-0 welcome-card">
-                    <div class="row g-0 h-100">
-                        <div class="col-md-7 welcome-column">
-                            <div>
-                                <h1 class="display-5 fw-bold ls-tight text-center brand-title brand-color">
-                                    Welcome Back
-                                </h1>
-                                <p class="mt-3 welcome-text">
-                                    Sign in to your account to continue your work on our medical annotation platform. 
-                                    Your contributions help improve healthcare technology and patient outcomes through 
-                                    accurate image annotation and collaborative research.
-                                </p>
-                                
-                                <div class="text-center mt-4">
-                                    <a href="/Identity/Signup" class="btn btn-outline-secondary">
-                                        Create New Account
-                                    </a>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="col-md-5 form-column">
-                            <div class="card-body form-container">
-                                <form method="post" asp-action="PostLogin" asp-controller="Identity" class="mb-0">
-                                    @if (TempData["Notice"] is string notice)
-                                    {
-                                        <div class="alert alert-success w-100" role="status">@notice</div>
-                                    }
-                                    
-                                    <div class="mb-3 w-100">
-                                        <div asp-validation-summary="All" class="validation-summary-errors"></div>
-                                    </div>
-
-                                    <div class="w-100">
-                                        <label asp-for="Email" class="form-label">Email address</label>
-                                        <input type="email" asp-for="Email" class="form-control" autocomplete="email" required />
-                                    </div>
-
-                                    <div class="w-100">
-                                        <label asp-for="Password" class="form-label">Account password</label>
-                                        <input type="password" asp-for="Password" class="form-control" autocomplete="current-password" required />
-                                    </div>
-
-                                    <button type="submit" class="btn-submit">
-                                        Login
-                                    </button>
-                                    
-                                    <p class="register-link">
-                                        Not a member? <a href="/Identity/Signup" class="brand-color" style="text-decoration: none; font-weight: 500;">Register</a>
-                                    </p>
-                                </form>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+<section class="auth-page auth-focus">
+    <div class="auth-card">
+        <a class="auth-logo" asp-controller="Home" asp-action="Index"><img src="~/images/medannotate-logo.png" asp-append-version="true" alt="MedAnnotate" width="184" height="40" /></a>
+        <h1>Sign in</h1>
+        <p class="auth-lead">Use your personal account to continue annotating.</p>
+        <form method="post" asp-action="PostLogin" asp-controller="Identity" class="mb-0">
+            @if (TempData["Notice"] is string notice)
+            {
+                <div class="alert alert-success" role="status">@notice</div>
+            }
+            <div asp-validation-summary="All" class="validation-summary-errors"></div>
+            <div class="auth-field">
+                <label asp-for="Email" class="form-label">Email address</label>
+                <input type="email" asp-for="Email" class="form-control" autocomplete="email" required />
             </div>
-        </div>
+            <div class="auth-field">
+                <label asp-for="Password" class="form-label">Account password</label>
+                <div class="password-field">
+                    <input type="password" asp-for="Password" class="form-control" autocomplete="current-password" required />
+                    <button type="button" class="password-toggle" data-password-toggle aria-label="Show password" aria-pressed="false"><i class="bi bi-eye" aria-hidden="true"></i></button>
+                </div>
+                <p class="auth-hint">Forgotten it? The study team can reset it.</p>
+            </div>
+            <button type="submit" class="btn-submit">Sign in</button>
+            <p class="register-link">No account yet? <a href="/Identity/Signup">Create one</a></p>
+        </form>
     </div>
 </section>
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
     <script src="~/js/validationSummary.js" asp-append-version="true"></script>
+    <script src="~/js/passwordToggle.js" asp-append-version="true"></script>
 }

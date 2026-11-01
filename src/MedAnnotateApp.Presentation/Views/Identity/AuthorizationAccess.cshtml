@@ -5,52 +5,30 @@
 }
 
 <link rel="stylesheet" href="~/css/authForms.css" asp-append-version="true" />
+<link rel="stylesheet" href="~/lib/bootstrap-icons/font/bootstrap-icons.min.css" />
 
-<section class="centered auth-page">
-    <div class="container">
-        <div class="row justify-content-center">
-            <div class="col-md-11">
-                <div class="card shadow-lg p-0 welcome-card">
-                    <div class="row g-0 h-100">
-                        <div class="col-md-7 welcome-column">
-                            <div>
-                                <h1 class="display-5 fw-bold ls-tight text-center brand-title brand-color">
-                                    Research access
-                                </h1>
-                                <p class="mt-3 welcome-text">
-                                    Enter the shared research access password provided by the researcher.
-                                    You will then sign in or create your own account to annotate images.
-                                </p>
-                            </div>
-                        </div>
-
-                        <div class="col-md-5 form-column">
-                            <div class="card-body form-container">
-                                <form method="post" asp-action="PostAuthorizationAccess" asp-controller="Identity" class="mb-0">                                    
-                                    <div class="mb-3 w-100">
-                                        <div asp-validation-summary="All" class="validation-summary-errors"></div>
-                                    </div>
-
-                                    <div class="w-100">
-                                        <label asp-for="Password" class="form-label">Research access password</label>
-                                        <input type="password" asp-for="Password" class="form-control" autocomplete="off" required />
-                                        <span asp-validation-for="Password" class="text-danger"></span>
-                                    </div>
-
-                                    <button type="submit" class="btn-submit">
-                                        Continue to sign in
-                                    </button>
-                                </form>
-                            </div>
-                        </div>
-                    </div>
+<section class="auth-page auth-focus">
+    <div class="auth-card">
+        <a class="auth-logo" asp-controller="Home" asp-action="Index"><img src="~/images/medannotate-logo.png" asp-append-version="true" alt="MedAnnotate" width="184" height="40" /></a>
+        <h1>Research access</h1>
+        <p class="auth-lead">Enter the shared research access password provided to you.</p>
+        <form method="post" asp-action="PostAuthorizationAccess" asp-controller="Identity" class="mb-0">
+            <div asp-validation-summary="All" class="validation-summary-errors"></div>
+            <div class="auth-field">
+                <label asp-for="Password" class="form-label">Research access password</label>
+                <div class="password-field">
+                    <input type="password" asp-for="Password" class="form-control" autocomplete="off" required />
+                    <button type="button" class="password-toggle" data-password-toggle aria-label="Show password" aria-pressed="false"><i class="bi bi-eye" aria-hidden="true"></i></button>
                 </div>
+                <span asp-validation-for="Password" class="text-danger"></span>
             </div>
-        </div>
+            <button type="submit" class="btn-submit">Continue to sign in</button>
+        </form>
     </div>
 </section>
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
     <script src="~/js/validationSummary.js" asp-append-version="true"></script>
+    <script src="~/js/passwordToggle.js" asp-append-version="true"></script>
 }

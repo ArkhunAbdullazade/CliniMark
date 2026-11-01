@@ -81,7 +81,7 @@
                     <dt>Specialist images done</dt><dd>@Model.Specialist.Done of @Model.Specialist.Eligible</dd>
                     <dt>Student groups</dt><dd>@Model.StudentGroups</dd>
                     <dt>Student images done</dt><dd>@Model.Student.Done of @Model.Student.Eligible</dd>
-                    <dt>Participants</dt><dd>@Model.Specialists specialists, @Model.Students students</dd>
+                    <dt>Participants</dt><dd>@Model.Specialists @(Model.Specialists == 1 ? "specialist" : "specialists"), @Model.Students @(Model.Students == 1 ? "student" : "students")</dd>
                 </dl>
                 <p class="muted small mt-3 mb-0">Counts as of <time datetime="@AdminUi.Iso(Model.GeneratedAt)" data-local="datetime"></time>; the download itself is always current.</p>
             </div>

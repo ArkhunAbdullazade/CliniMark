@@ -1,24 +1,18 @@
 @{
-    ViewData["Title"] = "Access Denied";
+    ViewData["Title"] = "Access denied";
 }
 
-<div class="text-center mt-5">
-    <h1 class="display-4 text-danger">Access Denied</h1>
-    <div class="alert alert-danger mt-4">
-        You don't have permission to access the requested resource.
+<div class="notice-page">
+    <h1>Access denied</h1>
+    <p>You don't have permission to access the requested page. You might need to:</p>
+    <ul>
+        <li>Enter the research access password if you haven't already</li>
+        <li>Sign in with an account that has the right permissions</li>
+        <li>Request access from the study team</li>
+    </ul>
+    <div class="notice-actions">
+        <a asp-controller="Identity" asp-action="AuthorizationAccess" class="btn btn-primary">Enter research access password</a>
+        <a asp-controller="Identity" asp-action="Login" class="btn btn-secondary">Sign in</a>
+        <a asp-controller="Home" asp-action="Index" class="btn btn-secondary">Go to annotations</a>
     </div>
-    
-    <div class="mt-4">
-        <p>You might need to:</p>
-        <ul class="list-group">
-            <li class="list-group-item">Enter the site password if you haven't already</li>
-            <li class="list-group-item">Log in with an account that has the right permissions</li>
-            <li class="list-group-item">Request access from the administrator</li>
-        </ul>
-    </div>
-    <div class="mt-4">
-        <a asp-controller="Identity" asp-action="AuthorizationAccess" class="btn btn-primary">Go to Authorization Gate</a>
-        <a asp-controller="Identity" asp-action="Login" class="btn btn-secondary">Go to Login</a>
-        <a asp-controller="Home" asp-action="Index" class="btn btn-info">Go to Home</a>
-    </div>
-</div> 
+</div>

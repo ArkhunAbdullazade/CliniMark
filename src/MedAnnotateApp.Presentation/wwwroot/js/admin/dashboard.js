@@ -7,27 +7,28 @@
   const color = name => css.getPropertyValue(name).trim();
   const SPECIALIST = color("--series-specialist"), STUDENT = color("--series-student");
   const DONE = color("--progress-done"), ACTIVE = color("--progress-active"), OPEN = color("--progress-open");
-  const MIX = { "Saved": "#2a78d6", "Uncertain": "#eb6834", "Not visible": "#1baf7a" };
+  const INK = color("--ink"), LINE = color("--line-soft");
+  const MIX = { "Saved": SPECIALIST, "Uncertain": STUDENT, "Not visible": color("--ok") };
 
-  Chart.defaults.font.family = 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
+  Chart.defaults.font.family = color("--font");
   Chart.defaults.font.size = 12;
-  Chart.defaults.color = "#646464";
-  Chart.defaults.borderColor = "#f0f0f0";
+  Chart.defaults.color = color("--muted");
+  Chart.defaults.borderColor = LINE;
   Chart.defaults.plugins.legend.labels.boxWidth = 10;
   Chart.defaults.plugins.legend.labels.boxHeight = 10;
   Chart.defaults.plugins.legend.labels.useBorderRadius = true;
-  Chart.defaults.plugins.legend.labels.borderRadius = 2;
-  Chart.defaults.plugins.tooltip.backgroundColor = "#333333";
+  Chart.defaults.plugins.legend.labels.borderRadius = 1;
+  Chart.defaults.plugins.tooltip.backgroundColor = INK;
   Chart.defaults.plugins.tooltip.padding = 10;
-  Chart.defaults.plugins.tooltip.cornerRadius = 8;
+  Chart.defaults.plugins.tooltip.cornerRadius = 4;
   Chart.defaults.maintainAspectRatio = false;
 
   const bar = (label, values, background, extra) => ({
-    label, data: values, backgroundColor: background, borderRadius: 4, borderSkipped: "start",
+    label, data: values, backgroundColor: background, borderRadius: 1, borderSkipped: "start",
     maxBarThickness: 28, borderWidth: 0, ...extra
   });
-  const integerAxis = { beginAtZero: true, ticks: { precision: 0 }, grid: { color: "#f0f0f0" }, border: { display: false } };
-  const plainAxis = { grid: { display: false }, border: { color: "#d9d9d9" } };
+  const integerAxis = { beginAtZero: true, ticks: { precision: 0 }, grid: { color: LINE }, border: { display: false } };
+  const plainAxis = { grid: { display: false }, border: { color: color("--line") } };
 
   // Activity: grouped bars per local day, or the last 48 hours.
   const activityCanvas = document.getElementById("activity-chart");
@@ -61,7 +62,7 @@
     type: "bar",
     data: {
       labels: data.mix.map(item => item.label),
-      datasets: [bar("Answers", data.mix.map(item => item.count), data.mix.map(item => MIX[item.label] || "#898781"), { maxBarThickness: 36 })]
+      datasets: [bar("Answers", data.mix.map(item => item.count), data.mix.map(item => MIX[item.label] || color("--muted")), { maxBarThickness: 36 })]
     },
     options: {
       indexAxis: "y",
@@ -70,7 +71,7 @@
         tooltip: { callbacks: { label: context => ` ${context.parsed.x} answers (${mixTotal ? Math.round(context.parsed.x * 100 / mixTotal) : 0}%)` } }
       },
       // Headroom on the right keeps the direct labels inside the chart.
-      scales: { x: { ...integerAxis, grace: "25%" }, y: { ...plainAxis, ticks: { color: "#333333" } } }
+      scales: { x: { ...integerAxis, grace: "25%" }, y: { ...plainAxis, ticks: { color: INK } } }
     },
     plugins: [valueLabels(value => `${value} · ${mixTotal ? Math.round(value * 100 / mixTotal) : 0}%`)]
   });
@@ -85,7 +86,7 @@
       indexAxis: "y",
       interaction: { mode: "index", intersect: false },
       plugins: { legend: { display: false } },
-      scales: { x: { ...integerAxis, stacked: true }, y: { ...plainAxis, stacked: true, ticks: { color: "#333333", autoSkip: false } } }
+      scales: { x: { ...integerAxis, stacked: true }, y: { ...plainAxis, stacked: true, ticks: { color: INK, autoSkip: false } } }
     }
   });
   function showCategories() {
@@ -137,7 +138,7 @@
         const { ctx } = chart;
         ctx.save();
         ctx.font = `600 12px ${Chart.defaults.font.family}`;
-        ctx.fillStyle = "#333333";
+        ctx.fillStyle = INK;
         ctx.textBaseline = "middle";
         chart.getDatasetMeta(0).data.forEach((element, index) => {
           const value = chart.data.datasets[0].data[index];

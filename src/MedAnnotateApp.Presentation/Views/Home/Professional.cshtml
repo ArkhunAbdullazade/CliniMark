@@ -6,7 +6,6 @@
 
 }
 
-<link rel="stylesheet" href="~/css/professionalPage.css" asp-append-version="true" />
 <link rel="stylesheet" href="~/css/annotationWorkspace.css" asp-append-version="true" />
 <link rel="stylesheet" href="~/lib/bootstrap-icons/font/bootstrap-icons.min.css" />
 @Html.AntiForgeryToken()
@@ -17,7 +16,7 @@
         <div class="left-column">
             <div class="description-panel">
                 <div class="header-text" data-keyword-count="@(medDataKeywords?.Count ?? 0)">
-                    <p style="color:grey;">@DescriptionKeywords.Highlight(Model.ImageDescription, medDataKeywords)@if (!string.IsNullOrWhiteSpace(Model.Diagnosis) && Model.Diagnosis != "u" && Model.Diagnosis != "na")
+                    <p>@DescriptionKeywords.Highlight(Model.ImageDescription, medDataKeywords)@if (!string.IsNullOrWhiteSpace(Model.Diagnosis) && Model.Diagnosis != "u" && Model.Diagnosis != "na")
                         {<text>@(" Diagnosis: " + Model.Diagnosis)</text>}</p>
                 </div>
                 <div class="description-tools" role="group" aria-label="Description text">
@@ -143,7 +142,7 @@ else
             <div class="no-data-icon">
                 <i class="bi bi-file-earmark-x"></i>
             </div>
-            <h3 class="mb-4" style="color: #a9000e;">
+            <h3>
                 @(AnnotationProgress.IsComplete(counter) ? "All matching images have been completed." : "No available images match all of your selected filters.")
             </h3>
             <p>@(AnnotationProgress.IsComplete(counter) ? "Saved annotations remain in the database for research evaluation." : "Images may be completed, assigned to another specialist, or missing the selected metadata. Choose different filters or ask the research team to refine the image metadata.")</p>

@@ -20,9 +20,11 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="robots" content="noindex" />
-    <title>@ViewData["Title"] - Med Annotation App admin</title>
+    <title>@ViewData["Title"] - MedAnnotate admin</title>
+    <link rel="preload" href="~/lib/atkinson-hyperlegible-next/atkinson-hyperlegible-next-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/lib/bootstrap-icons/font/bootstrap-icons.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/admin.css" asp-append-version="true" />
 </head>
 <body class="admin-body">
@@ -31,7 +33,7 @@
                 aria-controls="admin-sidebar" aria-label="Open the admin menu">
             <i class="bi bi-list" aria-hidden="true"></i>
         </button>
-        <a class="admin-wordmark" asp-area="Admin" asp-controller="Dashboard" asp-action="Index">Med Annotation App</a>
+        <a class="admin-wordmark" asp-area="Admin" asp-controller="Dashboard" asp-action="Index"><img src="~/images/medannotate-logo.png" asp-append-version="true" alt="MedAnnotate" width="157" height="34" /></a>
         <span class="admin-badge">Admin</span>
         <div class="admin-header-end">
             <span class="admin-user d-none d-md-inline" title="Signed in as @User.Identity?.Name"><i class="bi bi-person-circle" aria-hidden="true"></i> @User.Identity?.Name</span>
@@ -46,7 +48,7 @@
     <div class="admin-shell">
         <aside class="admin-sidebar offcanvas-lg offcanvas-start" id="admin-sidebar" tabindex="-1" aria-labelledby="admin-menu-title">
             <div class="offcanvas-header d-lg-none">
-                <span class="admin-wordmark fs-5" id="admin-menu-title">Med Annotation App</span>
+                <span class="admin-wordmark" id="admin-menu-title"><img src="~/images/medannotate-logo.png" asp-append-version="true" alt="MedAnnotate" width="157" height="34" /></span>
                 <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#admin-sidebar" aria-label="Close the menu"></button>
             </div>
             <div class="admin-sidebar-inner">

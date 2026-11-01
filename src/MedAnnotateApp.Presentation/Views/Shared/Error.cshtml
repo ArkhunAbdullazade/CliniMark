@@ -3,20 +3,20 @@
     ViewData["Title"] = "Error";
 }
 
-<h1 class="text-danger">We couldn’t complete that action</h1>
-<p>Your last action may not have been saved. Return to your annotation page and check its save status before continuing.</p>
-<a asp-controller="Home" asp-action="Index" class="btn btn-primary">Return to annotations</a>
-
-@if (!string.IsNullOrEmpty(Model.ErrorMessage))
-{
-    <div class="alert alert-danger mt-3">
-        <strong>Error Details:</strong> @Model.ErrorMessage
+<div class="notice-page">
+    <h1>We couldn’t complete that action</h1>
+    <p>Your last action may not have been saved. Return to your annotation page and check its save status before continuing.</p>
+    <div class="notice-actions">
+        <a asp-controller="Home" asp-action="Index" class="btn btn-primary">Return to annotations</a>
     </div>
-}
 
-@if (Model.ShowRequestId)
-{
-    <p>
-        <strong>Request ID:</strong> <code>@Model.RequestId</code>
-    </p>
-}
+    @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+    {
+        <p class="notice-detail"><strong>Error details:</strong> @Model.ErrorMessage</p>
+    }
+
+    @if (Model.ShowRequestId)
+    {
+        <p class="notice-detail"><strong>Request ID:</strong> <code>@Model.RequestId</code></p>
+    }
+</div>

@@ -28,7 +28,7 @@
     <div class="admin-card stat-tile">
         <div class="stat-label"><i class="bi bi-hourglass-split"></i>@(person.IsStudent ? "Images in progress" : "Incomplete sets")</div>
         <div class="stat-value">@(person.IsStudent ? row.LockedImages.Count : row.PartialImages)</div>
-        <div class="stat-sub">@row.LockedImages.Count lock(s) held now</div>
+        <div class="stat-sub">@row.LockedImages.Count @(row.LockedImages.Count == 1 ? "lock" : "locks") held now</div>
     </div>
     <div class="admin-card stat-tile">
         <div class="stat-label"><i class="bi bi-inboxes"></i>Left for them</div>

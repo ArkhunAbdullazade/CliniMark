@@ -1,197 +1,201 @@
-/* Fit the workspace to the viewport; only text and group panels scroll. */
-html, body { height: 100%; height: 100dvh; min-height: 0; overflow: hidden; }
+/* Annotator pages. The workspace fits the viewport; only text and group panels scroll.
+   canvas.js sizes the image from .image-viewport and .buttons-section, so their padding and gap are part of the
+   image's size. Never put a border or padding on #mainCanvas: clicks and saved coordinates are mapped from its box. */
+html, body { width: 100%; height: 100%; height: 100dvh; min-height: 0; margin: 0; overflow: hidden; }
 body { display: flex; flex-direction: column; }
 body > header { flex: 0 0 auto; }
-body > header .navbar { margin-bottom: 0 !important; padding-block: 5px; }
-body > header .navbar-brand { font-size: 1.5rem !important; }
-/* Line the logo up with the workspace's left edge below it. */
-body > header .navbar > .container-fluid { padding-inline: 24px; }
-body > .container { flex: 1 1 0; min-height: 0; max-width: none; width: 100%; padding: 0 24px; overflow: hidden; }
+body > header .navbar { margin-bottom: 0 !important; }
+body > .container { flex: 1 1 0; min-height: 0; max-width: none; width: 100%; padding: 0 16px; overflow: hidden; }
 main[role="main"] { height: 100%; min-height: 0; padding-bottom: 0 !important; }
-/* One corner radius for every panel, so the rounding reads clearly and consistently. */
-:root { --box-radius: 10px; --control-radius: 6px; }
-/* The side panels sit half a centimetre from the description and image column. */
-/* The bottom padding lifts the buttons under the image off the window's lower edge. */
-.annotation-workspace { flex-direction: row; height: 100%; min-height: 0; margin: 0; padding: 6px 0 14px; align-items: stretch; gap: .5cm; }
-.annotation-workspace .left-column { flex: 1 1 0; width: auto; max-width: none; min-width: 0; min-height: 0; height: 100%; margin: 0; justify-content: flex-start; }
-.annotation-workspace .right-column { flex: 0 0 300px; width: 300px; max-width: none; min-width: 0; min-height: 0; height: 100%; margin: 0; padding-left: 0; box-sizing: border-box; }
-.annotation-workspace .right-column.student-mode { height: 100%; }
-.annotation-workspace .metadata { flex: 0 1 auto; height: auto; max-height: 45%; min-height: 0; overflow: hidden; border-radius: var(--box-radius); }
-.annotation-workspace .metadata-inner { height: auto; min-height: 0; padding: 6px 12px; justify-content: flex-start; overflow: auto; font-size: .85rem; }
-.annotation-workspace .metadata-inner > p,
-.annotation-workspace .metadata-inner > .metadata-item {
-  display: grid;
-  grid-template-columns: minmax(0, 45%) minmax(0, 1fr);
-  column-gap: 10px;
-  align-items: start;
-  margin: 0;
-  padding: 6px 0;
-  font-size: inherit;
-  line-height: 1.4;
-  overflow-wrap: anywhere;
+
+.annotation-workspace { display: flex; flex-direction: row; align-items: stretch; width: 100%; height: 100%; min-height: 0; margin: 0; padding: 8px 0; gap: 12px; }
+.annotation-workspace .left-column { display: flex; flex-direction: column; flex: 1 1 0; min-width: 0; min-height: 0; height: 100%; gap: 5px; }
+.annotation-workspace .right-column { display: flex; flex-direction: column; flex: 0 0 288px; width: 288px; min-width: 0; min-height: 0; height: 100%; gap: 8px; }
+
+/* Image details */
+.metadata { flex: 0 1 auto; max-height: 45%; min-height: 0; display: flex; overflow: hidden; background: var(--surface); border: 1px solid var(--cardinal); border-radius: var(--radius); box-shadow: 0 1px 5px rgba(0, 0, 0, .1); }
+.metadata-inner { width: 100%; min-height: 0; padding: 4px 12px; overflow: auto; font-size: .875rem; }
+.metadata-inner > p, .metadata-inner > .metadata-item {
+  display: grid; grid-template-columns: minmax(0, 42%) minmax(0, 1fr); column-gap: 10px; align-items: baseline; margin: 0; padding: 7px 0;
+  border-bottom: 1px solid var(--line-soft); line-height: 1.35; overflow-wrap: anywhere;
 }
-.annotation-workspace .metadata-inner strong,
-.annotation-workspace .metadata-item .label { min-width: 0; font-size: inherit; line-height: inherit; }
-.annotation-workspace .metadata-item .value { min-width: 0; overflow-wrap: anywhere; }
-/* Comments get a compact, fixed share of the column instead of filling it to the bottom. */
-/* Comments and Report a technical problem: two buttons whose panels slide down beneath them (see notePanels.js). */
-.note-panels { flex: 0 0 auto; display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
-.note-toggles { display: grid; grid-template-columns: auto 1fr; gap: 6px; }
-.note-toggle { position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 34px; padding: 6px 10px; color: #a9000e; background: #fff; border: 1.5px solid #a9000e; border-radius: var(--control-radius); font-size: .82rem; font-weight: 500; line-height: 1.2; text-align: center; cursor: pointer; transition: background-color .15s ease, color .15s ease; }
-.note-toggle:hover, .note-toggle.open { color: #fff; background: #a9000e; }
+.metadata-inner > :last-child { border-bottom: 0; }
+.metadata-inner strong, .metadata-item .label { min-width: 0; color: var(--muted); font-weight: 400; }
+.metadata-item .value { min-width: 0; color: var(--ink); }
+
+/* Comments and Report a technical problem: rows whose panels slide down beneath them (see notePanels.js). */
+.note-panels { flex: 0 0 auto; display: flex; flex-direction: column; gap: 6px; }
+.note-toggles { display: grid; grid-template-columns: 1fr; gap: 6px; }
+.note-toggle { display: flex; align-items: center; gap: 8px; min-height: 36px; padding: 6px 12px; color: var(--cardinal); background: var(--surface); border: 1.5px solid var(--cardinal); border-radius: var(--radius-control); font-size: .875rem; font-weight: 600; line-height: 1.2; text-align: left; cursor: pointer; transition: background-color .15s ease, color .15s ease; }
+.note-toggle:hover, .note-toggle.open { color: #fff; background: var(--cardinal); }
 .note-toggle:disabled { opacity: .5; cursor: not-allowed; }
 /* A dot shows that a box holds text even while its panel is closed. */
-.note-dot { display: none; width: 8px; height: 8px; border-radius: 50%; background: #e0a800; box-shadow: 0 0 0 2px #fff; }
+.note-dot { display: none; width: 8px; height: 8px; margin-left: auto; border-radius: 50%; background: #e0a800; box-shadow: 0 0 0 2px #fff; }
 .note-panels:has(#comments:not(:placeholder-shown)) [data-note-toggle="comments-panel"] .note-dot,
 .note-panels:has(#technical-problem:not(:placeholder-shown)) [data-note-toggle="problem-panel"] .note-dot { display: inline-block; }
 /* The panel's row grows from 0 to its content height, so it slides open smoothly without a fixed height. */
-.note-panel { display: grid; grid-template-rows: 0fr; opacity: 0; transform: translateY(-6px); transition: grid-template-rows .22s ease-out, opacity .18s ease-out, transform .22s ease-out; }
+.note-panel { display: grid; grid-template-rows: 0fr; opacity: 0; transform: translateY(-6px); transition: grid-template-rows .22s cubic-bezier(.16, 1, .3, 1), opacity .18s ease-out, transform .22s cubic-bezier(.16, 1, .3, 1); }
 .note-panel.open { grid-template-rows: 1fr; opacity: 1; transform: none; }
-.note-panel-inner { min-height: 0; overflow: hidden; padding: 2px; }
-.note-panel textarea { display: block; width: 100%; height: clamp(110px, 22vh, 200px); padding: 8px 10px; border: 1px solid #a9000e; border-radius: var(--box-radius); box-shadow: 0 1px 5px rgba(0, 0, 0, .1); font-size: .85rem; line-height: 1.4; resize: none; }
-#problem-panel textarea { border-color: #c4621b; }
-.note-panel textarea:focus { border-color: #a9000e; box-shadow: 0 0 0 2px rgba(169, 0, 14, .18); outline: none; }
-.note-panel textarea:disabled { background: #f6f6f6; }
-.note-toggles-single { grid-template-columns: 1fr; }
-/* Send now and its status under the problem report box. */
+.note-panel-inner { min-height: 0; overflow: hidden; padding: 3px; }
+.note-panel textarea { display: block; width: 100%; height: clamp(110px, 22vh, 200px); padding: 8px 10px; font-size: .875rem; line-height: 1.45; resize: none; }
+.note-panel textarea:disabled { background: var(--paper); }
 .problem-actions { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 6px; }
-.problem-status { flex: 1 1 auto; min-width: 0; color: #5b5b5b; font-size: .75rem; line-height: 1.3; }
-.problem-status[data-state="sent"] { color: #0f6e4c; font-weight: 500; }
-.problem-status[data-state="error"] { color: #a9000e; font-weight: 500; }
-.problem-send { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; color: #fff; background: #a9000e; border: 0; border-radius: var(--control-radius); font-size: .82rem; font-weight: 500; cursor: pointer; transition: background-color .12s ease; }
-.problem-send:hover:not(:disabled) { background: #8f000c; }
+.problem-status { flex: 1 1 auto; min-width: 0; color: var(--muted); font-size: .78rem; line-height: 1.3; }
+.problem-status[data-state="sent"] { color: var(--ok); font-weight: 600; }
+.problem-status[data-state="error"] { color: var(--cardinal); font-weight: 600; }
+.problem-send { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; color: #fff; background: var(--cardinal); border: 0; border-radius: var(--radius-control); font-size: .85rem; font-weight: 600; cursor: pointer; transition: background-color .12s ease; }
+.problem-send:hover:not(:disabled) { background: var(--cardinal-hover); }
 .problem-send:disabled { opacity: .6; cursor: progress; }
-.problem-send:focus-visible { outline: 2px solid #a9000e; outline-offset: 2px; }
+
 /* The description scrolls beside its text size and read-in-full controls. Its height is fixed at six lines of the
    default text size, enough for a typical 44-word description; A+ and A− change only the text, never the box. */
-.description-panel { --description-lines: 6; display: flex; flex: 0 0 auto; width: 100%; min-height: 0; height: calc(var(--description-lines) * 1.25 * .95rem + 12px); max-height: 30%; margin-bottom: 4px; background: #fff; border: 1px solid #a9000e; border-radius: var(--box-radius); box-shadow: 0 1px 5px rgba(0, 0, 0, .1); }
-.description-panel .header-text { flex: 1 1 auto; width: auto; min-width: 0; min-height: 0; height: auto; margin: 0; padding-block: 5px; border: 0; border-radius: var(--box-radius) 0 0 var(--box-radius); box-shadow: none; overflow: auto; align-items: flex-start; cursor: zoom-in; }
-.header-text p { white-space: pre-wrap; font-size: var(--description-size, .95rem); line-height: 1.25; color: #595959 !important; }
-.description-tools { flex: 0 0 auto; display: flex; flex-direction: column; justify-content: center; gap: 3px; padding: 3px 4px; border-left: 1px solid #f1e4e5; }
-/* Text size and read-in-full buttons are red, like the app's other actions. */
-.description-tool { flex: 0 1 22px; display: inline-flex; align-items: center; justify-content: center; width: 28px; min-height: 16px; padding: 0; color: #fff; background: #a9000e; border: 1px solid #a9000e; border-radius: 4px; font-size: .72rem; font-weight: 600; line-height: 1; cursor: pointer; transition: background-color .12s ease, border-color .12s ease; }
-.description-tool:hover:not(:disabled) { background-color: #8f000c; border-color: #8f000c; }
-.description-tool:disabled { color: #fff; background-color: #e3b8bd; border-color: #e3b8bd; cursor: not-allowed; }
-.description-tool .bi { font-size: .78rem; }
-.annotation-instructions { flex: 0 0 auto; width: 100%; font-size: .73rem; line-height: 1.2; margin: 2px 0 4px; }
-.header-text .keyword { cursor: pointer; font-weight: bold; }
-.header-text .keyword:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
-.annotation-status { flex: 0 0 auto; width: 100%; min-height: 24px; max-height: 3.5em; padding: 3px 8px; margin-bottom: 5px; overflow: auto; font-size: .78rem; line-height: 1.25; background: #eef3f7; border-left: 3px solid #49667d; border-radius: var(--control-radius); }
-.annotation-status .status-term { color: #a9000e; font-weight: 700; }
-.annotation-status[data-state="error"] { color: #780c13; background: #fff0f0; border-color: #a9000e; }
-.annotation-status[data-state="unsaved"] { background: #fff7dc; border-color: #8c6700; }
-.annotation-status[data-state="saving"] { background: #e6f3ff; }
-.annotation-status[data-state="inspection"] { color: #5e1921; background: #f8f0f1; border-color: #a9000e; }
-.annotation-workspace .main-content, .annotation-workspace .annotation-section { flex: 1 1 0; min-height: 0; height: auto; margin: 0; }
+.description-panel { --description-lines: 6; display: flex; flex: 0 0 auto; width: 100%; min-height: 0; height: calc(var(--description-lines) * 1.25 * .95rem + 12px); max-height: 30%; background: var(--surface); border: 1px solid var(--cardinal); border-radius: var(--radius); box-shadow: 0 1px 5px rgba(0, 0, 0, .1); }
+.header-text { flex: 1 1 auto; min-width: 0; min-height: 0; padding: 5px 14px; overflow: auto; cursor: zoom-in; }
+.header-text p { max-width: 96ch; margin: 0; white-space: pre-wrap; color: var(--ink-2); font-size: var(--description-size, .95rem); line-height: 1.25; }
+.description-tools { flex: 0 0 auto; display: flex; flex-direction: column; justify-content: center; gap: 3px; padding: 3px 4px; border-left: 1px solid var(--line-soft); }
+.description-tool { flex: 0 1 22px; display: inline-flex; align-items: center; justify-content: center; width: 28px; min-height: 16px; padding: 0; color: #fff; background: var(--cardinal); border: 1px solid var(--cardinal); border-radius: 4px; font-size: .72rem; font-weight: 700; line-height: 1; cursor: pointer; transition: background-color .12s ease, border-color .12s ease; }
+.description-tool:hover:not(:disabled) { background: var(--cardinal-hover); border-color: var(--cardinal-hover); }
+.description-tool:disabled { background: var(--cardinal-line); border-color: var(--cardinal-line); cursor: not-allowed; }
+.description-tool .bi { font-size: .8rem; }
+
+/* Terms in the description: state shows in weight and underline as well as colour. */
+.keyword { cursor: pointer; font-weight: 700; }
+.keyword:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
+.current_keyword { padding: 0 3px; color: var(--cardinal); background: var(--cardinal-tint); border-radius: 2px; font-weight: 700; }
+.annotated_keyword { color: var(--ok); font-weight: 700; text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: .2em; }
+.annotated_keyword:hover { color: #0f5238; }
+.not_annotated_keyword, .skipped_keyword { color: var(--amber); text-decoration: underline dashed; text-decoration-thickness: 1px; text-underline-offset: .2em; }
+.not_annotated_keyword:hover, .skipped_keyword:hover { color: #6e4800; }
+
+.annotation-instructions { flex: 0 0 auto; width: 100%; color: var(--muted); font-size: .8rem; line-height: 1.3; }
+
+/* One status block above the image; its tint changes with the state. Its height never changes, because a status that
+   grew or shrank would move and rescale the image under the pointer as drawing starts. Long messages scroll inside it. */
+.annotation-status { flex: 0 0 auto; width: 100%; height: calc(2 * 1.25 * .8rem + 6px); padding: 3px 12px; overflow: auto; align-content: safe center; color: var(--ink-2); background: var(--info-tint); border-radius: var(--radius-control); font-size: .8rem; line-height: 1.25; }
+.annotation-status .status-term { color: var(--cardinal); font-weight: 700; }
+.annotation-status[data-state="error"] { color: #780c13; background: var(--cardinal-tint); }
+.annotation-status[data-state="unsaved"] { color: #5c3d00; background: var(--amber-tint); }
+.annotation-status[data-state="inspection"] { color: #5e1921; background: var(--cardinal-tint); }
+
+.main-content, .annotation-workspace .main-content { display: flex; flex-direction: column; flex: 1 1 0; width: 100%; min-height: 0; padding: 0; margin: 0; }
+.annotation-workspace .main-content .annotation-section { display: flex; flex-direction: column; flex: 1 1 0; width: 100%; min-height: 0; margin: 0; }
+
 /* The image and its buttons form one column, centred in the free space, so the buttons always sit right under the image. */
-.image-viewport { flex: 1 1 0; min-height: 0; width: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; padding: 3px; }
-/* The red frame follows the container's rounded corners, and the canvas is rounded to match so no image corner pokes out. */
-#image-container { border: 0; outline: 2px solid #a9000e; border-radius: var(--box-radius); overflow: visible; flex: 0 0 auto; box-sizing: content-box; max-width: 100%; margin: 0; }
-#canvasContainer { position: relative; border: 0; padding: 0; box-sizing: content-box; flex: 0 0 auto; display: block; overflow: visible; }
+.image-viewport { flex: 1 1 0; min-height: 0; width: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0; padding: 3px; }
+/* The red frame and the canvas are square: rounding would hide image corners that specialists must be able to see and annotate. */
+#image-container { position: relative; flex: 0 0 auto; box-sizing: content-box; max-width: 100%; margin: 0; padding: 0; overflow: visible; border: 0; border-radius: 0; font-size: 0; outline: 2px solid var(--cardinal); cursor: crosshair; user-select: none; -webkit-user-select: none; }
+#sourceImage { display: none; max-width: 100%; max-height: 100%; object-fit: contain; }
+#canvasContainer { position: relative; flex: 0 0 auto; display: block; box-sizing: content-box; padding: 0; border: 0; overflow: visible; }
+#mainCanvas { display: block; box-sizing: content-box; max-width: none; padding: 0; border: 0; border-radius: 0; touch-action: none; }
+/* The canvas takes focus while drawing; its ring merges with the red frame instead of doubling it. */
+:is(#mainCanvas, #canvasContainer, #image-container):focus-visible { outline: 2px solid var(--cardinal); outline-offset: 0; }
 .zoom-selection { position: absolute; z-index: 1; box-sizing: border-box; pointer-events: none; border: 2px dashed #1a6fe0; background: rgba(26, 111, 224, .14); box-shadow: 0 0 0 1px rgba(255, 255, 255, .85), inset 0 0 0 1px rgba(255, 255, 255, .6); }
-#mainCanvas { border: 0; border-radius: var(--box-radius); padding: 0; display: block; max-width: none; box-sizing: content-box; touch-action: none; }
+
 /* Filters sits in the left corner while the decision buttons stay centred under the image. */
-.buttons-section { flex: 0 0 auto; display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; width: 100%; height: auto; max-width: 100%; gap: 6px; padding: 0; margin: 0; }
+.buttons-section { flex: 0 0 auto; display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; width: 100%; max-width: 100%; gap: 8px; margin: 0; padding: 6px 8px 4px; }
 .buttons-section .filters-button { grid-column: 1; justify-self: start; }
-.decision-buttons { grid-column: 2; display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
-.decision-buttons-wide { width: min(600px, 55vw); }
-.decision-buttons-wide #submit-button { width: 100%; max-width: none; }
-.buttons-section .button, .buttons-section .primary-button { font-size: .85rem; padding: 6px 10px; border-radius: var(--control-radius); }
-.student-mode .annotation-section { border-radius: var(--box-radius); }
-.student-mode .annotation-item { border-radius: var(--control-radius); }
-.buttons-section .button:disabled, .buttons-section .primary-button:disabled { color: #656565; background-color: #e9ecef; opacity: 1; cursor: not-allowed; box-shadow: none; }
-.annotation-workspace :is(button, a, input, textarea):focus-visible,
-.tools-container button:focus-visible,
-.floating-textbox :is(input, button):focus-visible { outline: 2px solid #a9000e; outline-offset: 2px; }
-.tools-container { gap: 6px; padding: 6px; border-radius: var(--control-radius); }
-.tools-container .tool-button { width: 38px; height: 38px; padding: 5px; border-radius: var(--control-radius); background-color: #fff; border-color: #d8d4d4; transition: background-color .12s ease, border-color .12s ease; }
-.tools-container .tool-button img { width: 24px; height: 24px; }
-.tools-container .tool-button:hover { background-color: #f6f2f2; border-color: #bda7a9; transform: none; }
-.tools-container .tool-button.active,
-.tools-container .tool-button.active:hover { background-color: #a9000e; border-color: #a9000e; color: #fff; }
-.tools-container .tool-button img { object-fit: contain; pointer-events: none; }
-.tools-container .tool-button.active img { filter: brightness(0) invert(1); }
-.tools-container .tool-button:disabled,
-.tools-container .tool-button:disabled:hover { opacity: .45; background-color: #fff; border-color: #d8d4d4; cursor: not-allowed; }
-.tools-container .tool-button:disabled img { filter: none; }
-/* Hover or keyboard focus slides the tool's name out to the right: the button becomes a red box holding the
-   white icon and its name. Without hover only the icon shows. */
-.tools-container .tool-button { position: relative; overflow: visible; }
-.tools-container .tool-button img { position: relative; z-index: 1; }
-.tools-container .tool-button::after { content: attr(data-label); position: absolute; top: -1px; left: -1px; height: calc(100% + 2px); display: flex; align-items: center; padding: 0 14px 0 44px; color: #fff; background: #a9000e; border-radius: var(--control-radius); box-shadow: 0 4px 12px rgba(0, 0, 0, .18); font-size: .85rem; font-weight: 500; white-space: nowrap; pointer-events: none; opacity: 0; clip-path: inset(0 calc(100% - 40px) 0 0 round var(--control-radius)); transition: clip-path .2s ease-out, opacity .12s ease-out; }
-.tools-container .tool-button:is(:hover, :focus-visible):not(:disabled)::after { opacity: 1; clip-path: inset(0 0 0 0 round var(--control-radius)); }
-.tools-container .tool-button:is(:hover, :focus-visible):not(:disabled) { background-color: #a9000e; border-color: #a9000e; }
-.tools-container .tool-button:is(:hover, :focus-visible):not(:disabled) img { filter: brightness(0) invert(1); }
+.decision-buttons { grid-column: 2; display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+.decision-buttons-wide { width: min(560px, 50vw); }
+.decision-buttons-wide #submit-button { width: 100%; }
+.button, .primary-button { display: inline-block; width: auto; padding: 8px 14px; color: #fff; background: var(--cardinal); border: 1px solid var(--cardinal); border-radius: var(--radius-control); font-size: .9rem; font-weight: 600; line-height: 1.25; text-decoration: none; cursor: pointer; transition: background-color .12s ease, border-color .12s ease, color .12s ease; }
+.button:hover, .primary-button:hover { color: #fff; background: var(--cardinal-hover); border-color: var(--cardinal-hover); }
+/* The two alternative answers and Filters are framed, so Save and Next Term is the one solid action. */
+.buttons-section .button, .buttons-section .primary-button, .filters-button { --bs-btn-font-size: .9rem; padding: 7px 14px; font-size: .9rem; }
+.buttons-section #not-present-button, .buttons-section #skip-button, .filters-button { color: var(--cardinal); background: var(--surface); border: 1.5px solid var(--cardinal); border-radius: var(--radius-control); font-weight: 600; line-height: 1.25; }
+.buttons-section #not-present-button:hover:not(:disabled), .buttons-section #skip-button:hover:not(:disabled), .filters-button:hover, .filters-button:active { color: #fff !important; background: var(--cardinal) !important; border-color: var(--cardinal) !important; }
+.buttons-section .button:disabled, .buttons-section .primary-button:disabled, .buttons-section #not-present-button:disabled, .buttons-section #skip-button:disabled { color: #656565; background: #e9ecef; border-color: #e9ecef; opacity: 1; cursor: not-allowed; }
+.annotation-workspace :is(button, a, input, textarea):focus-visible, .floating-textbox :is(input, button):focus-visible, .tools-container button:focus-visible { outline: var(--focus); outline-offset: 2px; }
+
+/* Tool strip; canvas.js keeps it fixed just right of the image. */
+.tools-container { display: flex; flex-direction: column; gap: 6px; padding: 6px; background: var(--surface); border: 1px solid #ddd; border-radius: var(--radius-control); box-shadow: 0 2px 5px rgba(0, 0, 0, .1); z-index: 9999; }
+.tool-button { position: relative; display: flex; justify-content: center; align-items: center; width: 38px; height: 38px; padding: 5px; overflow: visible; background: var(--surface); border: 1px solid #d8d4d4; border-radius: var(--radius-control); cursor: pointer; transition: background-color .12s ease, border-color .12s ease; }
+.tool-button img { position: relative; z-index: 1; display: block; width: 24px; height: 24px; object-fit: contain; pointer-events: none; }
+.tool-button:hover { background: #f6f2f2; border-color: #bda7a9; }
+.tool-button.active, .tool-button.active:hover { background: var(--cardinal); border-color: var(--cardinal); }
+.tool-button.active img { filter: brightness(0) invert(1); }
+.tool-button:disabled, .tool-button:disabled:hover { opacity: .45; background: var(--surface); cursor: not-allowed; }
+.tool-button:disabled img { filter: none; }
+/* Hover or keyboard focus slides the tool's name out to the right: a red box holding the white icon and its name. */
+.tool-button::after { content: attr(data-label); position: absolute; top: -1px; left: -1px; height: calc(100% + 2px); display: flex; align-items: center; padding: 0 14px 0 44px; color: #fff; background: var(--cardinal); border-radius: var(--radius-control); box-shadow: 0 4px 12px rgba(0, 0, 0, .18); font-size: .875rem; font-weight: 600; white-space: nowrap; pointer-events: none; opacity: 0; clip-path: inset(0 calc(100% - 40px) 0 0 round var(--radius-control)); transition: clip-path .2s cubic-bezier(.16, 1, .3, 1), opacity .12s ease-out; }
+.tool-button:is(:hover, :focus-visible):not(:disabled)::after { opacity: 1; clip-path: inset(0 0 0 0 round var(--radius-control)); }
+.tool-button:is(:hover, :focus-visible):not(:disabled) { background: var(--cardinal); border-color: var(--cardinal); }
+.tool-button:is(:hover, :focus-visible):not(:disabled) img { filter: brightness(0) invert(1); }
+
+/* Student label box and annotation groups */
+.floating-textbox { display: flex; flex-direction: row; align-items: center; gap: 6px; width: min(380px, calc(100vw - 12px)); padding: 6px; background: var(--surface); border: 2px solid var(--cardinal); border-radius: var(--radius-control); box-shadow: 0 2px 10px rgba(0, 0, 0, .3); z-index: 10000; transform-origin: center bottom; animation: textbox-appear .16s cubic-bezier(.16, 1, .3, 1); pointer-events: auto; }
+@keyframes textbox-appear { from { opacity: 0; transform: translateY(5px); } }
+.floating-input { flex: 1; min-width: 90px; height: 30px; padding: 4px 8px; border: 1px solid #aeb9bf; border-radius: var(--radius-control); font-size: .875rem; }
+.floating-textbox .floating-input:focus-visible { outline: 0; border-color: var(--ink-2); box-shadow: inset 0 0 0 1px var(--ink-2); }
+.floating-save-btn, .floating-cancel-btn { display: flex; align-items: center; height: 30px; padding: 3px 10px; border: 1px solid; border-radius: var(--radius-control); font-size: .875rem; font-weight: 600; white-space: nowrap; cursor: pointer; }
+.floating-save-btn { color: #fff; background: var(--cardinal); border-color: var(--cardinal); }
+.floating-save-btn:hover { background: var(--cardinal-hover); border-color: var(--cardinal-hover); }
+.floating-cancel-btn { color: var(--ink-2); background: var(--surface); border-color: var(--line); }
+.floating-cancel-btn:hover { background: var(--hover); }
+
+.student-mode .annotation-section { flex: 1 1 0; display: flex; flex-direction: column; min-height: 0; overflow: hidden; background: var(--surface); border: 1px solid var(--cardinal); border-radius: var(--radius); box-shadow: 0 1px 5px rgba(0, 0, 0, .1); }
+.annotations-header { padding: 10px 12px; border-bottom: 1px solid var(--line-soft); }
+.annotations-header h4 { margin: 0; font-size: .95rem; font-weight: 700; }
+.annotations-info { margin-top: 2px; color: var(--muted); font-size: .8rem; }
+.student-mode .annotations-list { flex: 1 1 0; min-height: 0; padding: 8px; overflow: auto; }
+.empty-annotations-message { margin: 0; padding: 12px 6px; color: var(--muted); font-size: .875rem; line-height: 1.45; }
+.annotation-item { position: relative; display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 6px; padding: 7px 10px; background: var(--paper); border: 1px solid var(--line-soft); border-radius: var(--radius-control); cursor: default; transition: border-color .12s ease; }
+.annotation-item:hover { border-color: #b4bfc5; }
+.annotation-item.selected { background: var(--cardinal-tint); border-color: var(--cardinal); }
+.annotation-label { flex: 1; min-width: 0; color: var(--ink); font-size: .875rem; line-height: 1.35; overflow-wrap: anywhere; }
+.annotation-actions { flex-shrink: 0; display: flex; gap: 4px; }
+.annotation-actions button { padding: 2px 8px; color: var(--ink-2); background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-control); font-size: .8rem; font-weight: 600; cursor: pointer; transition: background-color .12s ease; }
+.annotation-actions button:hover:not(:disabled) { background: var(--hover); }
 
 /* Dialogs open in the browser's top layer, above the fixed tool strip and label box. */
-/* The page sheets reset every margin, so the dialog's own centring is restored here. */
-.annotation-dialog { inset: 0; width: fit-content; height: fit-content; max-width: calc(100vw - 32px); max-height: calc(100dvh - 32px); margin: auto; padding: 0; color: #212529; background: #fff; border: 0; border-radius: 8px; box-shadow: 0 20px 50px rgba(0, 0, 0, .35); overflow: hidden; }
-.annotation-dialog[open] { display: flex; flex-direction: column; animation: annotation-dialog-in .15s ease-out; }
-.annotation-dialog::backdrop { background: rgba(15, 18, 22, .72); }
-@keyframes annotation-dialog-in { from { opacity: 0; transform: translateY(6px) scale(.985); } }
-.annotation-dialog-header { flex: 0 0 auto; display: flex; align-items: center; gap: 12px; padding: 10px 12px 10px 18px; border-bottom: 1px solid #ececec; }
+.annotation-dialog { inset: 0; width: fit-content; height: fit-content; max-width: calc(100vw - 32px); max-height: calc(100dvh - 32px); margin: auto; padding: 0; color: var(--ink); background: var(--surface); border: 0; border-radius: var(--radius); box-shadow: 0 20px 50px rgba(0, 0, 0, .35); overflow: hidden; }
+.annotation-dialog[open] { display: flex; flex-direction: column; animation: annotation-dialog-in .16s cubic-bezier(.16, 1, .3, 1); }
+.annotation-dialog::backdrop { background: rgba(27, 37, 43, .55); }
+@keyframes annotation-dialog-in { from { opacity: 0; transform: translateY(6px); } }
+.annotation-dialog-header { flex: 0 0 auto; display: flex; align-items: center; gap: 12px; padding: 10px 12px 10px 20px; border-bottom: 1px solid var(--line-soft); }
 .annotation-dialog-header > :first-child { flex: 1 1 auto; min-width: 0; }
-.annotation-dialog-title { margin: 0; color: #212529; font-size: 1rem; font-weight: 600; line-height: 1.3; }
-.annotation-dialog-note { margin: 2px 0 0; color: #6c757d; font-size: .8rem; line-height: 1.35; }
+.annotation-dialog-title { margin: 0; font-size: 1rem; font-weight: 700; line-height: 1.3; }
+.annotation-dialog-note { margin: 2px 0 0; color: var(--muted); font-size: .84rem; line-height: 1.35; }
 .annotation-dialog-note:empty { display: none; }
 .annotation-dialog .btn-close { flex: 0 0 auto; padding: 8px; }
 .annotation-dialog .btn-close:focus { box-shadow: none; }
-.annotation-dialog :is(button, .btn-close):focus-visible { outline: 2px solid #a9000e; outline-offset: 2px; box-shadow: none; }
+.annotation-dialog :is(button, .btn-close):focus-visible { outline: var(--focus); outline-offset: 2px; box-shadow: none; }
 .zoom-dialog-header { justify-content: flex-end; padding: 6px 8px; }
-.zoom-dialog-body { flex: 1 1 auto; min-height: 0; display: flex; align-items: center; justify-content: center; padding: 12px; background: #f1f3f5; overflow: auto; }
-.zoom-dialog-body canvas { display: block; max-width: none; background: #fff; box-shadow: 0 0 0 1px rgba(0, 0, 0, .08); }
+.zoom-dialog-body { flex: 1 1 auto; min-height: 0; display: flex; align-items: center; justify-content: center; padding: 12px; background: var(--paper); overflow: auto; }
+.zoom-dialog-body canvas { display: block; max-width: none; }
 .description-dialog { width: min(780px, calc(100vw - 32px)); }
-.description-dialog-text { flex: 1 1 auto; min-height: 0; padding: 18px 24px 22px; overflow: auto; color: #333; font-size: var(--description-size, 1.125rem); line-height: 1.65; white-space: pre-wrap; overflow-wrap: anywhere; }
+.description-dialog-text { flex: 1 1 auto; min-height: 0; padding: 20px 28px 26px; overflow: auto; color: var(--ink-2); font-size: var(--description-size, 1.125rem); line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
 .description-dialog-text:focus { outline: none; }
-.description-dialog-text .keyword { font-weight: 700; cursor: default; }
-.description-tools-row { flex-direction: row; gap: 4px; padding: 0; border: 0; }
-.description-tools-row .description-tool { flex: 0 0 auto; width: 34px; height: 30px; font-size: .8rem; }
+.description-dialog-text .keyword { cursor: default; }
+.description-tools-row { flex-direction: row; gap: 2px; padding: 0; border: 0; }
+.description-tools-row .description-tool { flex: 0 0 auto; width: 34px; height: 30px; font-size: .84rem; }
 .released-dialog { width: min(440px, calc(100vw - 32px)); }
-.released-dialog-body { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 26px 26px 22px; text-align: center; }
-.released-dialog-body p { margin: 0; color: #444; font-size: .92rem; line-height: 1.5; }
-.released-dialog-body .annotation-dialog-note { color: #6c757d; font-size: .8rem; }
-.released-dialog .annotation-dialog-title { font-size: 1.1rem; }
-.released-dialog-icon { display: inline-flex; align-items: center; justify-content: center; width: 46px; height: 46px; margin-bottom: 4px; color: #a9000e; background: #fff1f2; border-radius: 50%; font-size: 1.3rem; }
-.annotation-dialog-action { margin-top: 10px; padding: 8px 18px; color: #fff; background: #a9000e; border: 0; border-radius: 4px; font-size: .92rem; font-weight: 500; cursor: pointer; transition: background-color .12s ease; }
-.annotation-dialog-action:hover { background: #8f000c; }
-.student-mode .annotation-section { overflow: hidden; align-items: stretch; }
-.student-mode .annotations-list { flex: 1 1 0; min-height: 0; height: auto; max-height: none; overflow: auto; }
-.student-mode .annotation-item { cursor: default; }
-.student-mode .annotation-info { min-width: 0; }
-.student-mode .annotation-label { white-space: normal; overflow-wrap: anywhere; line-height: 1.35; }
-.student-mode .annotation-actions { flex-shrink: 0; }
-/* Progress sits in the header, to the left of Log Out, so the workspace has no footer. */
-.header-progress { color: #a9000e; font-size: .9rem; font-weight: 500; white-space: nowrap; }
-/* Red-framed buttons: Filters at the left of the decision row, Log Out at the top right of the header.
-   Log Out keeps its #end-button id for the page scripts, so its rules carry the id to beat the older #end-button styles. */
-.filters-button, #end-button.header-logout { display: inline-flex; align-items: center; gap: 6px; color: #a9000e; background: #fff; border: 1.5px solid #a9000e; border-radius: var(--control-radius); font-size: .85rem; font-weight: 500; line-height: 1.2; transition: background-color .12s ease, color .12s ease; }
-.filters-button { padding: 6px 12px; }
-#end-button.header-logout { padding: 6px 14px; cursor: pointer; }
-.filters-button:hover, .filters-button:focus-visible, #end-button.header-logout:hover, #end-button.header-logout:focus-visible { color: #fff; background: #a9000e; border-color: #a9000e; }
-#end-button.header-logout:focus-visible { outline: 2px solid #a9000e; outline-offset: 2px; }
-.floating-textbox { max-width: calc(100vw - 12px); }
-.floating-input { min-width: 90px; }
+.released-dialog-body { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; padding: 24px; }
+.released-dialog-body p { margin: 0; color: var(--ink-2); font-size: .95rem; line-height: 1.5; }
+.released-dialog .annotation-dialog-title { font-size: 1.125rem; }
+.released-dialog-icon { color: var(--cardinal); font-size: 1.5rem; line-height: 1; }
+.annotation-dialog-action { align-self: flex-end; margin-top: 12px; padding: 8px 16px; color: #fff; background: var(--cardinal); border: 0; border-radius: var(--radius-control); font-size: .95rem; font-weight: 600; cursor: pointer; transition: background-color .12s ease; }
+.annotation-dialog-action:hover { background: var(--cardinal-hover); }
+
+/* No images left: fills the space under the header, so Progress and Log Out stay visible. */
+.centered-container { display: flex; flex-direction: column; justify-content: center; align-items: center; width: 100%; height: 100%; min-height: 0; padding: 20px; overflow: auto; }
+.no-data-message { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; width: min(36rem, 100%); }
+.no-data-icon { display: none; }
+.no-data-message h3 { margin: 0 0 4px; color: var(--ink) !important; font-size: 1.5rem; font-weight: 700; line-height: 1.25; }
+.no-data-message p { margin: 0 0 12px; color: var(--ink-2); line-height: 1.5; }
+.no-data-message #end-button-center { margin-top: 0 !important; color: var(--ink-2); background: var(--surface); border-color: var(--line); }
+.no-data-message #end-button-center:hover { color: var(--ink); background: var(--hover); border-color: #b4bfc5; }
+
 @media (prefers-reduced-motion: reduce) {
-  .floating-textbox { animation: none; }
-  .annotation-item, .annotation-actions button { transition: none; }
-  .tools-container .tool-button, .tools-container .tool-button::after { transition: none; }
-  .note-panel, .note-toggle { transition: none; }
-  .description-tool, .annotation-dialog-action { transition: none; }
-  .annotation-dialog[open] { animation: none; }
+  .floating-textbox, .annotation-dialog[open] { animation: none; }
+  .annotation-item, .annotation-actions button, .tool-button, .tool-button::after, .note-panel, .note-toggle, .description-tool, .annotation-dialog-action, .button, .primary-button, .problem-send { transition: none; }
 }
-/* The no-images message fills the space under the header instead of covering it, so Progress and Log Out stay visible. */
-.centered-container { position: relative; inset: auto; transform: none; z-index: auto; width: 100%; height: 100%; min-height: 0; overflow: auto; background: transparent; }
-.no-data-message a.button { text-decoration: none; }
 @media (max-width: 850px) {
-  body > .container { padding-inline: 12px; }
-  .annotation-workspace { flex-direction: row; gap: .5cm; }
+  body > .container { padding-inline: 8px; }
+  .annotation-workspace { gap: 8px; }
   .annotation-workspace .right-column { flex-basis: 210px; width: 210px; }
-  .annotation-workspace .metadata-inner { padding-inline: 10px; }
-  .annotation-workspace .metadata-inner > p,
-  .annotation-workspace .metadata-inner > .metadata-item { grid-template-columns: minmax(0, 1fr); row-gap: 2px; }
+  .metadata-inner > p, .metadata-inner > .metadata-item { grid-template-columns: minmax(0, 1fr); row-gap: 2px; }
   .buttons-section .button, .buttons-section .primary-button, .buttons-section .filters-button { font-size: .75rem; padding: 4px 6px; }
 }
 @media (max-height: 600px) {
   .description-panel { --description-lines: 5; }
-  .annotation-instructions { font-size: .68rem; }
 }

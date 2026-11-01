@@ -5,6 +5,12 @@
 
   const $ = window.jQuery;
 
+  // Leaving a corrected field clears the error box and moves the form up. If that happened between press and release, the
+  // click would land elsewhere and be lost, so a mouse press on a control keeps focus in the field. Keyboard use is unaffected.
+  $(document).on("mousedown", ".auth-card a, .auth-card button", function (event) {
+    event.preventDefault();
+  });
+
   $.validator.setDefaults({
     errorElement: "span",
     errorClass: "text-danger",

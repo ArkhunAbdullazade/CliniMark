@@ -11,14 +11,14 @@
 }
 @if (!compact)
 {
-    <h2 class="h5">Choose images to annotate</h2>
+    <h2>Choose images to annotate</h2>
     <p id="image-filter-help">Select at least one option in each list. You can select multiple options. Images must match a selection in all three lists.</p>
 }
 <div class="row g-3">
     @foreach (var group in groups)
     {
         <fieldset class="col-md-4" data-required-selection="@group.Name" data-filter-label="@group.Label" aria-describedby="@(compact ? "" : "image-filter-help ")@group.Name-error">
-            <legend class="h6">@group.Label <span class="text-muted">(required)</span></legend>
+            <legend>@group.Label <span class="text-muted">(required)</span></legend>
             <div class="border rounded p-2 image-filter-options">
                 @for (var index = 0; index < group.Options.Length; index++)
                 {

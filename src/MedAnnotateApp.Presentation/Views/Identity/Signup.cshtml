@@ -6,11 +6,12 @@
 <link rel="stylesheet" href="~/css/authForms.css" asp-append-version="true" />
 <link rel="stylesheet" href="~/lib/bootstrap-icons/font/bootstrap-icons.min.css" />
 
-<section class="card shadow-sm my-4 mx-auto auth-page account-page">
-    <div class="card-body p-4">
-        <h1 class="h3">Create your research account</h1>
-        <p>Use any valid email address. You can sign in immediately after registration.</p>
-        <p>Your account password is personal. Choose a different password from the shared research access password.</p>
+<section class="auth-page auth-sheet auth-account account-page">
+    <div>
+        <a class="auth-logo" asp-controller="Home" asp-action="Index"><img src="~/images/medannotate-logo.png" asp-append-version="true" alt="MedAnnotate" width="184" height="40" /></a>
+        <h1>Create your research account</h1>
+        <p class="auth-lead">Use any valid email address. You can sign in immediately after registration.</p>
+        <p class="auth-lead">Your account password is personal. Choose a different password from the shared research access password.</p>
         <form method="post" asp-action="PostSignup" asp-controller="Identity" data-image-filter-form data-signup-form>
             <div asp-validation-summary="All" class="text-danger" role="alert"></div>
             <div class="row g-3 mb-4">
@@ -27,14 +28,20 @@
                 </div>
                 <div class="col-md-6">
                     <label asp-for="Password" class="form-label">Account password</label>
-                    <input asp-for="Password" type="password" class="form-control" autocomplete="new-password" required aria-describedby="password-warning password-help" />
+                    <div class="password-field">
+                        <input asp-for="Password" type="password" class="form-control" autocomplete="new-password" required aria-describedby="password-warning password-help" />
+                        <button type="button" class="password-toggle" data-password-toggle aria-label="Show password" aria-pressed="false"><i class="bi bi-eye" aria-hidden="true"></i></button>
+                    </div>
                     <p id="password-warning" class="signup-warning"><i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i><span><strong>Write down your password.</strong> The app can't email you a reset link. Only the study team can give you a temporary one.</span></p>
                     <small id="password-help" class="form-text">At least 8 characters, including uppercase and lowercase letters, a number, and a symbol.</small>
                     <span asp-validation-for="Password" class="text-danger"></span>
                 </div>
                 <div class="col-md-6">
                     <label asp-for="ConfirmPassword" class="form-label">Confirm account password</label>
-                    <input asp-for="ConfirmPassword" type="password" class="form-control" autocomplete="new-password" required />
+                    <div class="password-field">
+                        <input asp-for="ConfirmPassword" type="password" class="form-control" autocomplete="new-password" required />
+                        <button type="button" class="password-toggle" data-password-toggle aria-label="Show password" aria-pressed="false"><i class="bi bi-eye" aria-hidden="true"></i></button>
+                    </div>
                     <span asp-validation-for="ConfirmPassword" class="text-danger"></span>
                 </div>
                 <div class="col-md-6">
@@ -86,4 +93,5 @@
     <partial name="_ValidationScriptsPartial" />
     <script src="~/js/imageFilters.js" asp-append-version="true"></script>
     <script src="~/js/signupConfirm.js" asp-append-version="true"></script>
+    <script src="~/js/passwordToggle.js" asp-append-version="true"></script>
 }

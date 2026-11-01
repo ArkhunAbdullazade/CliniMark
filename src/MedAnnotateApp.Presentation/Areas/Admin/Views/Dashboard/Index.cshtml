@@ -23,43 +23,46 @@
     <a class="btn btn-sm btn-outline-secondary" asp-action="Index" asp-route-fresh="true"><i class="bi bi-arrow-clockwise"></i> Refresh</a>
 }
 
-<div class="admin-grid admin-grid-tiles mb-3">
-    @foreach (var (label, role, progress) in new[] { ("Specialist progress", "specialist", s.Specialist), ("Student progress", "student", s.Student) })
-    {
-        <div class="admin-card stat-tile">
-            <div class="stat-label"><span class="series-dot @role"></span>@label</div>
-            <div class="stat-value">@progress.Done <small>/ @progress.Eligible images</small></div>
-            <div class="stat-sub">@AdminUi.Percent(progress.Done, progress.Eligible) done · @progress.InProgress in progress · @progress.Open open</div>
-            <div class="progress-split" role="img" aria-label="@progress.Done done, @progress.InProgress in progress, @progress.Open open">
-                <span class="done" style="width:@AdminUi.Share(progress.Done, progress.Eligible).ToString(System.Globalization.CultureInfo.InvariantCulture)%"></span>
-                <span class="active" style="width:@AdminUi.Share(progress.InProgress, progress.Eligible).ToString(System.Globalization.CultureInfo.InvariantCulture)%"></span>
-                <span class="open" style="flex:1"></span>
+<section class="admin-card ledger" aria-label="Study state">
+    <div class="ledger-progress">
+        @foreach (var (label, role, progress) in new[] { ("Specialist progress", "specialist", s.Specialist), ("Student progress", "student", s.Student) })
+        {
+            <div>
+                <div class="ledger-name"><span class="series-dot @role"></span>@label</div>
+                <div class="ledger-count">@progress.Done <small>of @progress.Eligible images</small></div>
+                <div class="ledger-sub">@AdminUi.Percent(progress.Done, progress.Eligible) done · @progress.InProgress in progress · @progress.Open open</div>
+                <div class="progress-split" role="img" aria-label="@progress.Done done, @progress.InProgress in progress, @progress.Open open">
+                    <span class="done" style="width:@AdminUi.Share(progress.Done, progress.Eligible).ToString(System.Globalization.CultureInfo.InvariantCulture)%"></span>
+                    <span class="active" style="width:@AdminUi.Share(progress.InProgress, progress.Eligible).ToString(System.Globalization.CultureInfo.InvariantCulture)%"></span>
+                    <span class="open" style="flex:1"></span>
+                </div>
             </div>
+        }
+    </div>
+    <dl class="ledger-facts">
+        <div class="ledger-fact">
+            <dt>Done by both roles</dt>
+            <dd class="ledger-value">@s.DoneByBoth <small>of @s.TotalImages</small></dd>
+            <dd class="stat-sub">@s.SpecialistResponses specialist answers · @s.StudentGroups student groups</dd>
         </div>
-    }
-    <div class="admin-card stat-tile">
-        <div class="stat-label"><i class="bi bi-check2-all"></i>Done by both roles</div>
-        <div class="stat-value">@s.DoneByBoth <small>/ @s.TotalImages</small></div>
-        <div class="stat-sub">@s.SpecialistResponses specialist answers · @s.StudentGroups student groups</div>
-    </div>
-    <div class="admin-card stat-tile">
-        <div class="stat-label"><i class="bi bi-people"></i>Participants</div>
-        <div class="stat-value">@(s.Specialists + s.Students)</div>
-        <div class="stat-sub"><span class="series-dot specialist"></span> @s.Specialists specialists · <span class="series-dot student"></span> @s.Students students</div>
-        <div class="stat-sub"><i class="bi bi-broadcast text-success"></i> @s.ActiveNow active in the last 15 min</div>
-    </div>
-    <a class="admin-card stat-tile text-reset text-decoration-none" asp-controller="Locks" asp-action="Index">
-        <div class="stat-label"><i class="bi bi-lock"></i>Locks to review</div>
-        <div class="stat-value">@s.StaleLocks <small>stale</small></div>
-        <div class="stat-sub">@s.PartialLocks with partial specialist work · stale after @AdminUi.Hours(Model.StaleAfter)</div>
-    </a>
-    @* Counted live rather than cached, so a new report shows on the next refresh. *@
-    <a class="admin-card stat-tile text-reset text-decoration-none @(Model.Problems.Open > 0 ? "stat-alert" : "")" asp-controller="Problems" asp-action="Index">
-        <div class="stat-label"><i class="bi bi-exclamation-triangle"></i>Technical problems</div>
-        <div class="stat-value">@Model.Problems.Open <small>open</small></div>
-        <div class="stat-sub">@Model.Problems.Last24Hours reported or logged in the last 24 h</div>
-    </a>
-</div>
+        <div class="ledger-fact">
+            <dt>Participants</dt>
+            <dd class="ledger-value">@(s.Specialists + s.Students) <small>signed up</small></dd>
+            <dd class="stat-sub">@s.Specialists @(s.Specialists == 1 ? "specialist" : "specialists") · @s.Students @(s.Students == 1 ? "student" : "students") · @s.ActiveNow active in the last 15 min</dd>
+        </div>
+        <div class="ledger-fact @(s.StaleLocks > 0 ? "is-alert" : "")">
+            <dt><a asp-controller="Locks" asp-action="Index">Locks to review</a></dt>
+            <dd class="ledger-value">@s.StaleLocks <small>stale</small></dd>
+            <dd class="stat-sub">@s.PartialLocks with partial specialist work · stale after @AdminUi.Hours(Model.StaleAfter)</dd>
+        </div>
+        @* Counted live rather than cached, so a new report shows on the next refresh. *@
+        <div class="ledger-fact @(Model.Problems.Open > 0 ? "is-alert" : "")">
+            <dt><a asp-controller="Problems" asp-action="Index">Technical problems</a></dt>
+            <dd class="ledger-value">@Model.Problems.Open <small>open</small></dd>
+            <dd class="stat-sub">@Model.Problems.Last24Hours reported or logged in the last 24 h</dd>
+        </div>
+    </dl>
+</section>
 
 <div class="admin-grid admin-grid-2 mb-3">
     <section class="admin-card">
@@ -80,11 +83,55 @@
     <section class="admin-card">
         <div class="admin-card-header">
             <div>
-                <h2 class="admin-card-title">Specialist answers by response</h2>
-                <p class="admin-card-note">Every saved term answer, including incomplete sets</p>
+                <h2 class="admin-card-title">Things to check</h2>
+                <p class="admin-card-note">Gaps that would leave images or people without work</p>
             </div>
         </div>
-        <div class="admin-card-body"><div class="chart-box"><canvas id="mix-chart" aria-label="Answers by response chart"></canvas></div></div>
+        <div class="admin-card-body">
+            <ul class="warning-list">
+                @if (s.UnreachableSpecialistImages > 0 && s.Specialists > 0)
+                {
+                    <li><i class="bi bi-exclamation-triangle text-warning"></i><span><strong>@s.UnreachableSpecialistImages</strong> open specialist images match no specialist's selections, so nobody will be offered them.</span></li>
+                }
+                @if (s.UnreachableStudentImages > 0 && s.Students > 0)
+                {
+                    <li><i class="bi bi-exclamation-triangle text-warning"></i><span><strong>@s.UnreachableStudentImages</strong> open student images match no student's selections.</span></li>
+                }
+                @if (s.NothingLeft.Count > 0)
+                {
+                    <li>
+                        <i class="bi bi-hourglass-bottom text-primary"></i>
+                        <span><strong>@s.NothingLeft.Count</strong> @(s.NothingLeft.Count == 1 ? "participant has" : "participants have") no images left for their selections:
+                            @foreach (var person in s.NothingLeft.Take(8))
+                            {
+                                <a class="me-1" asp-controller="Participants" asp-action="Details" asp-route-id="@person.Id">@person.Name</a>
+                            }
+                            @if (s.NothingLeft.Count > 8) { <span class="muted">and @(s.NothingLeft.Count - 8) more</span> }
+                        </span>
+                    </li>
+                }
+                @if (s.ImagesMissingUrl > 0)
+                {
+                    <li><i class="bi bi-link-45deg text-danger"></i><span><strong>@s.ImagesMissingUrl</strong> images have no link and are never shown.</span></li>
+                }
+                @if (s.ImagesMissingKeywords > 0)
+                {
+                    <li><i class="bi bi-tags text-secondary"></i><span><strong>@s.ImagesMissingKeywords</strong> images have no terms, so only students see them.</span></li>
+                }
+                @if (s.StaleLocks > 0)
+                {
+                    <li><i class="bi bi-lock text-danger"></i><span><a asp-controller="Locks" asp-action="Index"><strong>@s.StaleLocks</strong> stale @(s.StaleLocks == 1 ? "lock" : "locks")</a> @(s.StaleLocks == 1 ? "is" : "are") waiting for a decision.</span></li>
+                }
+                @if (s.Specialists + s.Students == 0)
+                {
+                    <li><i class="bi bi-info-circle text-secondary"></i><span>No participants have signed up yet.</span></li>
+                }
+            </ul>
+            @if (s.UnreachableSpecialistImages + s.UnreachableStudentImages + s.NothingLeft.Count + s.ImagesMissingUrl + s.ImagesMissingKeywords + s.StaleLocks == 0 && s.Specialists + s.Students > 0)
+            {
+                <div class="empty-state py-3"><i class="bi bi-check-circle"></i>Nothing needs attention right now.</div>
+            }
+        </div>
     </section>
 </div>
 
@@ -149,55 +196,11 @@
     <section class="admin-card">
         <div class="admin-card-header">
             <div>
-                <h2 class="admin-card-title">Things to check</h2>
-                <p class="admin-card-note">Gaps that would leave images or people without work</p>
+                <h2 class="admin-card-title">Specialist answers by response</h2>
+                <p class="admin-card-note">Every saved term answer, including incomplete sets</p>
             </div>
         </div>
-        <div class="admin-card-body">
-            <ul class="warning-list">
-                @if (s.UnreachableSpecialistImages > 0 && s.Specialists > 0)
-                {
-                    <li><i class="bi bi-exclamation-triangle text-warning"></i><span><strong>@s.UnreachableSpecialistImages</strong> open specialist images match no specialist's selections, so nobody will be offered them.</span></li>
-                }
-                @if (s.UnreachableStudentImages > 0 && s.Students > 0)
-                {
-                    <li><i class="bi bi-exclamation-triangle text-warning"></i><span><strong>@s.UnreachableStudentImages</strong> open student images match no student's selections.</span></li>
-                }
-                @if (s.NothingLeft.Count > 0)
-                {
-                    <li>
-                        <i class="bi bi-hourglass-bottom text-primary"></i>
-                        <span><strong>@s.NothingLeft.Count</strong> participant(s) have no images left for their selections:
-                            @foreach (var person in s.NothingLeft.Take(8))
-                            {
-                                <a class="me-1" asp-controller="Participants" asp-action="Details" asp-route-id="@person.Id">@person.Name</a>
-                            }
-                            @if (s.NothingLeft.Count > 8) { <span class="muted">and @(s.NothingLeft.Count - 8) more</span> }
-                        </span>
-                    </li>
-                }
-                @if (s.ImagesMissingUrl > 0)
-                {
-                    <li><i class="bi bi-link-45deg text-danger"></i><span><strong>@s.ImagesMissingUrl</strong> images have no link and are never shown.</span></li>
-                }
-                @if (s.ImagesMissingKeywords > 0)
-                {
-                    <li><i class="bi bi-tags text-secondary"></i><span><strong>@s.ImagesMissingKeywords</strong> images have no terms, so only students see them.</span></li>
-                }
-                @if (s.StaleLocks > 0)
-                {
-                    <li><i class="bi bi-lock text-danger"></i><span><a asp-controller="Locks" asp-action="Index"><strong>@s.StaleLocks</strong> stale lock(s)</a> are waiting for a decision.</span></li>
-                }
-                @if (s.Specialists + s.Students == 0)
-                {
-                    <li><i class="bi bi-info-circle text-secondary"></i><span>No participants have signed up yet.</span></li>
-                }
-            </ul>
-            @if (s.UnreachableSpecialistImages + s.UnreachableStudentImages + s.NothingLeft.Count + s.ImagesMissingUrl + s.ImagesMissingKeywords + s.StaleLocks == 0 && s.Specialists + s.Students > 0)
-            {
-                <div class="empty-state py-3"><i class="bi bi-check-circle"></i>Nothing needs attention right now.</div>
-            }
-        </div>
+        <div class="admin-card-body"><div class="chart-box"><canvas id="mix-chart" aria-label="Answers by response chart"></canvas></div></div>
     </section>
 </div>
 
