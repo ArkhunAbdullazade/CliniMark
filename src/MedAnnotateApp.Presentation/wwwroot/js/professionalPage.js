@@ -9,7 +9,7 @@ document.addEventListener("DOMContentLoaded", () => {
     zoom: "Zoom to Area: drag a box over the image, or click a point, to see it enlarged. Select Boundary Box or Freehand Contour to draw again."
   };
   // The term in the current-term prompt is shown in bold red, so the specialist sees at once what to outline.
-  const currentTermPrompt = /^(Annotate the current term: )(.+)(\. Changes are not saved until you select Save and Next Term\.)$/s;
+  const currentTermPrompt = /^(Annotate the current term: )(.+)(\. Draw a rectangular boundary box or a free contour\. Zoom, move, resize, rotate, and delete as needed\.)$/s;
   const renderStatus = () => {
     if (!status) return;
     const hint = inspecting && !["error", "saving"].includes(baseStatus.state);
@@ -104,7 +104,7 @@ document.addEventListener("DOMContentLoaded", () => {
       term.setAttribute("aria-pressed", String(i === (reviewIndex === -1 ? currentIndex : reviewIndex)));
     });
   }
-  const prompt = () => currentIndex === -1 ? "All terms saved. Select Next Image to continue. You can select a saved term to review it." : `Annotate the current term: ${termName(currentIndex)}. Changes are not saved until you select Save and Next Term.`;
+  const prompt = () => currentIndex === -1 ? "All terms saved. Select Next Image to continue. You can select a saved term to review it." : `Annotate the current term: ${termName(currentIndex)}. Draw a rectangular boundary box or a free contour. Zoom, move, resize, rotate, and delete as needed.`;
   function showCurrent() {
     reviewIndex = -1;
     manager.resetAnnotation(); comments.value = ""; dirty = false;
