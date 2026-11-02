@@ -71,7 +71,7 @@ public class HomeController : Controller
                 return RedirectToAction("Login", "Identity");
             }
 
-            if (!ImageSelectionFilters.Parse(user.Speciality, user.BodyRegion, user.ImageModality).IsComplete)
+            if (!ImageSelectionFilters.Parse(user.Speciality, user.BodyRegion, user.ImageModality).HasSelection)
                 return RedirectToAction("Filters", "Identity");
 
             var (medData, counter) = await medDataRepository.GetNthMedDataBySpecialityAndPositionAsync(
@@ -107,7 +107,7 @@ public class HomeController : Controller
                 return RedirectToAction("Login", "Identity");
             }
 
-            if (!ImageSelectionFilters.Parse(user.Speciality, user.BodyRegion, user.ImageModality).IsComplete)
+            if (!ImageSelectionFilters.Parse(user.Speciality, user.BodyRegion, user.ImageModality).HasSelection)
                 return RedirectToAction("Filters", "Identity");
 
             var (medData, counter) = await medDataRepository.GetNthMedDataBySpecialityAndPositionAsync(

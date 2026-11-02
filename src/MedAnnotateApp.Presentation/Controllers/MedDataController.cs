@@ -80,11 +80,49 @@ public class MedDataController : Controller
         if (user == null) return Unauthorized(new { success = false });
         var annotations = await medDataRepository.GetProfessionalAnnotationsAsync(medDataId, user);
         if (annotations == null) return StatusCode(403, new { success = false, message = "This image is not assigned to you." });
+        var customs = await medDataRepository.GetCustomAnnotationsAsync(medDataId, user) ?? [];
         return Json(new
         {
             success = true,
-            annotations = annotations.Select(item => new { item.ExtractedKeyword, item.PressedButton, item.BoxCoordinates, item.Comment, item.TechnicalProblem })
+            annotations = annotations.Select(item => new { item.ExtractedKeyword, item.PressedButton, item.BoxCoordinates, item.Comment, item.TechnicalProblem }),
+            customAnnotations = customs.Select(item => new { item.Id, item.Term, item.Coordinates })
         });
+    }
+
+    [HttpPost]
+    [Authorize(Roles = "Professional")]
+    [RequestSizeLimit(2_000_000)]
+    public async Task<IActionResult> SaveCustomAnnotation([FromBody] CustomAnnotationDto? dto)
+    {
+        if (!ModelState.IsValid || dto == null || dto.Id <= 0)
+            return BadRequest(new { success = false, message = "Name the annotation and draw a closed contour before saving." });
+        var user = await userManager.GetUserAsync(User);
+        if (user == null) return Unauthorized(new { success = false, message = "Your session has ended. Sign in again." });
+        try
+        {
+            var (result, id) = await medDataRepository.SaveCustomAnnotationAsync(user, dto.Id, dto.Term, dto.Coordinates);
+            return result.Success ? Json(new { success = true, id }) : SaveResult(result);
+        }
+        catch (Exception exception)
+        {
+            logger.LogError(exception, "Custom annotation save failed for image {MedDataId} and user {UserId}.", dto.Id, user.Id);
+            return StatusCode(503, new { success = false, message = "The custom annotation could not be saved. Keep this page open and retry." });
+        }
+    }
+
+    [HttpPost]
+    [Authorize(Roles = "Professional")]
+    public async Task<IActionResult> DeleteCustomAnnotation([FromQuery] int customAnnotationId)
+    {
+        if (customAnnotationId <= 0) return BadRequest(new { success = false, message = "Invalid custom annotation." });
+        var user = await userManager.GetUserAsync(User);
+        if (user == null) return Unauthorized(new { success = false, message = "Your session has ended. Sign in again." });
+        try { return SaveResult(await medDataRepository.DeleteCustomAnnotationAsync(user, customAnnotationId)); }
+        catch (Exception exception)
+        {
+            logger.LogError(exception, "Custom annotation {CustomAnnotationId} could not be deleted for user {UserId}.", customAnnotationId, user.Id);
+            return StatusCode(503, new { success = false, message = "The custom annotation could not be deleted. Keep this page open and retry." });
+        }
     }
 
     [HttpGet]

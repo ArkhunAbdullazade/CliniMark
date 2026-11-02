@@ -20,9 +20,9 @@
                         {<text>@(" Diagnosis: " + Model.Diagnosis)</text>}</p>
                 </div>
                 <div class="description-tools" role="group" aria-label="Description text">
-                    <button type="button" class="description-tool" data-size-step="1" title="Larger text" aria-label="Larger description text">A+</button>
-                    <button type="button" class="description-tool" data-size-step="-1" title="Smaller text" aria-label="Smaller description text">A−</button>
-                    <button type="button" class="description-tool" data-description-open title="Read the whole description" aria-label="Read the whole description" aria-haspopup="dialog"><i class="bi bi-arrows-angle-expand" aria-hidden="true"></i></button>
+                    <button type="button" class="description-tool" data-size-step="1" aria-label="Larger description text">A+</button>
+                    <button type="button" class="description-tool" data-size-step="-1" aria-label="Smaller description text">A−</button>
+                    <button type="button" class="description-tool" data-description-open aria-label="Read the whole description" aria-haspopup="dialog"><i class="bi bi-arrows-angle-expand" aria-hidden="true"></i></button>
                 </div>
             </div>
             <div id="annotation-status" class="annotation-status" role="status" aria-live="polite">Loading image and saved responses…</div>
@@ -39,15 +39,15 @@
                         </div>
                     </div>
                     <div class="buttons-section">
-                        <a asp-controller="Identity" asp-action="Filters" class="btn filters-button">Filters</a>
+                        <a asp-controller="Identity" asp-action="Filters" class="btn filters-button" data-description="Choose which specialities, body regions and image modalities your images come from. Every list is optional.">Filters</a>
                         <div class="decision-buttons">
                             <button
-                                title="Click Not Visible if you are certain that it is not possible to visually annotate the current medical term in this particular image."
+                                data-description="Click if you are certain that it is not possible to visually annotate the current medical term in this particular image"
                                 id="not-present-button" type="button" class="button btn btn-block">
                                 Not Visible/Abstract
                             </button>
                             <button
-                                title="Click Location Uncertain if you are unsure whether the current medical term is present in the image at all, or of its exact location."
+                                data-description="Click if you are unsure whether you want to annotate this case, or whether the current medical term is present in the image at all, or of its exact location."
                                 id="skip-button" type="button" class="button btn btn-block">
                                 Uncertain/Skip
                             </button>
@@ -118,6 +118,11 @@
                     </div>
                 </div>
             </div>
+            @* Findings the specialist outlined and named with the Custom annotation tool (customAnnotations.js). *@
+            <section class="custom-list" id="custom-list" aria-labelledby="custom-list-title" hidden>
+                <h2 class="custom-list-title" id="custom-list-title">Custom annotations <span class="custom-count" id="custom-count">0</span></h2>
+                <ul class="custom-items" id="custom-items"></ul>
+            </section>
         </div>
     </div>
     <dialog id="description-dialog" class="annotation-dialog description-dialog" aria-labelledby="description-dialog-title">
@@ -163,9 +168,11 @@ else
 </script>
 @* First, so it can report errors from every script after it. *@
 <script src="~/js/problemReport.js" asp-append-version="true"></script>
+<script src="~/js/hoverDescriptions.js" asp-append-version="true"></script>
 <script src="~/js/annotationGeometry.js" asp-append-version="true"></script>
 <script src="~/js/canvas.js" asp-append-version="true"></script>
 <script src="~/js/assignmentWatch.js" asp-append-version="true"></script>
 <script src="~/js/descriptionReader.js" asp-append-version="true" defer></script>
 <script src="~/js/notePanels.js" asp-append-version="true" defer></script>
+<script src="~/js/customAnnotations.js" asp-append-version="true" defer></script>
 <script src="~/js/professionalPage.js" asp-append-version="true" defer></script>

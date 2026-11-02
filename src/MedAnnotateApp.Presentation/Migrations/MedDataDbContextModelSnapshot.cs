@@ -224,6 +224,41 @@ namespace MedAnnotateApp.Presentation.Migrations
                     b.ToTable("AnnotatedMedDatas");
                 });
 
+            modelBuilder.Entity("MedAnnotateApp.Core.Models.CustomAnnotation", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Coordinates")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("MedDataId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Term")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("MedDataId");
+
+                    b.ToTable("CustomAnnotations");
+                });
+
             modelBuilder.Entity("MedAnnotateApp.Core.Models.MedData", b =>
                 {
                     b.Property<int>("Id")

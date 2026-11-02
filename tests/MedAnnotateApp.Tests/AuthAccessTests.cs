@@ -31,9 +31,15 @@ public class AuthAccessTests
     [InlineData("Speciality")]
     [InlineData("BodyRegion")]
     [InlineData("ImageModality")]
-    public void EachFilterRejectsNullEmptyBlankOrUnlistedSelections(string property)
+    public void EachFilterIsOptionalButRejectsBlankOrUnlistedSelections(string property)
     {
-        foreach (var selection in new string[]?[] { null, [], [""], ["   "], ["invented option"], ["ct", ""] })
+        foreach (var empty in new string[]?[] { null, [] })
+        {
+            var filters = ValidFilters();
+            typeof(ImageFiltersDto).GetProperty(property)!.SetValue(filters, empty);
+            Assert.Empty(Validate(filters));
+        }
+        foreach (var selection in new string[][] { [""], ["   "], ["invented option"], ["ct", ""] })
         {
             var filters = ValidFilters();
             typeof(ImageFiltersDto).GetProperty(property)!.SetValue(filters, selection);
@@ -42,11 +48,24 @@ public class AuthAccessTests
     }
 
     [Fact]
-    public void SignupCannotBypassFilterRequirements()
+    public void AnEntirelyEmptySelectionIsRejected()
+    {
+        foreach (var empty in new string[]?[] { null, [] })
+        {
+            var filters = new ImageFiltersDto { Speciality = empty, BodyRegion = empty, ImageModality = empty };
+            Assert.Equal([ImageFiltersDto.NothingSelected], Validate(filters).Select(error => error.ErrorMessage));
+        }
+    }
+
+    [Fact]
+    public void SignupNeedsAnOptionInAnyListButNoListIsRequired()
     {
         var signup = ValidSignup();
+        signup.Speciality = null;
         signup.BodyRegion = [];
-        Assert.Contains(Validate(signup), error => error.MemberNames.Contains(nameof(SignupDto.BodyRegion)));
+        Assert.Empty(Validate(signup));
+        signup.ImageModality = [];
+        Assert.Contains(Validate(signup), error => error.ErrorMessage == ImageFiltersDto.NothingSelected);
     }
 
     [Fact]

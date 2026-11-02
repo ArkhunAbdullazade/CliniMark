@@ -10,7 +10,7 @@ main[role="main"] { height: 100%; min-height: 0; padding-bottom: 0 !important; }
 
 .annotation-workspace { display: flex; flex-direction: row; align-items: stretch; width: 100%; height: 100%; min-height: 0; margin: 0; padding: 8px 0; gap: 12px; }
 .annotation-workspace .left-column { display: flex; flex-direction: column; flex: 1 1 0; min-width: 0; min-height: 0; height: 100%; gap: 5px; }
-.annotation-workspace .right-column { display: flex; flex-direction: column; flex: 0 0 288px; width: 288px; min-width: 0; min-height: 0; height: 100%; gap: 8px; }
+.annotation-workspace .right-column { display: flex; flex-direction: column; flex: 0 0 304px; width: 304px; min-width: 0; min-height: 0; height: 100%; gap: 8px; }
 
 /* Image details */
 .metadata { flex: 0 1 auto; max-height: 45%; min-height: 0; display: flex; overflow: hidden; background: var(--surface); border: 1px solid var(--cardinal); border-radius: var(--radius); box-shadow: 0 1px 5px rgba(0, 0, 0, .1); }
@@ -25,8 +25,11 @@ main[role="main"] { height: 100%; min-height: 0; padding-bottom: 0 !important; }
 
 /* Comments and Report a technical problem: rows whose panels slide down beneath them (see notePanels.js). */
 .note-panels { flex: 0 0 auto; display: flex; flex-direction: column; gap: 6px; }
-.note-toggles { display: grid; grid-template-columns: 1fr; gap: 6px; }
-.note-toggle { display: flex; align-items: center; gap: 8px; min-height: 36px; padding: 6px 12px; color: var(--cardinal); background: var(--surface); border: 1.5px solid var(--cardinal); border-radius: var(--radius-control); font-size: .875rem; font-weight: 600; line-height: 1.2; text-align: left; cursor: pointer; transition: background-color .15s ease, color .15s ease; }
+/* Comments and Report a technical problem sit side by side; a single button (student page) takes the full width. */
+.note-toggles { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 6px; }
+.note-toggles-single { grid-template-columns: 1fr; }
+/* Sized so "Report a technical problem" fits on one line beside Comments. */
+.note-toggle { display: flex; align-items: center; justify-content: center; gap: 5px; min-height: 36px; padding: 6px 8px; color: var(--cardinal); background: var(--surface); border: 1.5px solid var(--cardinal); border-radius: var(--radius-control); font-size: .8rem; font-weight: 600; line-height: 1.2; white-space: nowrap; text-align: left; cursor: pointer; transition: background-color .15s ease, color .15s ease; }
 .note-toggle:hover, .note-toggle.open { color: #fff; background: var(--cardinal); }
 .note-toggle:disabled { opacity: .5; cursor: not-allowed; }
 /* A dot shows that a box holds text even while its panel is closed. */
@@ -81,7 +84,7 @@ main[role="main"] { height: 100%; min-height: 0; padding-bottom: 0 !important; }
 .annotation-workspace .main-content .annotation-section { display: flex; flex-direction: column; flex: 1 1 0; width: 100%; min-height: 0; margin: 0; }
 
 /* The image and its buttons form one column, centred in the free space, so the buttons always sit right under the image. */
-.image-viewport { flex: 1 1 0; min-height: 0; width: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0; padding: 3px; }
+.image-viewport { flex: 1 1 0; min-height: 0; width: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 3px; }
 /* The red frame and the canvas are square: rounding would hide image corners that specialists must be able to see and annotate. */
 #image-container { position: relative; flex: 0 0 auto; box-sizing: content-box; max-width: 100%; margin: 0; padding: 0; overflow: visible; border: 0; border-radius: 0; font-size: 0; outline: 2px solid var(--cardinal); cursor: crosshair; user-select: none; -webkit-user-select: none; }
 #sourceImage { display: none; max-width: 100%; max-height: 100%; object-fit: contain; }
@@ -187,15 +190,45 @@ main[role="main"] { height: 100%; min-height: 0; padding-bottom: 0 !important; }
 
 @media (prefers-reduced-motion: reduce) {
   .floating-textbox, .annotation-dialog[open] { animation: none; }
-  .annotation-item, .annotation-actions button, .tool-button, .tool-button::after, .note-panel, .note-toggle, .description-tool, .annotation-dialog-action, .button, .primary-button, .problem-send { transition: none; }
+  .annotation-item, .annotation-actions button, .tool-button, .tool-button::after, .hover-description, .note-panel, .note-toggle, .description-tool, .annotation-dialog-action, .button, .primary-button, .problem-send { transition: none; }
 }
 @media (max-width: 850px) {
   body > .container { padding-inline: 8px; }
   .annotation-workspace { gap: 8px; }
   .annotation-workspace .right-column { flex-basis: 210px; width: 210px; }
+  .note-toggle { white-space: normal; }
   .metadata-inner > p, .metadata-inner > .metadata-item { grid-template-columns: minmax(0, 1fr); row-gap: 2px; }
   .buttons-section .button, .buttons-section .primary-button, .buttons-section .filters-button { font-size: .75rem; padding: 4px 6px; }
 }
 @media (max-height: 600px) {
   .description-panel { --description-lines: 5; }
 }
+
+/* Longer button descriptions (hoverDescriptions.js): after two seconds on a button, a red box slides out in the same
+   way as the tool names, and leaves at once with the pointer. */
+.hover-description { position: fixed; z-index: 10002; max-width: min(300px, calc(100vw - 12px)); padding: 8px 12px; color: #fff; background: var(--cardinal); border-radius: var(--radius-control); box-shadow: 0 4px 12px rgba(0, 0, 0, .18); font-size: .8rem; font-weight: 500; line-height: 1.35; pointer-events: none; opacity: 0; clip-path: inset(0 100% 0 0 round var(--radius-control)); transition: clip-path .2s cubic-bezier(.16, 1, .3, 1), opacity .12s ease-out; }
+.hover-description.visible { opacity: 1; clip-path: inset(0 0 0 0 round var(--radius-control)); }
+/* Bootstrap lets the pointer pass through disabled buttons; described ones still take the hover so their description can show. */
+:is(.btn, .primary-button):disabled[data-description] { pointer-events: auto; cursor: not-allowed; }
+
+/* The small window above a finished custom contour, where the specialist names it. */
+.custom-annotation-box { position: fixed; z-index: 10001; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; width: min(360px, calc(100vw - 12px)); padding: 6px; background: var(--surface); border: 2px solid #1a6fe0; border-radius: var(--radius-control); box-shadow: 0 6px 18px rgba(0, 0, 0, .25); animation: textbox-appear .16s cubic-bezier(.16, 1, .3, 1); }
+.custom-annotation-box .custom-term-input { flex: 1 1 0; min-width: 0; padding: 6px 8px; border: 1px solid var(--line); border-radius: var(--radius-control); font-size: .875rem; }
+.custom-annotation-box .custom-term-input:focus { outline: 0; border-color: #1a6fe0; box-shadow: 0 0 0 2px rgba(26, 111, 224, .2); }
+.custom-annotation-box .custom-save { padding: 6px 12px; color: #fff; background: #1a6fe0; border: 0; border-radius: var(--radius-control); font-size: .85rem; font-weight: 600; cursor: pointer; }
+.custom-annotation-box .custom-save:hover { background: #1459b8; }
+.custom-annotation-box .custom-cancel { width: 30px; height: 30px; padding: 0; color: var(--ink-2); background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-control); font-size: 1.1rem; line-height: 1; cursor: pointer; }
+.custom-annotation-box .custom-error { flex: 1 0 100%; margin: 0; color: var(--cardinal); font-size: .78rem; }
+.custom-annotation-box.saving { opacity: .7; pointer-events: none; }
+
+/* Saved custom annotations under the note buttons. */
+.custom-list { flex: 0 1 auto; min-height: 0; overflow: auto; margin-top: 8px; padding: 8px 10px; background: var(--surface); border: 1px solid #1a6fe0; border-radius: var(--radius); }
+.custom-list-title { display: flex; align-items: center; gap: 6px; margin: 0 0 6px; color: #1459b8; font-size: .82rem; font-weight: 700; }
+.custom-count { min-width: 20px; padding: 1px 6px; color: #fff; background: #1a6fe0; border-radius: 999px; font-size: .72rem; text-align: center; }
+.custom-items { margin: 0; padding: 0; list-style: none; }
+.custom-items li { display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 3px 0; border-top: 1px solid var(--line-soft); font-size: .82rem; }
+.custom-items li:first-child { border-top: 0; }
+.custom-term { min-width: 0; overflow-wrap: anywhere; }
+.custom-delete { flex: 0 0 auto; width: 24px; height: 24px; padding: 0; color: var(--cardinal); background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-control); line-height: 1; cursor: pointer; }
+.custom-delete:hover { color: #fff; background: var(--cardinal); border-color: var(--cardinal); }
+@media (prefers-reduced-motion: reduce) { .custom-annotation-box { animation: none; } }

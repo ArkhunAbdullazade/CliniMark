@@ -185,6 +185,8 @@ public sealed class AdminQueryService
             .OrderBy(answer => answer.Id).ToListAsync(cancellationToken);
         var groups = await context.AnnotatedByStudentsMedDatas.AsNoTracking().Where(group => group.MedDataId == id)
             .OrderBy(group => group.Id).ToListAsync(cancellationToken);
+        var customs = await context.CustomAnnotations.AsNoTracking().Where(custom => custom.MedDataId == id)
+            .OrderBy(custom => custom.Id).ToListAsync(cancellationToken);
 
         var sets = answers.GroupBy(answer => answer.Email ?? "", StringComparer.OrdinalIgnoreCase).Select(set =>
         {
@@ -211,7 +213,12 @@ public sealed class AdminQueryService
                     person?.DisplayName ?? "Removed account");
             }).ToList(),
             Holder(people, image.LockedByUserId, image.LockedAt),
-            Holder(people, image.LockedByStudentUserId, image.StudentLockedAt));
+            Holder(people, image.LockedByStudentUserId, image.StudentLockedAt),
+            customs.Select(custom =>
+            {
+                var person = people.ById(custom.UserId);
+                return new CustomRow(custom.Id, custom.Term, custom.Coordinates, custom.CreatedAt, person?.Id, person?.DisplayName ?? "Removed account");
+            }).ToList());
     }
 
     public async Task<IReadOnlyList<LockRow>> GetLocksAsync(CancellationToken cancellationToken = default)
@@ -546,7 +553,6 @@ public sealed class AdminQueryService
         // Mirrors the claim query: a URL is always needed, and specialists also need at least one term.
         public bool EligibleFor(bool student) => HasUrl && (student || HasKeyword);
 
-        public bool Matches(Person person) => person.Filters.IsComplete && person.Filters.Specialities.Contains(Speciality)
-            && person.Filters.BodyRegions.Contains(BodyRegion) && person.Filters.Modalities.Contains(Modality);
+        public bool Matches(Person person) => person.Filters.Matches(Speciality, BodyRegion, Modality);
     }
 }

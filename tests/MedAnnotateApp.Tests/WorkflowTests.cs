@@ -16,12 +16,24 @@ public sealed class WorkflowTests
         {"version":1,"coordinateSystem":"image-pixels","imageWidth":1000,"imageHeight":500,"annotations":[{"type":"rectangle","points":[[10.125,20.25],[100.125,20.25],[100.125,80.25],[10.125,80.25]]}]}
         """;
 
+    // Images: 1 cardiology/chest/ct, 2 dermatology/head/mri, 3 cardiology/abdomen/ct, 4 cardiology/chest/xray, 5 no metadata.
     [Theory]
-    [InlineData(null, "chest", "ct")]
-    [InlineData("cardiology", null, "ct")]
-    [InlineData("cardiology", "chest", null)]
-    [InlineData(" , ", "chest", "ct")]
-    public async Task MissingAnyFilterCannotClaimAnImage(string? speciality, string? region, string? modality)
+    [InlineData(null, null, "ct", 1, "0/2")]
+    [InlineData(null, "head", null, 2, "0/1")]
+    [InlineData("cardiology", null, null, 1, "0/3")]
+    [InlineData(" , ", "chest", "xray", 4, "0/1")]
+    public async Task OnlyTheChosenListsRestrictTheImages(string? speciality, string? region, string? modality, int expected, string counter)
+    {
+        await using var db = await WorkflowDatabase.CreateAsync();
+        var (image, progress) = await db.Repository.GetNthMedDataBySpecialityAndPositionAsync(speciality, "professional", region, modality, db.Owner.Id);
+        Assert.Equal(expected, image!.Id);
+        Assert.Equal(counter, progress);
+    }
+
+    [Theory]
+    [InlineData(null, null, null)]
+    [InlineData(" , ", "", null)]
+    public async Task AnEmptySelectionCannotClaimAnImage(string? speciality, string? region, string? modality)
     {
         await using var db = await WorkflowDatabase.CreateAsync();
         var (image, _) = await db.Repository.GetNthMedDataBySpecialityAndPositionAsync(speciality, "professional", region, modality, db.Owner.Id);
@@ -163,6 +175,44 @@ public sealed class WorkflowTests
         var saved = Assert.Single(await db.Context.AnnotatedMedDatas.ToListAsync());
         Assert.Equal("The image loaded blurred", saved.TechnicalProblem);
         Assert.Null(saved.Comment);
+    }
+
+    private const string CustomContour = """
+        {"version":1,"coordinateSystem":"image-pixels","imageWidth":1000,"imageHeight":500,"annotations":[{"type":"freehand","points":[[200,100],[300,100],[300,200],[200,200],[200,100]]}]}
+        """;
+
+    [Fact]
+    public async Task CustomAnnotationsAreSavedSeparatelyRepeatSafeAndOnlyByTheHolderBeforeCompletion()
+    {
+        await using var db = await WorkflowDatabase.CreateAsync();
+        await db.AssignAsync();
+        var (first, firstId) = await db.Repository.SaveCustomAnnotationAsync(db.Owner, 1, "  periapical lucency ", CustomContour);
+        Assert.True(first.Success);
+        var (again, againId) = await db.Repository.SaveCustomAnnotationAsync(db.Owner, 1, "periapical lucency", CustomContour);
+        Assert.True(again.Success);
+        Assert.Equal(firstId, againId);
+        Assert.True((await db.Repository.SaveCustomAnnotationAsync(db.Owner, 1, "second finding", CustomContour)).Result.Success);
+        Assert.False((await db.Repository.SaveCustomAnnotationAsync(db.Owner, 1, "   ", CustomContour)).Result.Success);
+        Assert.False((await db.Repository.SaveCustomAnnotationAsync(db.Owner, 1, "broken", "{\"version\":1}")).Result.Success);
+        Assert.True((await db.Repository.SaveCustomAnnotationAsync(db.Other, 1, "not theirs", CustomContour)).Result.Conflict);
+        Assert.True((await db.Repository.DeleteCustomAnnotationAsync(db.Other, firstId!.Value)).Success);
+
+        db.Context.ChangeTracker.Clear();
+        var saved = await db.Context.CustomAnnotations.OrderBy(item => item.Id).ToListAsync();
+        Assert.Equal(["periapical lucency", "second finding"], saved.Select(item => item.Term));
+        Assert.All(saved, item => Assert.Equal(db.Owner.Id, item.UserId));
+        Assert.Empty(await db.Context.AnnotatedMedDatas.ToListAsync());
+        Assert.Equal(2, (await db.Repository.GetCustomAnnotationsAsync(1, db.Owner))!.Count);
+        Assert.Null(await db.Repository.GetCustomAnnotationsAsync(1, db.Other));
+
+        Assert.True((await db.Repository.DeleteCustomAnnotationAsync(db.Owner, saved[1].Id)).Success);
+        Assert.True((await db.Repository.SaveProfessionalAsync(db.Owner, Response(1))).Success);
+        Assert.True((await db.Repository.CompleteProfessionalAsync(1, db.Owner)).Success);
+        // Completed work stays as saved: no more custom annotations, and none can be deleted.
+        Assert.True((await db.Repository.SaveCustomAnnotationAsync(db.Owner, 1, "late", CustomContour)).Result.Conflict);
+        Assert.True((await db.Repository.DeleteCustomAnnotationAsync(db.Owner, saved[0].Id)).Conflict);
+        db.Context.ChangeTracker.Clear();
+        Assert.Equal("periapical lucency", (await db.Context.CustomAnnotations.SingleAsync()).Term);
     }
 
     [Fact]

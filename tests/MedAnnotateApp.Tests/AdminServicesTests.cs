@@ -195,7 +195,7 @@ public sealed class AdminServicesTests
 
         var files = await ReadArchiveAsync(await db.Export.CreateArchiveAsync(new ExportOptions { Identity = identity }));
 
-        var expected = new List<string> { "README.txt", "images.csv", "problem_reports.csv", "progress.csv", "specialist_responses.csv", "student_annotations.csv" };
+        var expected = new List<string> { "README.txt", "custom_annotations.csv", "images.csv", "problem_reports.csv", "progress.csv", "specialist_responses.csv", "student_annotations.csv" };
         if (identity != IdentityMode.None) expected.Add("participants.csv");
         Assert.Equal(expected.Order(), files.Keys.Order());
         Assert.Equal(identity == IdentityMode.Full, files.Values.Any(text => text.Contains("first@example.test")));
@@ -242,7 +242,7 @@ public sealed class AdminServicesTests
         var archive = await WriteImageArchiveAsync(db, new ImageServer(request => files[IdOf(request)]), new ExportOptions { Format = format, IncludeImages = true });
 
         using var zip = new ZipArchive(new MemoryStream(archive), ZipArchiveMode.Read);
-        Assert.Equal(["README.txt", "images" + extension, "images/1.jpg", "images/2.png", "images/3.jpg", "images_manifest" + extension,
+        Assert.Equal(["README.txt", "custom_annotations" + extension, "images" + extension, "images/1.jpg", "images/2.png", "images/3.jpg", "images_manifest" + extension,
             "participants" + extension, "problem_reports" + extension, "progress" + extension, "specialist_responses" + extension, "student_annotations" + extension],
             zip.Entries.Select(entry => entry.FullName).Order(StringComparer.Ordinal));
         Assert.Equal(files[1], EntryBytes(zip, "images/1.jpg"));

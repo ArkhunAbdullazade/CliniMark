@@ -39,6 +39,13 @@ class CanvasManager {
       this.onAnnotationsChange = null;
       this.onInspectionChange = null;
   
+      // Custom annotations (specialist page): contours outside the term list, named and saved one at a time by the page.
+      // They never join this.annotations, so they cannot change the current term's answer.
+      this.customAllowed = false;
+      this.customShapes = [];
+      this.pendingCustom = null;
+      this.onCustomShape = null;
+
       // Zoom-to-area state
       this.zoomSelection = null;
       this.zoomDialog = null;
@@ -179,19 +186,27 @@ class CanvasManager {
     }
   
     // Tool creation and management
-    createTools(imageContainer) {
+    createTools(imageContainer, { custom = false } = {}) {
       const toolsContainer = document.createElement("div");
       toolsContainer.className = "tools-container";
       toolsContainer.style.position = "fixed";
       
-      const rectButton = this.createToolButton("rectangle", "../images/rectangle.svg", "Boundary Box", true);
+      // Each tool slides out its name on hover; the longer description follows after two seconds (hoverDescriptions.js).
+      const rectButton = this.createToolButton("rectangle", "../images/rectangle.svg", "Boundary Box", true,
+        "Draw a rectangular boundary box around the area. Drag it to move it; use its corner handles to resize, the round handle to rotate, and X to delete.");
       
-      const freehandButton = this.createToolButton("freehand", "../images/freehand.svg", "Freehand Contour", false);
+      const freehandButton = this.createToolButton("freehand", "../images/freehand.svg", "Freehand Contour", false,
+        "Draw a closed freehand contour around the area. Drag it to move it, and use X to delete.");
       
-      const zoomButton = this.createToolButton("zoom", "../images/zoom-area.svg", "Zoom to Area", false);
+      const customButton = custom ? this.createToolButton("custom", "../images/custom-annotation.svg", "Custom annotation", false,
+        "Additionally annotate and register any medical term not mentioned or not highlighted in the image description") : null;
+
+      const zoomButton = this.createToolButton("zoom", "../images/zoom-area.svg", "Zoom to Area", false,
+        "Drag a box over the image to see it enlarged.");
       
       toolsContainer.appendChild(rectButton);
       toolsContainer.appendChild(freehandButton);
+      if (customButton) toolsContainer.appendChild(customButton);
       toolsContainer.appendChild(zoomButton);
       
       document.body.appendChild(toolsContainer);
@@ -199,13 +214,14 @@ class CanvasManager {
   
       this.rectButton = rectButton;
       this.freehandButton = freehandButton;
+      this.customButton = customButton;
       this.zoomButton = zoomButton;
   
       this.updateToolsPosition(imageContainer);
-      return { rectButton, freehandButton, zoomButton };
+      return custom ? { rectButton, freehandButton, customButton, zoomButton } : { rectButton, freehandButton, zoomButton };
     }
   
-    createToolButton(type, iconSrc, title, isActive) {
+    createToolButton(type, iconSrc, title, isActive, description = "") {
       const button = document.createElement("button");
       button.type = "button";
       button.setAttribute("aria-label", title);
@@ -214,6 +230,10 @@ class CanvasManager {
       button.id = `${type}ModeButton`;
       // The name slides out beside the icon on hover or focus (see annotationWorkspace.css), replacing the slow browser tooltip.
       button.setAttribute("data-label", title);
+      if (description) {
+        button.setAttribute("data-description", description);
+        button.setAttribute("aria-description", description);
+      }
 
       const icon = document.createElement("img");
       icon.src = iconSrc;
@@ -241,18 +261,18 @@ class CanvasManager {
       // Do nothing if trying to switch to the same mode
       if (this.currentMode === newMode) return;
 
-      // Update the current mode for rectangle/freehand/zoom
+      // Update the current mode for rectangle/freehand/custom/zoom
       this.cancelZoomSelection();
+      // An unnamed custom contour is dropped when another tool is chosen.
+      if (this.currentMode === "custom" && this.pendingCustom) this.cancelPendingCustom();
       this.currentMode = newMode;
       
-      // Zooming only inspects, so no shape stays selected with handles that cannot be used.
-      if (newMode === "zoom" && this.selectedAnnotation) {
-        this.selectedAnnotation = null;
-        this.drawCanvas();
-      }
+      // Zooming and custom annotation leave the term's shapes alone, so none stays selected with handles that cannot be used.
+      if ((newMode === "zoom" || newMode === "custom") && this.selectedAnnotation) this.selectedAnnotation = null;
+      this.drawCanvas();
 
-      // Exactly one of rectangle, freehand and zoom is active
-      for (const [mode, button] of [["rectangle", this.rectButton], ["freehand", this.freehandButton], ["zoom", this.zoomButton]]) {
+      // Exactly one of rectangle, freehand, custom and zoom is active
+      for (const [mode, button] of [["rectangle", this.rectButton], ["freehand", this.freehandButton], ["custom", this.customButton], ["zoom", this.zoomButton]]) {
         if (!button) continue;
         button.classList.toggle("active", mode === newMode);
         button.setAttribute("aria-pressed", String(mode === newMode));
@@ -261,9 +281,48 @@ class CanvasManager {
       this.notifyInspection();
     }
 
-    // Pages show a hint while zoom-to-area replaces drawing.
+    // Pages show a hint while zoom-to-area or custom annotation replaces drawing for the current term.
     notifyInspection() {
-      if (this.onInspectionChange) this.onInspectionChange(this.currentMode === "zoom", "zoom");
+      const special = this.currentMode === "zoom" || this.currentMode === "custom";
+      if (this.onInspectionChange) this.onInspectionChange(special, special ? this.currentMode : "zoom");
+    }
+
+    // Freehand drawing serves both the term's contours and custom annotations.
+    drawsFreehand() {
+      return this.currentMode === "freehand" || this.currentMode === "custom";
+    }
+
+    // The term tools lock while saving or reviewing; custom annotation follows its own permission from the page.
+    locked() {
+      return this.readOnly && !(this.currentMode === "custom" && this.customAllowed);
+    }
+
+    cancelPendingCustom() {
+      if (!this.pendingCustom) return;
+      this.pendingCustom = null;
+      this.drawCanvas();
+      if (this.onCustomShape) this.onCustomShape(null);
+    }
+
+    // One custom contour as the same versioned original-pixel JSON as term answers.
+    getCustomCoordinatesJSON(shape) {
+      if (!this.ready || this.imageIdentity !== (this.sourceImage.currentSrc || this.sourceImage.src)) throw new Error("Wait for the assigned image before saving.");
+      return AnnotationGeometry.serialize([shape], this.canvas.width, this.canvas.height);
+    }
+
+    drawCustom(shape, pending) {
+      if (!shape.points) return;
+      this.ctx.save();
+      this.ctx.beginPath();
+      shape.points.forEach((point, index) => index === 0 ? this.ctx.moveTo(point.x, point.y) : this.ctx.lineTo(point.x, point.y));
+      this.ctx.closePath();
+      this.ctx.fillStyle = pending ? "rgba(26,111,224,0.14)" : "rgba(26,111,224,0.06)";
+      this.ctx.fill();
+      this.ctx.setLineDash(pending ? [] : [this.screenPixels(6), this.screenPixels(4)]);
+      this.ctx.lineWidth = this.screenPixels(pending ? 3 : 2);
+      this.ctx.strokeStyle = "#1a6fe0";
+      this.ctx.stroke();
+      this.ctx.restore();
     }
   
     // Canvas drawing and manipulation
@@ -273,8 +332,11 @@ class CanvasManager {
       
       this.ctx.drawImage(this.sourceImage, 0, 0, this.canvas.width, this.canvas.height);
       this.annotations.forEach(ann => this.drawAnnotation(ann, ann === this.selectedAnnotation));
+      // Saved custom contours show only while that tool is in use, so they never clutter the term's work.
+      if (this.currentMode === "custom") this.customShapes.forEach(shape => this.drawCustom(shape, false));
+      if (this.pendingCustom) this.drawCustom(this.pendingCustom, true);
       if (this.currentAction === "draw" && this.currentDrawingAnnotation) {
-        if (this.currentMode === "freehand") this.drawFreehandPreview();
+        if (this.drawsFreehand()) this.drawFreehandPreview();
         else this.drawRectangle(this.currentDrawingAnnotation, true);
       }
     }
@@ -545,6 +607,7 @@ class CanvasManager {
     stopInteraction() {
       if (this.originalAnnotation && this.selectedAnnotation) Object.assign(this.selectedAnnotation, this.originalAnnotation);
       this.closeZoomView();
+      this.customAllowed = false;
       this.switchMode("rectangle");
       this.selectedAnnotation = null;
       this.resetDrawingState();
@@ -677,7 +740,7 @@ class CanvasManager {
           this.startZoomSelection(e);
           return;
         }
-        if (this.readOnly) return;
+        if (this.locked()) return;
         e.preventDefault();
         this.canvas.focus({preventScroll:true});
         this.canvas.setPointerCapture(e.pointerId);
@@ -792,9 +855,11 @@ class CanvasManager {
       if (this.currentMode === "zoom" && this.ready) {
         cursor = "zoom-in";
         hint = "Drag a box over an area, or click a point, to see it enlarged.";
-      } else if (!this.ready || this.readOnly) {
+      } else if (!this.ready || this.locked()) {
         cursor = "default";
         hint = "";
+      } else if (this.currentMode === "custom") {
+        hint = this.pendingCustom ? "Name and save this custom annotation, or cancel it." : "Draw a closed contour around the finding, then name it.";
       } else if (this.currentAction === "rotate") {
         cursor = ROTATE_CURSOR; hint = "Drag to rotate.";
       } else if (this.currentAction === "move") {
@@ -832,8 +897,18 @@ class CanvasManager {
     }
 
     handleMouseDown(e) {
-      if (!this.ready || this.readOnly) return;
+      if (!this.ready || this.locked()) return;
       const { x: mouseX, y: mouseY } = this.eventPoint(e);
+      // Custom annotation only draws new contours; one waits for its name before the next can start.
+      if (this.currentMode === "custom") {
+        if (this.pendingCustom) return;
+        this.selectedAnnotation = null;
+        this.currentAction = "draw";
+        this.freehandPoints = [{ x: mouseX, y: mouseY }];
+        this.currentDrawingAnnotation = { type: "freehand", points: [...this.freehandPoints] };
+        this.drawCanvas();
+        return;
+      }
       
       // Check for freehand delete button first
       if (this.selectedAnnotation && this.selectedAnnotation.type === "freehand") {
@@ -943,7 +1018,7 @@ class CanvasManager {
     }
   
     handleMouseMove(e) {
-      if (!this.ready || this.readOnly) return;
+      if (!this.ready || this.locked()) return;
       const { x: mouseX, y: mouseY } = this.eventPoint(e);
       this.updateCursor({x: mouseX, y: mouseY});
       
@@ -1051,7 +1126,7 @@ class CanvasManager {
             
             this.currentDrawingAnnotation = this.boundaryCheck(this.currentDrawingAnnotation);
             this.drawCanvas();
-          } else if (this.currentMode === "freehand") {
+          } else if (this.drawsFreehand()) {
             const last = this.freehandPoints[this.freehandPoints.length - 1];
             if (!last || Math.hypot(mouseX-last.x, mouseY-last.y) >= 0.25) this.freehandPoints.push({ x: mouseX, y: mouseY });
             this.drawCanvas();
@@ -1061,7 +1136,7 @@ class CanvasManager {
     }
   
     handleMouseUp(e) {
-      if (!this.ready || this.readOnly) return;
+      if (!this.ready || this.locked()) return;
       let changed = false;
       
       // Handle end of resizing to ensure rotation is properly maintained
@@ -1108,7 +1183,7 @@ class CanvasManager {
             
             changed = true;
           }
-        } else if (this.currentMode === "freehand" && this.freehandPoints.length > 2) {
+        } else if (this.drawsFreehand() && this.freehandPoints.length > 2) {
           // Keep sampled image-space vertices. The previous adaptive reduction to
           // 25 points could move a research boundary by an unbounded distance.
           const simplified = this.freehandPoints.map(p => ({...p}));
@@ -1133,6 +1208,15 @@ class CanvasManager {
           };
           
           const checkedAnnotation = this.boundaryCheck(newAnnotation);
+          if (this.currentMode === "custom") {
+            // Held apart until the page saves it under the specialist's own name; the term's shapes and timer are untouched.
+            this.pendingCustom = checkedAnnotation;
+            this.resetDrawingState();
+            this.drawCanvas();
+            this.updateCursor(this.eventPoint(e));
+            if (this.onCustomShape) this.onCustomShape(checkedAnnotation);
+            return;
+          }
           this.annotations.push(checkedAnnotation);
           this.selectedAnnotation = checkedAnnotation;
           

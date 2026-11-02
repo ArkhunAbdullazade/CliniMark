@@ -51,7 +51,7 @@
   const image = document.getElementById("admin-image");
   if (!source || !image || !root.AnnotationGeometry) return;
   const data = JSON.parse(source.textContent);
-  const parsed = parse([...data.answers, ...data.groups], root.AnnotationGeometry);
+  const parsed = parse([...data.answers, ...data.groups, ...(data.customs || [])], root.AnnotationGeometry);
   const stage = document.getElementById("image-stage");
   const list = document.getElementById("layer-list");
   const notes = document.getElementById("overlay-notes");

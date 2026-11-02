@@ -12,6 +12,10 @@
         groups = Model.Groups.Select(group => new
         {
             id = "g" + group.Id, term = group.Label, annotator = group.AnnotatorName, role = "Student", coordinates = group.Coordinates
+        }),
+        customs = Model.Customs.Select(custom => new
+        {
+            id = "c" + custom.Id, term = custom.Term, annotator = custom.AnnotatorName, role = "Custom", coordinates = custom.Coordinates
         })
     };
     var returnUrl = AdminUi.CurrentUrl(Context.Request);
@@ -187,6 +191,43 @@
                             <td class="num d-none d-lg-table-cell">@AdminUi.Seconds(answer.FirstDrawMs)</td>
                             <td class="num d-none d-lg-table-cell">@AdminUi.Seconds(answer.DrawingMs)</td>
                             <td class="text-nowrap d-none d-sm-table-cell"><time datetime="@AdminUi.Iso(answer.CreatedAt)" data-local="datetime"></time></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</section>
+
+<section class="admin-card mb-3">
+    <div class="admin-card-header">
+        <div>
+            <h2 class="admin-card-title">Custom annotations</h2>
+            <p class="admin-card-note">Findings specialists outlined and named themselves, beyond the image's terms. Hover a row to highlight its shape.</p>
+        </div>
+    </div>
+    @if (Model.Customs.Count == 0)
+    {
+        <div class="empty-state"><i class="bi bi-plus-circle-dotted"></i>No custom annotations yet.</div>
+    }
+    else
+    {
+        <div class="admin-table-wrap">
+            <table class="table admin-table align-middle">
+                <thead><tr><th>Finding</th><th>Specialist</th><th>Saved</th></tr></thead>
+                <tbody>
+                    @foreach (var custom in Model.Customs)
+                    {
+                        <tr data-shape="c@(custom.Id)">
+                            <td class="fw-semibold">@custom.Term</td>
+                            <td>
+                                @if (custom.AnnotatorId != null)
+                                {
+                                    <a asp-controller="Participants" asp-action="Details" asp-route-id="@custom.AnnotatorId">@custom.AnnotatorName</a>
+                                }
+                                else { @custom.AnnotatorName }
+                            </td>
+                            <td class="text-nowrap"><time datetime="@AdminUi.Iso(custom.CreatedAt)" data-local="datetime"></time></td>
                         </tr>
                     }
                 </tbody>

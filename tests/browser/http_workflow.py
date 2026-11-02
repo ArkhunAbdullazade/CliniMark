@@ -58,11 +58,11 @@ class Client:
             ClinicalExperience='5', Speciality=['cardiology', 'dermatology'],
             BodyRegion=['thorax', 'head and neck'], ImageModality=['ct', 'mri'])
         if invalid:
-            bad = dict(fields)
-            del bad['BodyRegion']
+            # Every list is optional, but an entirely empty selection is refused.
+            bad = {key: value for key, value in fields.items() if key not in ('Speciality', 'BodyRegion', 'ImageModality')}
             status, url, body = self.request('/Identity/PostSignup', form=bad)
-            assert status == 200 and 'Select at least one body region.' in body
-            REPORT.append('Missing filter category rejected by server before account creation')
+            assert status == 200 and 'Select at least one option in any of the lists.' in body
+            REPORT.append('Empty filter selection rejected by server before account creation')
         status, url, body = self.request('/Identity/PostSignup', form=fields)
         assert status == 200 and url.endswith('/Identity/Login'), (status, url, body[:300])
         self.email = fields['Email']

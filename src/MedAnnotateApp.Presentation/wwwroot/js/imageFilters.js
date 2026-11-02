@@ -1,28 +1,30 @@
 document.querySelectorAll('[data-image-filter-form]').forEach(form => {
-  const groups = [...form.querySelectorAll('[data-required-selection]')];
+  const groups = [...form.querySelectorAll('[data-filter-group]')];
+  const error = form.querySelector('[data-filter-error]');
   // The tool's own Select all box has no name, so it is never submitted or counted as a choice.
   const options = group => [...group.querySelectorAll('input[type="checkbox"][name]')];
-  function validateGroup(group) {
-    const selected = options(group).some(option => option.checked);
-    group.querySelector('[data-selection-error]').textContent = selected ? '' : 'Select at least one option in this list.';
-    group.setAttribute('aria-invalid', String(!selected));
+  // Every list is optional (an empty list includes all its options); only an entirely empty selection is refused.
+  function validate() {
+    const selected = groups.some(group => options(group).some(option => option.checked));
+    if (error) error.textContent = selected ? '' : 'Select at least one option in any of the lists.';
+    groups.forEach(group => group.setAttribute('aria-invalid', String(!selected)));
     return selected;
   }
-  groups.forEach(group => group.addEventListener('change', () => validateGroup(group)));
+  let tried = false;
+  groups.forEach(group => group.addEventListener('change', () => { if (tried) validate(); }));
   if (form.hasAttribute('data-filter-tools')) groups.forEach(addFilterTools);
   form.addEventListener('submit', event => {
-    const invalid = groups.filter(group => !validateGroup(group));
-    if (invalid.length) {
-      event.preventDefault();
-      invalid[0].clearSearch?.();
-      options(invalid[0])[0].focus();
-    }
+    tried = true;
+    if (validate()) return;
+    event.preventDefault();
+    groups[0].clearSearch?.();
+    options(groups[0])[0].focus();
   });
 
   // Search and Select all for one list. Search only hides options: hidden choices stay selected and are still saved,
   // and Select all acts on the options currently shown, so "search, then select all" picks exactly the matches.
   function addFilterTools(group) {
-    const name = group.dataset.requiredSelection, label = group.dataset.filterLabel || name;
+    const name = group.dataset.filterGroup, label = group.dataset.filterLabel || name;
     const list = group.querySelector('.image-filter-options');
     const rows = options(group).map(input => ({input, row: input.closest('.form-check'), text: input.closest('.form-check').textContent.trim().toLowerCase()}));
 
@@ -73,7 +75,7 @@ document.querySelectorAll('[data-image-filter-form]').forEach(form => {
     all.addEventListener('change', () => {
       const select = all.checked;
       shown().forEach(item => { item.input.checked = select; });
-      validateGroup(group);
+      if (tried) validate();
       refresh();
     });
     rows.forEach(item => item.input.addEventListener('change', refresh));

@@ -42,6 +42,7 @@ public sealed class ResultsExportService
                 if (options.Identity != IdentityMode.None)
                     WriteParticipants(zip, options, people);
                 await WriteProgressAsync(zip, options.Format, completeSets, cancellationToken);
+                await WriteCustomAnnotationsAsync(zip, options, people, cancellationToken);
                 await WriteProblemReportsAsync(zip, options.Format, people, cancellationToken);
                 WriteReadme(zip, options);
             }
@@ -192,6 +193,19 @@ public sealed class ResultsExportService
             DateTime.UtcNow);
     }
 
+    // Findings specialists outlined and named themselves, beyond the image's terms; same identity rules as answers.
+    private async Task WriteCustomAnnotationsAsync(ZipArchive zip, ExportOptions options, People people, CancellationToken cancellationToken)
+    {
+        using var table = Entry(zip, "custom_annotations", options.Format);
+        table.Header(["CustomAnnotationId", "ImageId", "Term", "Coordinates", "SavedAtUtc", .. AnnotatorHeaders(options.Identity)]);
+        await foreach (var custom in context.CustomAnnotations.AsNoTracking().OrderBy(custom => custom.Id).AsAsyncEnumerable().WithCancellation(cancellationToken))
+        {
+            var person = people.ById(custom.UserId);
+            table.Row([custom.Id, custom.MedDataId, custom.Term, custom.Coordinates, custom.CreatedAt,
+                .. AnnotatorValues(options.Identity, person, person?.Position, person?.ClinicalExperience ?? 0)]);
+        }
+    }
+
     // Problem reports carry account ids only, like the admin log, so they are safe in every identity mode.
     private async Task WriteProblemReportsAsync(ZipArchive zip, ExportFormat format, People people, CancellationToken cancellationToken)
     {
@@ -245,6 +259,9 @@ public sealed class ResultsExportService
                               one row per labelled group; students submit every group of an image at once.
             participants      annotator profiles (omitted when identity is none)
             progress          counts at export time
+            custom_annotations
+                              findings a specialist outlined and named themselves because they were not among the
+                              image's highlighted terms; one row per contour, Coordinates as below.
             problem_reports   technical problems: reports typed by participants (user-report) and errors their pages
                               logged automatically (image-load-error, save-error, script-error). Account ids only.
 

@@ -223,9 +223,9 @@ public class IdentityController : Controller
                 UserName = signupDto.Email?.Trim(),
                 University = signupDto.University,
                 Position = signupDto.Position,
-                Speciality = ImageFiltersDto.JoinSelection(signupDto.Speciality!),
-                BodyRegion = ImageFiltersDto.JoinSelection(signupDto.BodyRegion!),
-                ImageModality = ImageFiltersDto.JoinSelection(signupDto.ImageModality!),
+                Speciality = ImageFiltersDto.JoinSelection(signupDto.Speciality),
+                BodyRegion = ImageFiltersDto.JoinSelection(signupDto.BodyRegion),
+                ImageModality = ImageFiltersDto.JoinSelection(signupDto.ImageModality),
                 ClinicalExperience = signupDto.ClinicalExperience ?? 0,
                 OrcidId = signupDto.OrcidId,
             };
@@ -279,9 +279,9 @@ public class IdentityController : Controller
         var user = await userManager.GetUserAsync(User);
         if (user is null) return Challenge();
 
-        var speciality = ImageFiltersDto.JoinSelection(filters.Speciality!);
-        var bodyRegion = ImageFiltersDto.JoinSelection(filters.BodyRegion!);
-        var modality = ImageFiltersDto.JoinSelection(filters.ImageModality!);
+        var speciality = ImageFiltersDto.JoinSelection(filters.Speciality);
+        var bodyRegion = ImageFiltersDto.JoinSelection(filters.BodyRegion);
+        var modality = ImageFiltersDto.JoinSelection(filters.ImageModality);
         if (user.Speciality != speciality || user.BodyRegion != bodyRegion || user.ImageModality != modality)
         {
             await medDataRepository.ReleaseAssignmentsAsync(user.Id, User.IsInRole("Medical_Student"));

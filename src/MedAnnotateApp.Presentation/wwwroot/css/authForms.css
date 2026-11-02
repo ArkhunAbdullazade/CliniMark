@@ -60,7 +60,8 @@ body:has(.auth-focus) main { padding-bottom: 0 !important; }
 .auth-page .image-filter-options .form-check:hover { background: var(--paper); }
 .auth-page .image-filter-options .form-check-input { flex: 0 0 auto; float: none; margin: 10px 0 0; }
 .auth-page .image-filter-options .form-check-label { flex: 1; min-width: 0; padding: 6px 0; line-height: 1.5; overflow-wrap: anywhere; cursor: pointer; }
-.auth-page [data-selection-error]:not(:empty) { display: block; margin-top: 6px; line-height: 1.4; }
+.auth-page [data-filter-error] { margin: 8px 0 0; line-height: 1.4; }
+.auth-page [data-filter-error]:empty { display: none; }
 /* Search and Select all above each filter list. */
 .auth-page .image-filter-tools { display: flex; flex-direction: column; gap: 6px; margin-bottom: 6px; }
 .auth-page .image-filter-search { min-height: 36px; padding: 6px 10px; font-size: .9375rem; }

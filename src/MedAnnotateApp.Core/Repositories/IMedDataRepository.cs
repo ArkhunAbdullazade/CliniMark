@@ -20,4 +20,7 @@ public interface IMedDataRepository
     Task<IReadOnlyList<AnnotatedMedData>?> GetProfessionalAnnotationsAsync(int medDataId, User user);
     Task<bool> RefreshAssignmentAsync(int medDataId, string userId, bool isStudent);
     Task AddProblemReportAsync(ProblemReport report);
+    Task<(AnnotationSaveResult Result, int? Id)> SaveCustomAnnotationAsync(User user, int medDataId, string? term, string? coordinates);
+    Task<AnnotationSaveResult> DeleteCustomAnnotationAsync(User user, int customAnnotationId);
+    Task<IReadOnlyList<CustomAnnotation>?> GetCustomAnnotationsAsync(int medDataId, User user);
 }

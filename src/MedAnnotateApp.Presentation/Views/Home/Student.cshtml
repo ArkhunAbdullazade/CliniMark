@@ -24,7 +24,7 @@
                 </div>
             </div>
             <div class="buttons-section">
-                <a asp-controller="Identity" asp-action="Filters" class="btn filters-button">Filters</a>
+                <a asp-controller="Identity" asp-action="Filters" class="btn filters-button" data-description="Choose which specialities, body regions and image modalities your images come from. Every list is optional.">Filters</a>
                 <div class="decision-buttons decision-buttons-wide">
                     <button id="submit-button" class="primary-button" disabled>Submit Annotations</button>
                 </div>
@@ -137,6 +137,7 @@ else
 
 @* First, so it can report errors from every script after it. *@
 <script src="~/js/problemReport.js" asp-append-version="true"></script>
+<script src="~/js/hoverDescriptions.js" asp-append-version="true"></script>
 <script src="~/js/annotationGeometry.js" asp-append-version="true"></script>
 <script src="~/js/canvas.js" asp-append-version="true"></script>
 <script src="~/js/studentCanvas.js" asp-append-version="true"></script>

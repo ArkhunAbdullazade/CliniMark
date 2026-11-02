@@ -1,17 +1,24 @@
 namespace MedAnnotateApp.Core.Models;
 
-/// <summary>The three category columns on MedData contain one value each; users may select several values.</summary>
+/// <summary>
+/// The three category columns on MedData contain one value each; users may select several values. Every list is
+/// optional: an empty list does not restrict its category, so choosing only "microscopy" offers every microscopy image.
+/// At least one option must be chosen in some list.
+/// </summary>
 public sealed record ImageSelectionFilters(string[] Specialities, string[] BodyRegions, string[] Modalities)
 {
-    public bool IsComplete => Specialities.Length > 0 && BodyRegions.Length > 0 && Modalities.Length > 0;
+    public bool HasSelection => Specialities.Length > 0 || BodyRegions.Length > 0 || Modalities.Length > 0;
 
     public static ImageSelectionFilters Parse(string? speciality, string? bodyRegion, string? imageModality) =>
         new(Split(speciality), Split(bodyRegion), Split(imageModality));
 
-    public bool Matches(MedData image) => IsComplete
-        && Specialities.Contains(Normalize(image.Speciality))
-        && BodyRegions.Contains(Normalize(image.BodyRegion))
-        && Modalities.Contains(Normalize(image.Modality));
+    public bool Matches(MedData image) => Matches(image.Speciality, image.BodyRegion, image.Modality);
+
+    public bool Matches(string? speciality, string? bodyRegion, string? modality) => HasSelection
+        && Allows(Specialities, speciality) && Allows(BodyRegions, bodyRegion) && Allows(Modalities, modality);
+
+    // A chosen list needs a matching value; images without that metadata cannot match it.
+    private static bool Allows(string[] chosen, string? value) => chosen.Length == 0 || chosen.Contains(Normalize(value));
 
     private static string Normalize(string? value) => value?.Trim().ToLowerInvariant() ?? string.Empty;
 

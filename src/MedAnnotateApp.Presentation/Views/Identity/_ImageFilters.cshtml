@@ -12,13 +12,13 @@
 @if (!compact)
 {
     <h2>Choose images to annotate</h2>
-    <p id="image-filter-help">Select at least one option in each list. You can select multiple options. Images must match a selection in all three lists.</p>
+    <p id="image-filter-help">Every list is optional: select at least one option in any of them. Leaving a list empty includes all of its options, and you can select several options in a list.</p>
 }
-<div class="row g-3">
+<div class="row g-3" @(compact ? "" : "aria-describedby=image-filter-help")>
     @foreach (var group in groups)
     {
-        <fieldset class="col-md-4" data-required-selection="@group.Name" data-filter-label="@group.Label" aria-describedby="@(compact ? "" : "image-filter-help ")@group.Name-error">
-            <legend>@group.Label <span class="text-muted">(required)</span></legend>
+        <fieldset class="col-md-4" data-filter-group="@group.Name" data-filter-label="@group.Label" aria-describedby="image-filter-error">
+            <legend>@group.Label <span class="text-muted">(optional)</span></legend>
             <div class="border rounded p-2 image-filter-options">
                 @for (var index = 0; index < group.Options.Length; index++)
                 {
@@ -30,7 +30,8 @@
                     </div>
                 }
             </div>
-            <span id="@group.Name-error" class="text-danger" data-selection-error aria-live="polite"></span>
         </fieldset>
     }
 </div>
+@* One message for the whole form: only an entirely empty selection is refused. *@
+<p id="image-filter-error" class="text-danger" data-filter-error aria-live="polite"></p>

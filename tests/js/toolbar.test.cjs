@@ -47,7 +47,7 @@ function toolbar() {
   const canvas = new Element('canvas');
   canvas.width = 1200; canvas.height = 800;
   Object.assign(manager, {canvas, ctx: drawingContext, sourceImage: {},
-    currentMode: 'rectangle', annotations: [], ready: true});
+    currentMode: 'rectangle', annotations: [], ready: true, customShapes: [], pendingCustom: null});
   return {manager, tools: manager.createTools(new Element('div'))};
 }
 
@@ -93,3 +93,18 @@ test('zoom to area is its own mode: it drops the selection and hands back to dra
   pressed(tools.zoomButton, false); pressed(tools.freehandButton, true);
   assert.deepEqual(hints.at(-1), [false, 'zoom']);
 });
+
+test('the specialist toolbar adds Custom annotation between Freehand Contour and Zoom to Area, with its explanation', () => {
+  const {manager} = toolbar();
+  manager.toolsContainer = null;
+  const tools = manager.createTools(new Element('div'), {custom: true});
+  assert.deepEqual(Object.keys(tools), ['rectButton', 'freehandButton', 'customButton', 'zoomButton']);
+  assert.deepEqual(manager.toolsContainer.children.map(button => button.getAttribute('data-label')),
+    ['Boundary Box', 'Freehand Contour', 'Custom annotation', 'Zoom to Area']);
+  assert.match(tools.customButton.getAttribute('data-description'), /^Additionally annotate and register any medical term/);
+  manager.switchMode('custom');
+  pressed(tools.customButton, true); pressed(tools.freehandButton, false); pressed(tools.rectButton, false);
+  manager.switchMode('freehand');
+  pressed(tools.customButton, false); pressed(tools.freehandButton, true);
+});
+

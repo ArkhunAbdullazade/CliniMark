@@ -20,7 +20,7 @@ public class MedDataRepository : IMedDataRepository
         string? speciality, string? position, string? bodyRegion, string? imageModality, string userId)
     {
         var filters = ImageSelectionFilters.Parse(speciality, bodyRegion, imageModality);
-        if (!filters.IsComplete || string.IsNullOrWhiteSpace(userId))
+        if (!filters.HasSelection || string.IsNullOrWhiteSpace(userId))
             return (null, "0/0");
 
         var isStudent = string.Equals(position, "medical student", StringComparison.OrdinalIgnoreCase);
@@ -241,6 +241,60 @@ public class MedDataRepository : IMedDataRepository
             .ExecuteUpdateAsync(set => set.SetProperty(item => item.LockedAt, now)) > 0 || await own.AnyAsync();
     }
 
+    // Custom annotations: findings the specialist names themselves. Each is saved on its own while the image is
+    // assigned to them, under the same checks as term answers (valid geometry, same image dimensions, their filters).
+    public async Task<(AnnotationSaveResult Result, int? Id)> SaveCustomAnnotationAsync(User user, int medDataId, string? term, string? coordinates)
+    {
+        term = term?.Trim();
+        if (string.IsNullOrEmpty(term) || term.Length > 1000)
+            return (Failure("Name what this annotation shows, in at most 1,000 characters."), null);
+        if (!AnnotationCoordinates.TryValidate(coordinates, out var error))
+            return (Failure(error), null);
+
+        await using var transaction = await BeginWorkflowAsync();
+        var source = await context.MedDatas.FindAsync(medDataId);
+        if (source == null || !UserFilters(user).Matches(source))
+            return (Failure("This image does not match your selected filters.", true), null);
+        var same = await context.CustomAnnotations.Where(item => item.MedDataId == medDataId && item.UserId == user.Id
+            && item.Term == term && item.Coordinates == coordinates).Select(item => (int?)item.Id).FirstOrDefaultAsync();
+        // A repeated submit (double click, retry after a lost answer) returns the first save instead of a duplicate.
+        if (same != null) return (new(true), same);
+        if (source.IsAnnotated || source.LockedByUserId != user.Id)
+            return (Failure(NoLongerAssigned, true), null);
+        if (!await DimensionsAgreeAsync(source.Id, [coordinates!]))
+            return (Failure("The image dimensions differ from earlier annotations. Stop and ask the research administrator to check the source image.", true), null);
+
+        var custom = new CustomAnnotation { MedDataId = medDataId, UserId = user.Id, Term = term, Coordinates = coordinates!, CreatedAt = DateTime.UtcNow };
+        context.CustomAnnotations.Add(custom);
+        await context.SaveChangesAsync();
+        await transaction.CommitAsync();
+        return (new(true), custom.Id);
+    }
+
+    public async Task<AnnotationSaveResult> DeleteCustomAnnotationAsync(User user, int customAnnotationId)
+    {
+        await using var transaction = await BeginWorkflowAsync();
+        var custom = await context.CustomAnnotations.SingleOrDefaultAsync(item => item.Id == customAnnotationId && item.UserId == user.Id);
+        if (custom == null) return new(true);
+        var source = await context.MedDatas.FindAsync(custom.MedDataId);
+        // Only while the image is still being annotated; completed work stays as saved.
+        if (source == null || source.IsAnnotated || source.LockedByUserId != user.Id)
+            return Failure(NoLongerAssigned, true);
+        context.CustomAnnotations.Remove(custom);
+        await context.SaveChangesAsync();
+        await transaction.CommitAsync();
+        return new(true);
+    }
+
+    public async Task<IReadOnlyList<CustomAnnotation>?> GetCustomAnnotationsAsync(int medDataId, User user)
+    {
+        var image = await context.MedDatas.AsNoTracking().SingleOrDefaultAsync(item => item.Id == medDataId);
+        if (image == null || image.LockedByUserId != user.Id || !UserFilters(user).Matches(image))
+            return null;
+        return await context.CustomAnnotations.AsNoTracking()
+            .Where(item => item.MedDataId == medDataId && item.UserId == user.Id).OrderBy(item => item.Id).ToListAsync();
+    }
+
     public async Task AddProblemReportAsync(ProblemReport report)
     {
         context.ProblemReports.Add(report);
@@ -284,10 +338,17 @@ public class MedDataRepository : IMedDataRepository
         await transaction.CommitAsync();
     }
 
-    private static IQueryable<MedData> ApplyFilters(IQueryable<MedData> query, ImageSelectionFilters filters) =>
-        query.Where(image => image.Speciality != null && filters.Specialities.Contains(image.Speciality.Trim().ToLower())
-            && image.BodyRegion != null && filters.BodyRegions.Contains(image.BodyRegion.Trim().ToLower())
-            && image.Modality != null && filters.Modalities.Contains(image.Modality.Trim().ToLower()));
+    // Only the lists the person chose restrict the images; an empty list allows every value of its category.
+    private static IQueryable<MedData> ApplyFilters(IQueryable<MedData> query, ImageSelectionFilters filters)
+    {
+        if (filters.Specialities.Length > 0)
+            query = query.Where(image => image.Speciality != null && filters.Specialities.Contains(image.Speciality.Trim().ToLower()));
+        if (filters.BodyRegions.Length > 0)
+            query = query.Where(image => image.BodyRegion != null && filters.BodyRegions.Contains(image.BodyRegion.Trim().ToLower()));
+        if (filters.Modalities.Length > 0)
+            query = query.Where(image => image.Modality != null && filters.Modalities.Contains(image.Modality.Trim().ToLower()));
+        return query;
+    }
 
     internal static void ClearProfessionalLock(MedData image)
     {
@@ -313,6 +374,8 @@ public class MedDataRepository : IMedDataRepository
         var saved = await context.AnnotatedMedDatas.Where(item => item.MedDataId == id)
             .Select(item => item.BoxCoordinates).ToListAsync();
         saved.AddRange(await context.AnnotatedByStudentsMedDatas.Where(item => item.MedDataId == id)
+            .Select(item => item.Coordinates).ToListAsync());
+        saved.AddRange(await context.CustomAnnotations.Where(item => item.MedDataId == id)
             .Select(item => item.Coordinates).ToListAsync());
         (int Width, int Height)? expected = null;
         foreach (var json in incoming.Concat(saved.OfType<string>()))

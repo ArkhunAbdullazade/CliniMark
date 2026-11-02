@@ -6,7 +6,8 @@ document.addEventListener("DOMContentLoaded", () => {
   let baseStatus = {message: status?.textContent || "", state: status?.dataset.state || "ready"};
   let inspecting = null;
   const inspectionHints = {
-    zoom: "Zoom to Area: drag a box over the image, or click a point, to see it enlarged. Select Boundary Box or Freehand Contour to draw again."
+    zoom: "Zoom to Area: drag a box over the image, or click a point, to see it enlarged. Select Boundary Box or Freehand Contour to draw again.",
+    custom: "Custom annotation: draw a closed contour around any finding that is not highlighted in the text, then name and save it. Select Boundary Box or Freehand Contour to return to the current term."
   };
   // The term in the current-term prompt is shown in bold red, so the specialist sees at once what to outline.
   const currentTermPrompt = /^(Annotate the current term: )(.+)(\. Draw a rectangular boundary box or a free contour\. Zoom, move, resize, rotate, and delete as needed\.)$/s;
@@ -43,7 +44,7 @@ document.addEventListener("DOMContentLoaded", () => {
     return result;
   };
   window.addEventListener("beforeunload", e => {
-    if (!navigating && (dirty || saving)) { e.preventDefault(); e.returnValue = ""; }
+    if (!navigating && (dirty || saving || custom?.hasPending())) { e.preventDefault(); e.returnValue = ""; }
   });
   for (const id of ["end-button", "end-button-center"]) {
     document.getElementById(id)?.addEventListener("click", async () => {
@@ -77,10 +78,14 @@ document.addEventListener("DOMContentLoaded", () => {
   window.canvasManager = manager;
   manager.onInspectionChange = inspectionChanged;
   if (status?.dataset.state === "error") showStatus(status.textContent, "error");
-  const tools = manager.createTools(document.getElementById("image-container"));
+  const tools = manager.createTools(document.getElementById("image-container"), {custom: true});
   tools.rectButton.addEventListener("click", () => manager.switchMode("rectangle"));
   tools.freehandButton.addEventListener("click", () => manager.switchMode("freehand"));
+  tools.customButton?.addEventListener("click", () => manager.switchMode("custom"));
   tools.zoomButton.addEventListener("click", () => manager.switchMode("zoom"));
+  // Findings beyond the term list, saved on their own (customAnnotations.js); absent in some tests.
+  const custom = window.setupCustomAnnotations?.({manager, imageId: assignmentId, request, showStatus, requestFailed});
+  let customRecords = [];
   let history = [], currentIndex = -1, reviewIndex = -1;
   let historyLoaded = false, historyLoading = false;
   let started = Date.now(), firstDraw = 0;
@@ -96,6 +101,8 @@ document.addEventListener("DOMContentLoaded", () => {
     comments.disabled = released || !initialized || !manager.ready || saving || reviewIndex !== -1 || complete;
     problem.disabled = saving;
     manager.readOnly = released || !initialized || !manager.ready || saving || reviewIndex !== -1 || complete;
+    // Custom annotations can be added whenever the image is theirs, including while reviewing or after the last term.
+    manager.customAllowed = !released && initialized && manager.ready && !saving;
     occurrences.forEach(term => {
       const i = terms.findIndex(first => first.dataset.keyword === term.dataset.keyword);
       term.classList.remove("current_keyword", "annotated_keyword", "not_annotated_keyword", "skipped_keyword");
@@ -130,6 +137,7 @@ document.addEventListener("DOMContentLoaded", () => {
       try {
         const result = await request(`/MedData/CurrentAnnotations?medDataId=${encodeURIComponent(assignmentId)}`);
         history = result.annotations || [];
+        customRecords = result.customAnnotations || [];
         historyLoaded = true;
         window.hasAnnotatedCurrentImage = history.length > 0;
       } catch (error) { requestFailed("Loading saved answers", error); showStatus(error.message, "error"); buttons(); return; }
@@ -137,6 +145,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     if (!manager.ready) return;
     initialized = true;
+    custom?.load(customRecords);
     showCurrent();
   }
   manager.canvas.addEventListener("annotationimageready", initialize);
@@ -203,6 +212,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const lockLost = error => { if (error.status === 409) watch?.check(); };
   next.addEventListener("click", async () => {
     if (released || saving || !initialized || !manager.ready) return;
+    if (custom?.hasPending()) { showStatus("Save or cancel the custom annotation before moving on.", "error"); return; }
     if (currentIndex !== -1) { await save("Save and Next Term"); return; }
     saving = true; buttons(); showStatus("Loading the next image…", "saving");
     try {

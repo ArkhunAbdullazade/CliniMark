@@ -193,3 +193,27 @@ test('pointer cancellation restores exact box and freehand geometry without repo
   }
 });
 
+test('custom annotation contours are held apart from the term, work while term tools are locked and are dropped on a tool change',()=>{
+  const f=fixture();f.manager.setAnnotations([rectangle()]);
+  const offered=[];f.manager.onCustomShape=shape=>offered.push(shape);
+  const before=f.manager.getAllAnnotationsJSON();
+  const trace=(m,from)=>{m.handleMouseDown(f.event(...from));for(const p of [[700,150],[700,350],[600,350]])m.handleMouseMove(f.event(...p));m.handleMouseUp(f.event(600,350));};
+  f.manager.switchMode('custom');
+  // Locked term tools (review, last term saved) still allow custom annotation when the page permits it.
+  f.manager.readOnly=true;f.manager.customAllowed=true;
+  trace(f.manager,[600,150]);
+  assert.equal(offered.length,1);assert.equal(offered[0].type,'freehand');
+  assert.equal(f.manager.pendingCustom,offered[0]);
+  assert.equal(f.manager.getAllAnnotationsJSON(),before,'The term answer is unchanged');assert.equal(f.changes(),0);
+  const saved=JSON.parse(f.manager.getCustomCoordinatesJSON(f.manager.pendingCustom));
+  assert.equal(saved.annotations.length,1);assert.equal(saved.annotations[0].type,'freehand');
+  geometry.validate(saved,1200,800);
+  // A second contour waits until the first is named or cancelled.
+  trace(f.manager,[100,100]);assert.equal(offered.length,1);
+  f.manager.switchMode('rectangle');
+  assert.equal(f.manager.pendingCustom,null);assert.equal(offered.at(-1),null);
+  // Without the page's permission, custom drawing is locked like the term tools.
+  f.manager.switchMode('custom');f.manager.customAllowed=false;
+  trace(f.manager,[600,150]);assert.equal(offered.length,2);assert.equal(f.manager.pendingCustom,null);
+});
+
