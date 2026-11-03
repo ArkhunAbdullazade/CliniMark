@@ -260,10 +260,12 @@ public class IdentityController : Controller
 
     [HttpGet]
     [Authorize(Roles = "Professional,Medical_Student")]
-    public async Task<IActionResult> Filters()
+    public async Task<IActionResult> Filters([FromQuery] bool completed = false)
     {
         var user = await userManager.GetUserAsync(User);
         if (user is null) return Challenge();
+        // Arriving from the end-of-series screen: the page thanks them and invites a new series.
+        ViewData["SeriesCompleted"] = completed;
         return View(new ImageFiltersDto
         {
             Speciality = SplitSelection(user.Speciality),
@@ -298,6 +300,20 @@ public class IdentityController : Controller
             }
         }
         return RedirectToRoleBasedPage();
+    }
+
+    // Live count on the Filters page, so nobody picks a selection that leaves them with nothing to annotate.
+    [HttpGet]
+    [Authorize(Roles = "Professional,Medical_Student")]
+    [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
+    public async Task<IActionResult> FilterAvailability([FromQuery] ImageFiltersDto filters)
+    {
+        if (!ModelState.IsValid) return Json(new { available = 0 });
+        var userId = userManager.GetUserId(User);
+        if (userId is null) return Unauthorized();
+        var selection = ImageSelectionFilters.Parse(ImageFiltersDto.JoinSelection(filters.Speciality),
+            ImageFiltersDto.JoinSelection(filters.BodyRegion), ImageFiltersDto.JoinSelection(filters.ImageModality));
+        return Json(new { available = await medDataRepository.CountAvailableAsync(selection, User.IsInRole("Medical_Student"), userId) });
     }
 
     private bool HasResearchAccess() => HttpContext.Session.GetString("Authorized") == "true";

@@ -108,19 +108,7 @@
 }
 else
 {
-    <div class="centered-container">
-        <div class="no-data-message">
-            <div class="no-data-icon">
-                <i class="bi bi-file-earmark-x"></i>
-            </div>
-            <h3>@(AnnotationProgress.IsComplete(counter) ? "All matching images have been completed." : "No available images match all of your selected filters.")</h3>
-            <p>@(AnnotationProgress.IsComplete(counter) ? "Saved annotations remain in the database for research evaluation." : "Images may be completed, assigned to another user, or missing the selected metadata.")</p>
-            <a asp-controller="Identity" asp-action="Filters" class="button">Filters</a>
-            <button id="end-button-center" type="button" class="button mt-4">
-                Log Out
-            </button>
-        </div>
-    </div>
+    <partial name="_SeriesEnd" />
 }
 
 @section HeaderActions {

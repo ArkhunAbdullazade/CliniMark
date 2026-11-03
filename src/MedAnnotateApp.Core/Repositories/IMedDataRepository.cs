@@ -19,6 +19,8 @@ public interface IMedDataRepository
     Task<AnnotationSaveResult> SaveStudentAsync(User user, IReadOnlyList<AnnotatedByStudentsMedData> annotations);
     Task<IReadOnlyList<AnnotatedMedData>?> GetProfessionalAnnotationsAsync(int medDataId, User user);
     Task<bool> RefreshAssignmentAsync(int medDataId, string userId, bool isStudent);
+    Task<int> CountAvailableAsync(ImageSelectionFilters filters, bool isStudent, string userId);
+    Task<int> CountCompletedByAsync(User user, bool isStudent);
     Task AddProblemReportAsync(ProblemReport report);
     Task<(AnnotationSaveResult Result, int? Id)> SaveCustomAnnotationAsync(User user, int medDataId, string? term, string? coordinates);
     Task<AnnotationSaveResult> DeleteCustomAnnotationAsync(User user, int customAnnotationId);

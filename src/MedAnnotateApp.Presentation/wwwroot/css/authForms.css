@@ -62,6 +62,13 @@ body:has(.auth-focus) main { padding-bottom: 0 !important; }
 .auth-page .image-filter-options .form-check-label { flex: 1; min-width: 0; padding: 6px 0; line-height: 1.5; overflow-wrap: anywhere; cursor: pointer; }
 .auth-page [data-filter-error] { margin: 8px 0 0; line-height: 1.4; }
 .auth-page [data-filter-error]:empty { display: none; }
+/* Filters page: live count of images the selection offers, and the thank-you after a finished series. */
+.auth-page .filter-availability { margin: 10px 0 0; color: var(--ink-2); font-weight: 600; }
+.auth-page .filter-availability:empty { display: none; }
+.auth-page .filter-availability[data-state="ok"] { color: #0f6e4c; }
+.auth-page .filter-availability[data-state="none"] { color: var(--cardinal); }
+.auth-page .series-thanks { display: flex; align-items: center; gap: 8px; margin: 0 0 16px; padding: 10px 14px; color: #0f5132; background: #e8f5ee; border: 1px solid #b7dfc8; border-radius: var(--radius-control); font-weight: 600; }
+.auth-page .series-thanks .bi { font-size: 1.2rem; }
 /* Search and Select all above each filter list. */
 .auth-page .image-filter-tools { display: flex; flex-direction: column; gap: 6px; margin-bottom: 6px; }
 .auth-page .image-filter-search { min-height: 36px; padding: 6px 10px; font-size: .9375rem; }

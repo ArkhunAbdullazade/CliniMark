@@ -25,10 +25,7 @@ public class MedDataRepository : IMedDataRepository
 
         var isStudent = string.Equals(position, "medical student", StringComparison.OrdinalIgnoreCase);
         await using var transaction = await BeginWorkflowAsync();
-        var matching = ApplyFilters(context.MedDatas, filters)
-            .Where(image => image.ExcludedAt == null && image.ImageUrl != null && image.ImageUrl.Trim() != "");
-        if (!isStudent)
-            matching = matching.Where(image => image.MedDataKeywords!.Any(keyword => keyword.Keyword != null && keyword.Keyword.Trim() != ""));
+        var matching = InStudy(filters, isStudent);
 
         var total = await matching.CountAsync();
         var completed = await matching.CountAsync(image => isStudent ? image.IsAnnotatedByStudent : image.IsAnnotated);
@@ -82,6 +79,36 @@ public class MedDataRepository : IMedDataRepository
         await context.SaveChangesAsync();
         await transaction.CommitAsync();
         return (assigned, counter);
+    }
+
+    // The images a selection covers for a role: in the study, with a link, and (for specialists) at least one term.
+    private IQueryable<MedData> InStudy(ImageSelectionFilters filters, bool isStudent)
+    {
+        var matching = ApplyFilters(context.MedDatas, filters)
+            .Where(image => image.ExcludedAt == null && image.ImageUrl != null && image.ImageUrl.Trim() != "");
+        return isStudent ? matching
+            : matching.Where(image => image.MedDataKeywords!.Any(keyword => keyword.Keyword != null && keyword.Keyword.Trim() != ""));
+    }
+
+    // Shown live on the Filters page: images this person could still be given with a selection (not yet completed for
+    // their role, and free or already theirs).
+    public Task<int> CountAvailableAsync(ImageSelectionFilters filters, bool isStudent, string userId) =>
+        !filters.HasSelection ? Task.FromResult(0)
+        : isStudent
+            ? InStudy(filters, true).CountAsync(image => !image.IsAnnotatedByStudent && (image.LockedByStudentUserId == null || image.LockedByStudentUserId == userId))
+            : InStudy(filters, false).CountAsync(image => !image.IsAnnotated && (image.LockedByUserId == null || image.LockedByUserId == userId));
+
+    // For the end-of-series screen: images in the person's current selection that they themselves completed.
+    public Task<int> CountCompletedByAsync(User user, bool isStudent)
+    {
+        var filters = UserFilters(user);
+        if (!filters.HasSelection || string.IsNullOrWhiteSpace(user.Email)) return Task.FromResult(0);
+        var email = user.Email;
+        return isStudent
+            ? InStudy(filters, true).CountAsync(image => image.IsAnnotatedByStudent
+                && context.AnnotatedByStudentsMedDatas.Any(group => group.MedDataId == image.Id && group.Email == email))
+            : InStudy(filters, false).CountAsync(image => image.IsAnnotated
+                && context.AnnotatedMedDatas.Any(answer => answer.MedDataId == image.Id && answer.Email == email));
     }
 
     public async Task<IEnumerable<string?>> GetKeywordsByMedDataIdAsync(int id) =>

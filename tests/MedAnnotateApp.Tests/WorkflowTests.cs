@@ -216,6 +216,28 @@ public sealed class WorkflowTests
     }
 
     [Fact]
+    public async Task AvailabilityAndCompletedCountsFollowTheSelectionLocksAndTheAnnotator()
+    {
+        await using var db = await WorkflowDatabase.CreateAsync();
+        var cardiology = ImageSelectionFilters.Parse("cardiology", null, null); // images 1, 3 and 4
+        Assert.Equal(3, await db.Repository.CountAvailableAsync(cardiology, false, db.Owner.Id));
+        Assert.Equal(0, await db.Repository.CountAvailableAsync(ImageSelectionFilters.Parse(null, " , ", null), false, db.Owner.Id));
+
+        await db.AssignAsync(); // the owner now holds image 1
+        Assert.Equal(3, await db.Repository.CountAvailableAsync(cardiology, false, db.Owner.Id));
+        Assert.Equal(2, await db.Repository.CountAvailableAsync(cardiology, false, db.Other.Id));
+        Assert.Equal(3, await db.Repository.CountAvailableAsync(cardiology, true, db.Other.Id));
+
+        Assert.Equal(0, await db.Repository.CountCompletedByAsync(db.Owner, false));
+        Assert.True((await db.Repository.SaveProfessionalAsync(db.Owner, Response(1))).Success);
+        Assert.True((await db.Repository.CompleteProfessionalAsync(1, db.Owner)).Success);
+        Assert.Equal(1, await db.Repository.CountCompletedByAsync(db.Owner, false));
+        Assert.Equal(0, await db.Repository.CountCompletedByAsync(db.Other, false));
+        Assert.Equal(0, await db.Repository.CountCompletedByAsync(db.Owner, true));
+        Assert.Equal(2, await db.Repository.CountAvailableAsync(cardiology, false, db.Other.Id));
+    }
+
+    [Fact]
     public async Task OtherUserCannotSaveCompleteReadOrUnlockOwnedImage()
     {
         await using var db = await WorkflowDatabase.CreateAsync();

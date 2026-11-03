@@ -13,6 +13,34 @@ document.querySelectorAll('[data-image-filter-form]').forEach(form => {
   let tried = false;
   groups.forEach(group => group.addEventListener('change', () => { if (tried) validate(); }));
   if (form.hasAttribute('data-filter-tools')) groups.forEach(addFilterTools);
+
+  // The Filters page shows how many images the current selection would offer, so nobody chooses an empty series.
+  const availability = form.querySelector('[data-filter-availability]');
+  const availabilityUrl = form.dataset.availabilityUrl;
+  let availabilityTimer = 0, availabilityRequest = 0;
+  function refreshAvailability() {
+    if (!availability || !availabilityUrl) return;
+    clearTimeout(availabilityTimer);
+    availabilityTimer = setTimeout(async () => {
+      const params = new URLSearchParams();
+      groups.forEach(group => options(group).filter(option => option.checked).forEach(option => params.append(option.name, option.value)));
+      const request = ++availabilityRequest;
+      if (![...params.keys()].length) { availability.textContent = ''; availability.dataset.state = ''; return; }
+      try {
+        const response = await fetch(`${availabilityUrl}?${params}`, {headers: {Accept: 'application/json'}, cache: 'no-store'});
+        const {available} = await response.json();
+        if (request !== availabilityRequest) return;
+        availability.dataset.state = available > 0 ? 'ok' : 'none';
+        availability.textContent = available > 0
+          ? `${available} ${available === 1 ? 'image is' : 'images are'} available for you with this selection.`
+          : 'No images are available for you with this selection. Add more options to find images.';
+      } catch {
+        if (request === availabilityRequest) { availability.textContent = ''; availability.dataset.state = ''; }
+      }
+    }, 250);
+  }
+  groups.forEach(group => group.addEventListener('change', refreshAvailability));
+  refreshAvailability();
   form.addEventListener('submit', event => {
     tried = true;
     if (validate()) return;

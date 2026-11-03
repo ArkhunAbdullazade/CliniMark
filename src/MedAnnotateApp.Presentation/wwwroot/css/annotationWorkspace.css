@@ -185,6 +185,10 @@ main[role="main"] { height: 100%; min-height: 0; padding-bottom: 0 !important; }
 .no-data-icon { display: none; }
 .no-data-message h3 { margin: 0 0 4px; color: var(--ink) !important; font-size: 1.5rem; font-weight: 700; line-height: 1.25; }
 .no-data-message p { margin: 0 0 12px; color: var(--ink-2); line-height: 1.5; }
+/* End of a series: a warm thank-you and a clear next step (Views/Home/_SeriesEnd.cshtml). */
+.series-icon { display: inline-flex; align-items: center; justify-content: center; width: 56px; height: 56px; margin-bottom: 4px; color: #fff; background: var(--cardinal); border-radius: 50%; font-size: 1.6rem; }
+.series-complete h3 { color: var(--cardinal) !important; }
+.no-data-message .series-next { font-size: 1rem; padding: 10px 20px; }
 .no-data-message #end-button-center { margin-top: 0 !important; color: var(--ink-2); background: var(--surface); border-color: var(--line); }
 .no-data-message #end-button-center:hover { color: var(--ink); background: var(--hover); border-color: #b4bfc5; }
 

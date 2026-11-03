@@ -1,11 +1,13 @@
 @model MedAnnotateApp.Presentation.Dtos.ImageFiltersDto
 @using MedAnnotateApp.Presentation.Dtos
 @{
+    // Image modality first: it matches a clinician's reading skill and is the most reliable label; speciality narrows
+    // to familiar diseases; body region mainly helps organ-focused experts.
     var groups = new[]
     {
+        (Name: "ImageModality", Label: "Image modality", Options: ImageFilterOptions.ImageModalities, Selected: Model?.ImageModality),
         (Name: "Speciality", Label: "Speciality", Options: ImageFilterOptions.Specialities, Selected: Model?.Speciality),
-        (Name: "BodyRegion", Label: "Body region", Options: ImageFilterOptions.BodyRegions, Selected: Model?.BodyRegion),
-        (Name: "ImageModality", Label: "Image modality", Options: ImageFilterOptions.ImageModalities, Selected: Model?.ImageModality)
+        (Name: "BodyRegion", Label: "Body region", Options: ImageFilterOptions.BodyRegions, Selected: Model?.BodyRegion)
     };
     var compact = ViewData["CompactImageFilters"] as bool? == true;
 }

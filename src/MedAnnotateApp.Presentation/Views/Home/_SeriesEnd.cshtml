@@ -1,0 +1,34 @@
+@*
+    Shown when a participant has no image left in their filters. After finishing a series it thanks them and invites
+    them to choose new filters, so they can keep annotating for as long as they are able to.
+*@
+@{
+    var counter = ViewBag.Counter as string;
+    var completedByMe = ViewBag.CompletedByMe as int? ?? 0;
+    var allDone = AnnotationProgress.IsComplete(counter);
+}
+<div class="centered-container">
+    <div class="no-data-message @(completedByMe > 0 ? "series-complete" : "")">
+        @if (completedByMe > 0)
+        {
+            <div class="series-icon" aria-hidden="true"><i class="bi bi-award"></i></div>
+            <h3>Congratulations, you have finished this series!</h3>
+            <p>Thank you! You annotated <strong>@completedByMe @(completedByMe == 1 ? "image" : "images")</strong> in your current filters. Every one of them goes straight into the research data.</p>
+            <p>Would you like to continue? Choose new filters to start a new series of images.</p>
+        }
+        else if (allDone)
+        {
+            <h3>Every image in your filters has been annotated</h3>
+            <p>Other participants have completed this series. Choose new filters to continue with new images.</p>
+        }
+        else
+        {
+            <h3>No images are available in your filters right now</h3>
+            <p>The remaining images may be assigned to someone else at the moment. Choose new filters to continue, or come back later.</p>
+        }
+        <a asp-controller="Identity" asp-action="Filters" asp-route-completed="@(completedByMe > 0 ? "true" : null)" class="button series-next">Choose new filters</a>
+        <button id="end-button-center" type="button" class="button mt-4">
+            Log Out
+        </button>
+    </div>
+</div>

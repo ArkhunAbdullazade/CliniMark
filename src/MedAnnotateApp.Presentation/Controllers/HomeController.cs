@@ -82,6 +82,8 @@ public class HomeController : Controller
                 user.Id);
 
             ViewBag.Counter = counter;
+            // With nothing left, the end-of-series screen thanks them for what they completed in these filters.
+            if (medData == null) ViewBag.CompletedByMe = await medDataRepository.CountCompletedByAsync(user, isStudent: false);
             ViewBag.MedDataKeywords = medData != null
                 ? (await medDataRepository.GetKeywordsByMedDataIdAsync(medData.Id)).ToList()
                 : null;
@@ -118,6 +120,7 @@ public class HomeController : Controller
                 user.Id);
 
             ViewBag.Counter = counter;
+            if (medData == null) ViewBag.CompletedByMe = await medDataRepository.CountCompletedByAsync(user, isStudent: true);
 
             return View(medData);
         }
