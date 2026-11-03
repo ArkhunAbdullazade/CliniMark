@@ -9,4 +9,5 @@ public interface IIdentityService
     Task SignoutAsync();
     Task<(bool Succeeded, string? TemporaryPassword, IEnumerable<string>? Errors)> ResetPasswordAsync(string? email);
     Task<(bool Succeeded, string? TemporaryPassword, IEnumerable<string>? Errors)> CreateAdminAsync(string? email);
+    Task<(bool Succeeded, string? TemporaryPassword, IEnumerable<string>? Errors)> CreateParticipantAsync(User user, string roleName);
 }

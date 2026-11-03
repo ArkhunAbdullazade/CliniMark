@@ -232,3 +232,12 @@ main[role="main"] { height: 100%; min-height: 0; padding-bottom: 0 !important; }
 .custom-delete { flex: 0 0 auto; width: 24px; height: 24px; padding: 0; color: var(--cardinal); background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-control); line-height: 1; cursor: pointer; }
 .custom-delete:hover { color: #fff; background: var(--cardinal); border-color: var(--cardinal); }
 @media (prefers-reduced-motion: reduce) { .custom-annotation-box { animation: none; } }
+
+/* Image source and licence under the image (outside .image-viewport, so the image keeps its size calculation).
+   The full credit opens as an overlay above the line instead of pushing the layout. */
+.image-source { position: relative; flex: 0 0 auto; margin: 2px 0 0; font-size: .78rem; line-height: 1.3; color: #555; text-align: center; }
+.image-source summary { display: inline; cursor: pointer; list-style: none; }
+.image-source summary::-webkit-details-marker { display: none; }
+.image-source a { color: var(--cardinal); }
+.image-source-more { margin-left: 6px; text-decoration: underline dotted; }
+.image-source-text { position: absolute; bottom: calc(100% + 4px); left: 50%; transform: translateX(-50%); z-index: 30; width: min(720px, 94vw); margin: 0; padding: 10px 12px; text-align: left; color: #222; background: var(--surface, #fff); border: 1px solid #c9c9c9; border-radius: 6px; box-shadow: 0 4px 14px rgba(0, 0, 0, .18); }

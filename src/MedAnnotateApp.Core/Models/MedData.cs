@@ -14,6 +14,10 @@ public class MedData
     public string? TreatmentName { get; set; }
     public string? Speciality { get; set; }
     public string? Modality { get; set; }
+
+    // Licence of the source article (e.g. "CC BY 4.0") and the full credit line, shown under the image.
+    public string? SourceLicense { get; set; }
+    public string? Attribution { get; set; }
     public bool IsAnnotated { get; set; }
     public bool IsAnnotatedByStudent { get; set; }
 

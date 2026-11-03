@@ -36,7 +36,10 @@ document.addEventListener("DOMContentLoaded", () => {
   const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value;
   const headers = { "Content-Type": "application/json", "X-CSRF-TOKEN": token || "" };
   const request = async (url, options = {}) => {
-    const response = await fetch(url, { ...options, headers: { ...headers, ...options.headers } });
+    // Repeats the request while the app restarts (requestRetry.js); plain fetch where that script is absent.
+    const send = window.MedAnnotateRetry?.fetchWithRetry || ((u, o) => fetch(u, o));
+    const response = await send(url, { ...options, headers: { ...headers, ...options.headers } },
+      { onRetry: () => showStatus("The connection to the server was lost. Retrying automatically; keep this page open.", "saving") });
     let result;
     try { result = await response.json(); } catch { throw new Error("Your session may have expired. Keep this page open and sign in again in another tab before retrying."); }
     if (!response.ok || result.success === false)

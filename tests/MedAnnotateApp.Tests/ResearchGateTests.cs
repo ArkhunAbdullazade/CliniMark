@@ -3,6 +3,7 @@ using MedAnnotateApp.Presentation.Controllers;
 using MedAnnotateApp.Presentation.Dtos;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
@@ -86,16 +87,52 @@ public class ResearchGateTests
         Assert.Equal(["Authorized"], session.Keys);
     }
 
-    private static IdentityController Controller(TestSession session, string? hash = null)
+    [Fact]
+    public async Task SignupIsClosedWhenTheStudyTeamCreatesAccounts()
+    {
+        var session = new TestSession();
+        session.SetString("Authorized", "true");
+        var controller = Controller(session, registrationEnabled: false);
+
+        foreach (var action in new IActionResult[]
+        {
+            controller.Signup(),
+            await controller.PostSignup(new SignupDto { Email = "person@gmail.com", Password = "AccountPassword1!" })
+        })
+        {
+            Assert.Equal(nameof(IdentityController.Login), Assert.IsType<RedirectToActionResult>(action).ActionName);
+        }
+        Assert.Equal(IdentityController.SignupClosedNotice, controller.TempData["Notice"]);
+    }
+
+    [Fact]
+    public void SignupStaysOpenByDefault()
+    {
+        var session = new TestSession();
+        session.SetString("Authorized", "true");
+        Assert.IsType<ViewResult>(Controller(session).Signup());
+    }
+
+    private static IdentityController Controller(TestSession session, string? hash = null, bool? registrationEnabled = null)
     {
         var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
         {
-            ["AuthorizationAccessPasswordHash"] = hash
+            ["AuthorizationAccessPasswordHash"] = hash,
+            [IdentityController.RegistrationSetting] = registrationEnabled?.ToString()
         }).Build();
+        var httpContext = new DefaultHttpContext { Session = session };
         return new IdentityController(null!, null!, null!, configuration, NullLogger<IdentityController>.Instance)
         {
-            ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext { Session = session } }
+            ControllerContext = new ControllerContext { HttpContext = httpContext },
+            TempData = new TempDataDictionary(httpContext, new MemoryTempDataProvider())
         };
+    }
+
+    private sealed class MemoryTempDataProvider : ITempDataProvider
+    {
+        private IDictionary<string, object> values = new Dictionary<string, object>();
+        public IDictionary<string, object> LoadTempData(HttpContext context) => values;
+        public void SaveTempData(HttpContext context, IDictionary<string, object> values) => this.values = values;
     }
 
     private sealed class TestSession : ISession

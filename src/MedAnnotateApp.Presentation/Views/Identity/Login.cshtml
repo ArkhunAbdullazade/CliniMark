@@ -1,4 +1,5 @@
 @model MedAnnotateApp.Presentation.Dtos.LoginDto
+@inject Microsoft.Extensions.Configuration.IConfiguration Configuration
 
 @{
     ViewBag.Title = "Sign in";
@@ -31,7 +32,14 @@
                 <p class="auth-hint">Forgotten it? The study team can reset it.</p>
             </div>
             <button type="submit" class="btn-submit">Sign in</button>
-            <p class="register-link">No account yet? <a href="/Identity/Signup">Create one</a></p>
+            @if (Configuration.GetValue(MedAnnotateApp.Presentation.Controllers.IdentityController.RegistrationSetting, true))
+            {
+                <p class="register-link">No account yet? <a href="/Identity/Signup">Create one</a></p>
+            }
+            else
+            {
+                <p class="register-link">Accounts are created by the study team.</p>
+            }
         </form>
     </div>
 </section>

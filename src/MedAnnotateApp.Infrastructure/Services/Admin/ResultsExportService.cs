@@ -103,11 +103,12 @@ public sealed class ResultsExportService
             .ToDictionary(group => group.Key, group => string.Join("; ", group.Select(item => item.Keyword!.Trim()).Distinct()));
         using var table = Entry(zip, "images", format);
         table.Header("ImageId", "Pmcid", "ImageUrl", "SourceUrl", "ImageDescription", "Sex", "Age", "SkinTone", "BodyRegion", "Diagnosis",
-            "TreatmentName", "Speciality", "Modality", "Terms", "SpecialistCompleted", "StudentCompleted", "Excluded");
+            "TreatmentName", "Speciality", "Modality", "Terms", "SpecialistCompleted", "StudentCompleted", "Excluded", "SourceLicense",
+            "Attribution");
         await foreach (var image in context.MedDatas.AsNoTracking().OrderBy(image => image.Id).AsAsyncEnumerable().WithCancellation(cancellationToken))
             table.Row(image.Id, image.Pmcid, image.ImageUrl, image.SourceUrl, image.ImageDescription, image.Sex, image.Age, image.SkinTone,
                 image.BodyRegion, image.Diagnosis, image.TreatmentName, image.Speciality, image.Modality, keywords.GetValueOrDefault(image.Id),
-                image.IsAnnotated, image.IsAnnotatedByStudent, image.ExcludedAt != null);
+                image.IsAnnotated, image.IsAnnotatedByStudent, image.ExcludedAt != null, image.SourceLicense, image.Attribution);
     }
 
     private async Task WriteSpecialistAsync(ZipArchive zip, ExportOptions options, People people, HashSet<(int, string)> completeSets,

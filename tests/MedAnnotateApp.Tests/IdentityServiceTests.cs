@@ -235,6 +235,35 @@ public class IdentityServiceTests
         Assert.Null(await fixture.Users.FindByEmailAsync("person@gmail.com"));
     }
 
+    [Fact]
+    public async Task StudyTeamCreatesParticipantsWithGeneratedPasswordsAndNeverChangesExistingAccounts()
+    {
+        await using var fixture = await IdentityFixture.CreateAsync();
+        var participant = new User { Email = "clinician@hospital.example", UserName = "clinician@hospital.example", FullName = "Clinician",
+            Position = "specialist", University = "Hospital", BodyRegion = "chest and thorax" };
+
+        var (created, password, errors) = await fixture.Identity.CreateParticipantAsync(participant, "Professional");
+
+        Assert.True(created, string.Join(" ", errors ?? []));
+        Assert.False(string.IsNullOrWhiteSpace(password));
+        var stored = await fixture.Users.FindByEmailAsync("clinician@hospital.example");
+        Assert.NotNull(stored);
+        Assert.True(await fixture.Users.CheckPasswordAsync(stored!, password!));
+        Assert.True(await fixture.Users.IsInRoleAsync(stored!, "Professional"));
+        Assert.Equal("chest and thorax", stored!.BodyRegion);
+        Assert.NotNull(stored.CreatedAt);
+
+        var again = new User { Email = "clinician@hospital.example", UserName = "clinician@hospital.example", FullName = "Someone else" };
+        var (second, secondPassword, secondErrors) = await fixture.Identity.CreateParticipantAsync(again, "Medical_Student");
+        Assert.False(second);
+        Assert.Null(secondPassword);
+        Assert.Contains("left unchanged", Assert.Single(secondErrors!));
+        stored = await fixture.Users.FindByEmailAsync("clinician@hospital.example");
+        Assert.Equal("Clinician", stored!.FullName);
+        Assert.True(await fixture.Users.CheckPasswordAsync(stored, password!));
+        Assert.False(await fixture.Users.IsInRoleAsync(stored, "Medical_Student"));
+    }
+
     private sealed class IdentityFixture : IAsyncDisposable
     {
         private readonly SqliteConnection connection;

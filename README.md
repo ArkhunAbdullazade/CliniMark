@@ -46,6 +46,22 @@ Participants pass a shared research access gate, then register or log in with th
 
 Selecting `medical student` assigns the `Medical_Student` role; other positions receive `Professional`. Each role has its own annotation workspace.
 
+The filter options are the display labels of the MedAnnotate datasets (`MedAnnotateDatasets/app_labels/label_vocabulary.csv`, `app-labels-1.1.0`): 14 body regions, 21 specialities and 8 image modalities, listed in `ImageFilterOptions` (`src/MedAnnotateApp.Presentation/Dtos/ImageFiltersDto.cs`). Image rows store these exact texts. Matching ignores case and surrounding spaces.
+
+**Accounts created by the study team.** With `Registration:Enabled=false`, public signup is closed and the sign-in page says that the study team creates accounts. Create them from a CSV with the operator command below:
+- Columns: `Email, FullName, Position, University, ClinicalExperience, OrcidId, Speciality, BodyRegion, ImageModality`. Filter values are separated by `;` and may be empty, in which case the participant chooses them at first sign-in.
+- The whole file is checked first: nothing is created if any row is invalid.
+- Existing accounts are skipped and never changed.
+- Generated passwords go only to the credentials file, which must not exist yet.
+
+```bash
+dotnet MedAnnotateApp.Presentation.dll create-participants participants.csv credentials.csv
+```
+
+**Image source.** Under every image, both workspaces show the source article and licence links from `SourceUrl` and `SourceLicense`, and the full credit line (`Attribution`). The line sits outside the image's sizing box, so it never changes drawing coordinates. The results export includes both columns.
+
+**Saving during a restart.** If the app is restarting when a save is sent (HTTP 502/503/504, or no connection), the page repeats the save for about 80 seconds (`wwwroot/js/requestRetry.js`). The server refuses a second save of the same term or image, so a repeated save can never store anything twice.
+
 <details>
 <summary>View participant registration</summary>
 
@@ -119,6 +135,7 @@ Keep private values in `.env`, environment variables, or .NET user secrets.
 | `RateLimiting:AccessAttemptsPerTenMinutes` | Gate, sign-in and sign-up submissions allowed per client address every ten minutes (default 78: about 13 people joining together from one hospital or university network, with a few retries each) |
 | `Database:ApplyMigrations` | Defaults to development only; false in production Compose |
 | `Database:SeedExcel` | Opt-in sample seed, false by default |
+| `Registration:Enabled` | Public signup (default true). Set `false` when the study team creates the accounts with `create-participants` |
 
 Environment variables use double underscores for nested settings, such as `ConnectionStrings__MedDataDb`. Supply a BCrypt hash for the shared gate. SMTP is not required for research signup/sign-in. Ignored `appsettings.Local.json` is excluded from the image.
 

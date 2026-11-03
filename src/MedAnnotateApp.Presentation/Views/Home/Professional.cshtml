@@ -57,6 +57,7 @@
                         </div>
                     </div>
                     </div>
+                    <partial name="_ImageSource" model="Model" />
                 </div>
             </div>
         </div>
@@ -167,6 +168,7 @@ else
     window.annotatedMedData = @Html.Raw(Json.Serialize(AnnotationImage.From(Model)));
 </script>
 @* First, so it can report errors from every script after it. *@
+<script src="~/js/requestRetry.js" asp-append-version="true"></script>
 <script src="~/js/problemReport.js" asp-append-version="true"></script>
 <script src="~/js/hoverDescriptions.js" asp-append-version="true"></script>
 <script src="~/js/annotationGeometry.js" asp-append-version="true"></script>

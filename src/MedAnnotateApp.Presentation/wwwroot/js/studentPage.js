@@ -98,7 +98,10 @@ document.addEventListener("DOMContentLoaded", () => {
     } catch(error){showStatus(error.message,"error");return;}
     saving=true;manager.baseManager.readOnly=true;submit.textContent="Submitting…";updateList();showStatus("Saving all groups… keep this page open.","saving");
     try {
-      const response=await fetch("/MedData/SubmitStudentAnnotations",{method:"POST",headers,body:JSON.stringify(payload)});
+      // Repeats the request while the app restarts (requestRetry.js); plain fetch where that script is absent.
+      const send=window.MedAnnotateRetry?.fetchWithRetry || ((u,o)=>fetch(u,o));
+      const response=await send("/MedData/SubmitStudentAnnotations",{method:"POST",headers,body:JSON.stringify(payload)},
+        {onRetry:()=>showStatus("The connection to the server was lost. Retrying automatically; keep this page open.","saving")});
       let result;try{result=await response.json();}catch{throw new Error("Your session may have expired. Sign in in another tab and retry; keep this page open.");}
       if(!response.ok || !result.success)throw Object.assign(new Error(result.message || "Save failed. All groups are still on this page."),{status:response.status});
       dirty=false;saving=false;navigating=true;location.href=result.redirectUrl || "/Home/Student";

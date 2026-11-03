@@ -194,6 +194,7 @@ public class IdentityController : Controller
             return RedirectToRoleBasedPage();
         }
 
+        if (!RegistrationEnabled) return SignupClosed();
         if (!HasResearchAccess()) return RedirectToAction(nameof(AuthorizationAccess));
         HandleTempDataErrors();
         // Drop any legacy form cache: older versions stored passwords in TempData.
@@ -207,6 +208,7 @@ public class IdentityController : Controller
     [EnableRateLimiting(ResearchAccessRateLimit.PolicyName)]
     public async Task<IActionResult> PostSignup([FromForm] SignupDto signupDto)
     {
+        if (!RegistrationEnabled) return SignupClosed();
         if (!HasResearchAccess()) return RedirectToAction(nameof(AuthorizationAccess));
         try
         {
@@ -299,6 +301,17 @@ public class IdentityController : Controller
     }
 
     private bool HasResearchAccess() => HttpContext.Session.GetString("Authorized") == "true";
+
+    // Registration:Enabled (default true). When false the study team creates every account (create-participants).
+    public const string RegistrationSetting = "Registration:Enabled";
+    public const string SignupClosedNotice = "Accounts are created by the study team. Sign in with the email address and password you received.";
+    private bool RegistrationEnabled => configuration.GetValue(RegistrationSetting, true);
+
+    private IActionResult SignupClosed()
+    {
+        TempData["Notice"] = SignupClosedNotice;
+        return RedirectToAction(nameof(Login));
+    }
 
     private static string[] SplitSelection(string? value) => (value ?? string.Empty)
         .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);

@@ -56,7 +56,7 @@ class Client:
         fields = dict(Email=f'{name}-{uuid4().hex[:8]}@example.net', FullName='Synthetic Audit Researcher',
             Password=PASSWORD, ConfirmPassword=PASSWORD, Position=position, University='Local test institute',
             ClinicalExperience='5', Speciality=['cardiology', 'dermatology'],
-            BodyRegion=['thorax', 'head and neck'], ImageModality=['ct', 'mri'])
+            BodyRegion=['Chest and Thorax', 'head and neck'], ImageModality=['ct', 'mri'])
         if invalid:
             # Every list is optional, but an entirely empty selection is refused.
             bad = {key: value for key, value in fields.items() if key not in ('Speciality', 'BodyRegion', 'ImageModality')}
@@ -94,6 +94,12 @@ one.register('specialist-one', invalid=True)
 status, data = one.annotations(1)
 assert status == 200 and data['annotations'] == []
 REPORT.append('Ordinary-email specialist registered and signed in without email confirmation; correct filtered image assigned')
+status, url, body = one.request('/Home/Professional')
+assert status == 200 and 'Image source:' in body and 'https://example.org/synthetic-article' in body
+assert 'href="https://creativecommons.org/licenses/by/4.0/"' in body and 'Synthetic credit line for image 1.' in body
+assert body.index('class="image-viewport"') < body.index('data-image-source')  # below the image, outside its sizing box
+assert 'js/requestRetry.js' in body
+REPORT.append('Annotation page shows the image source, licence link and full credit line, and loads the save-retry script')
 
 coordinates = json.dumps(dict(version=1, coordinateSystem='image-pixels', imageWidth=1200, imageHeight=800,
     annotations=[dict(type='rectangle', points=[[300,200],[900,200],[900,600],[300,600]])]), separators=(',', ':'))
@@ -126,7 +132,7 @@ status, url, body = one.request('/Identity/Filters', form=dict(Speciality=['card
 assert status == 200 and url.endswith('/Home/Professional') and 'Excluded by body region' in body
 assert one.annotations(1)[0] == 403
 one.request('/Identity/Filters')
-status, url, body = one.request('/Identity/Filters', form=dict(Speciality=['cardiology','dermatology'], BodyRegion=['thorax','head and neck'], ImageModality=['ct','mri']))
+status, url, body = one.request('/Identity/Filters', form=dict(Speciality=['cardiology','dermatology'], BodyRegion=['Chest and Thorax','head and neck'], ImageModality=['ct','mri']))
 assert one.annotations(1)[0] == 200
 REPORT.append('Changed filters stay effective on assignment; restoring filters resumes partial work without mixing images')
 

@@ -74,8 +74,8 @@ public class AuthAccessTests
         var filters = new ImageFiltersDto
         {
             Speciality = ["cardiology", "dermatology"],
-            BodyRegion = ["abdomen", "thorax"],
-            ImageModality = ["ct", "photo"]
+            BodyRegion = ["Abdomen", "Chest and Thorax"],
+            ImageModality = ["ct", "Microscopy"]
         };
         Assert.Empty(Validate(filters));
     }
@@ -88,7 +88,7 @@ public class AuthAccessTests
 
     private static ImageFiltersDto ValidFilters() => new()
     {
-        Speciality = ["cardiology"], BodyRegion = ["thorax"], ImageModality = ["ct"]
+        Speciality = ["cardiology"], BodyRegion = ["chest and thorax"], ImageModality = ["ct"]
     };
 
     private static SignupDto ValidSignup() => new()
@@ -96,7 +96,7 @@ public class AuthAccessTests
         Email = "specialist@gmail.com", FullName = "Research Specialist",
         Password = "Participant1!", ConfirmPassword = "Participant1!",
         Position = "specialist", University = "Community clinic", ClinicalExperience = 3,
-        Speciality = ["cardiology"], BodyRegion = ["thorax"], ImageModality = ["ct"]
+        Speciality = ["cardiology"], BodyRegion = ["chest and thorax"], ImageModality = ["ct"]
     };
 
     private static List<ValidationResult> Validate(object model)

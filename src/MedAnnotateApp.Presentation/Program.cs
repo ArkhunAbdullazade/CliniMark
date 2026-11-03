@@ -21,8 +21,10 @@ const string SeedDataFileName = "mockPMCMIDdata7.xlsx";
 const string ResetPasswordCommand = "reset-password";
 const string CreateAdminCommand = "create-admin";
 const string CheckTermsCommand = "check-terms";
+const string CreateParticipantsCommand = "create-participants";
 
-// Operator-only shell commands, never HTTP endpoints: `dotnet MedAnnotateApp.Presentation.dll reset-password|create-admin <email>` or `check-terms`.
+// Operator-only shell commands, never HTTP endpoints: `dotnet MedAnnotateApp.Presentation.dll reset-password|create-admin <email>`,
+// `check-terms`, or `create-participants <participants.csv> <credentials.csv>` (Models/ParticipantImport.cs).
 var operatorEmail = args is [ResetPasswordCommand or CreateAdminCommand, var email] ? email : null;
 if (args.Length > 0 && args[0] is ResetPasswordCommand or CreateAdminCommand && operatorEmail is null)
 {
@@ -31,7 +33,15 @@ if (args.Length > 0 && args[0] is ResetPasswordCommand or CreateAdminCommand && 
     return;
 }
 var isCheckTerms = args is [CheckTermsCommand];
-var isOperatorCommand = operatorEmail is not null || isCheckTerms;
+var participantFiles = args is [CreateParticipantsCommand, var participantInput, var credentialsOutput]
+    ? (Input: participantInput, Output: credentialsOutput) : ((string Input, string Output)?)null;
+if (args.Length > 0 && args[0] == CreateParticipantsCommand && participantFiles is null)
+{
+    Console.Error.WriteLine($"Usage: {CreateParticipantsCommand} <participants.csv> <credentials.csv>");
+    Environment.ExitCode = 2;
+    return;
+}
+var isOperatorCommand = operatorEmail is not null || isCheckTerms || participantFiles is not null;
 
 var builder = WebApplication.CreateBuilder(isOperatorCommand ? [] : args);
 builder.WebHost.ConfigureKestrel(options => options.AddServerHeader = false);
@@ -215,6 +225,16 @@ if (isCheckTerms)
     }
     Console.WriteLine($"{problems} of {images.Count} images have terms specialists could not answer, so those images would block whoever receives them.");
     Environment.ExitCode = problems == 0 ? 0 : 1;
+    return;
+}
+
+if (participantFiles is var (participantsCsv, credentialsCsv))
+{
+    // Runs before database initialization, like the commands below.
+    using var scope = app.Services.CreateScope();
+    await EnsureRolesAsync(scope.ServiceProvider);
+    Environment.ExitCode = await ParticipantImport.RunAsync(participantsCsv, credentialsCsv,
+        scope.ServiceProvider.GetRequiredService<IIdentityService>(), Console.Out);
     return;
 }
 

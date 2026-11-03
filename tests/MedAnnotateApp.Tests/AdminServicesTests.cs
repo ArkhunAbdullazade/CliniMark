@@ -229,6 +229,23 @@ public sealed class AdminServicesTests
         Assert.Equal(3, images.RootElement.GetArrayLength());
     }
 
+    [Fact]
+    public async Task ImageExportCarriesSourceLicenceAndAttribution()
+    {
+        await using var db = await AdminDatabase.CreateAsync();
+        var image = db.Context.MedDatas.Find(1)!;
+        image.SourceLicense = "CC BY-NC 4.0";
+        image.Attribution = "A. Author et al. \"Case report\". Journal (2024). Licensed under CC BY-NC 4.0.";
+        await db.Context.SaveChangesAsync();
+
+        var files = await ReadArchiveAsync(await db.Export.CreateArchiveAsync(new ExportOptions { Format = ExportFormat.Json }));
+
+        using var images = JsonDocument.Parse(files["images.json"]);
+        var first = images.RootElement.EnumerateArray().First(row => row.GetProperty("ImageId").GetInt32() == 1);
+        Assert.Equal("CC BY-NC 4.0", first.GetProperty("SourceLicense").GetString());
+        Assert.Equal(image.Attribution, first.GetProperty("Attribution").GetString());
+    }
+
     [Theory]
     [InlineData(ExportFormat.Csv, ".csv")]
     [InlineData(ExportFormat.Json, ".json")]

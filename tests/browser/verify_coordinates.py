@@ -94,7 +94,7 @@ def seed(cases):
     rows = []
     for index, name in enumerate(cases, 1):
         url = f'http://127.0.0.1:{IMAGE_PORT}/{name}?n={index}'
-        rows.append(f"({index}, '{url}', 'Synthetic image: lesion. Not patient data.', 'cardiology', 'thorax', 'ct', false, false)")
+        rows.append(f"({index}, '{url}', 'Synthetic image: lesion. Not patient data.', 'Cardiology', 'Chest and Thorax', 'CT', false, false)")
     keywords = ','.join(f"({index}, 'lesion')" for index in range(1, len(cases) + 1))
     sql('INSERT INTO "MedDatas" ("Id","ImageUrl","ImageDescription","Speciality","BodyRegion","Modality","IsAnnotated","IsAnnotatedByStudent") VALUES '
         + ','.join(rows) + f'; INSERT INTO "MedDataKeywords" ("MedDataId","Keyword") VALUES {keywords};')
@@ -126,7 +126,7 @@ class Session:
                             ('University', 'Local test institute'), ('ClinicalExperience', '5')):
             self.page.fill(f'input[name={name}]', value)
         self.page.select_option('select[name=Position]', position)
-        for name, value in (('Speciality', 'cardiology'), ('BodyRegion', 'thorax'), ('ImageModality', 'ct')):
+        for name, value in (('Speciality', 'Cardiology'), ('BodyRegion', 'Chest and Thorax'), ('ImageModality', 'CT')):
             self.page.check(f'input[name={name}][value="{value}"]')
         self.page.click('form[data-signup-form] button[type=submit]')
         self.page.click('[data-signup-yes]')

@@ -267,6 +267,9 @@ namespace MedAnnotateApp.Presentation.Migrations
                     b.Property<string>("Age")
                         .HasColumnType("text");
 
+                    b.Property<string>("Attribution")
+                        .HasColumnType("text");
+
                     b.Property<string>("BodyRegion")
                         .HasColumnType("text");
 
@@ -312,6 +315,9 @@ namespace MedAnnotateApp.Presentation.Migrations
                         .HasColumnType("text");
 
                     b.Property<string>("SkinTone")
+                        .HasColumnType("text");
+
+                    b.Property<string>("SourceLicense")
                         .HasColumnType("text");
 
                     b.Property<string>("SourceUrl")

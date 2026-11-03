@@ -152,6 +152,20 @@ public class IdentityService : IIdentityService
         return (false, null, roleResult.Errors.Select(error => error.Description).ToArray());
     }
 
+    // Study-team-created participant account (operator command create-participants): same checks and role rules as
+    // signup, with a generated password. An existing account is never changed.
+    public async Task<(bool Succeeded, string? TemporaryPassword, IEnumerable<string>? Errors)> CreateParticipantAsync(User user, string roleName)
+    {
+        if (string.IsNullOrWhiteSpace(user.Email) || await userManager.FindByEmailAsync(user.Email) != null)
+        {
+            return (false, null, ["An account already uses this email address; it was left unchanged."]);
+        }
+
+        var password = NewTemporaryPassword();
+        var (succeeded, errors) = await SignupAsync(user, password, roleName);
+        return succeeded ? (true, password, null) : (false, null, errors);
+    }
+
     // Random letters and digits plus a fixed mixed suffix always satisfy the Identity password policy.
     private static string NewTemporaryPassword() =>
         RandomNumberGenerator.GetString("ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789", 16) + "-7a";
