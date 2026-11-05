@@ -25,4 +25,7 @@ public interface IMedDataRepository
     Task<(AnnotationSaveResult Result, int? Id)> SaveCustomAnnotationAsync(User user, int medDataId, string? term, string? coordinates);
     Task<AnnotationSaveResult> DeleteCustomAnnotationAsync(User user, int customAnnotationId);
     Task<IReadOnlyList<CustomAnnotation>?> GetCustomAnnotationsAsync(int medDataId, User user);
+    Task<AnnotationSaveResult> SaveMetadataChecksAsync(User user, int medDataId, IReadOnlyList<MetadataAnswer> answers);
+    Task<IReadOnlyList<MetadataCheck>?> GetMetadataChecksAsync(int medDataId, User user);
+    Task<IReadOnlyDictionary<string, IReadOnlyList<string>>> GetAddedMetadataValuesAsync();
 }

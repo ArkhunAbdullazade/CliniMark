@@ -2,6 +2,7 @@ using System.Diagnostics;
 using MedAnnotateApp.Core.Models;
 using MedAnnotateApp.Core.Repositories;
 using MedAnnotateApp.Infrastructure.Services;
+using MedAnnotateApp.Presentation.Dtos;
 using MedAnnotateApp.Presentation.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -86,6 +87,9 @@ public class HomeController : Controller
             if (medData == null) ViewBag.CompletedByMe = await medDataRepository.CountCompletedByAsync(user, isStudent: false);
             ViewBag.MedDataKeywords = medData != null
                 ? (await medDataRepository.GetKeywordsByMedDataIdAsync(medData.Id)).ToList()
+                : null;
+            ViewBag.MetadataOptions = medData != null
+                ? MetadataCheckOptions.ForPage(await medDataRepository.GetAddedMetadataValuesAsync())
                 : null;
 
             return View(medData);

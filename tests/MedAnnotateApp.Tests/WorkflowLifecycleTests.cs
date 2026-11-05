@@ -69,6 +69,7 @@ public sealed class WorkflowLifecycleTests
         Assert.False(beforeNext.IsAnnotated);
         Assert.Equal(database.Owner.Id, beforeNext.LockedByUserId);
 
+        Assert.True((await database.Repository.SaveMetadataChecksAsync(database.Owner, 1, LabelChecks.Answered)).Success);
         Assert.True((await database.Repository.CompleteProfessionalAsync(1, database.Owner)).Success);
 
         var completed = (await database.Context.MedDatas.AsNoTracking().SingleAsync(image => image.Id == 1));
@@ -140,6 +141,7 @@ public sealed class WorkflowLifecycleTests
         Assert.True((await database.Context.MedDatas.AsNoTracking().SingleAsync(image => image.Id == 1)).LockedAt >= before);
 
         Assert.True((await database.Repository.SaveProfessionalAsync(database.Owner, Response("lesion"))).Success);
+        Assert.True((await database.Repository.SaveMetadataChecksAsync(database.Owner, 1, LabelChecks.Answered)).Success);
         Assert.True((await database.Repository.CompleteProfessionalAsync(1, database.Owner)).Success);
         Assert.True((await database.Repository.SaveStudentAsync(database.Student,
             [new AnnotatedByStudentsMedData { MedDataId = 1, Coordinates = Coordinates, TextualAnnotation = "lesion" }])).Success);

@@ -156,6 +156,7 @@ public class IdentityServiceTests
         var saved = await repository.GetProfessionalAnnotationsAsync(1, changed);
         Assert.Equal("lesion", Assert.Single(saved!).ExtractedKeyword);
         Assert.True((await repository.SaveProfessionalAsync(changed, new AnnotatedMedData { MedDataId = 1, ExtractedKeyword = "margin", PressedButton = "Uncertain/Skip" })).Success);
+        Assert.True((await repository.SaveMetadataChecksAsync(changed, 1, LabelChecks.Answered)).Success);
         Assert.True((await repository.CompleteProfessionalAsync(1, changed)).Success);
 
         var audit = await db.AdminActions.AsNoTracking().SingleAsync();

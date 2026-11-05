@@ -66,7 +66,8 @@ async function page(occurrences, expectedCount, options = {}) {
   }
   const requestErrors = [];
   const context = {
-    window: {annotatedMedData: {id: 1}, addEventListener(name, callback) { events[name] = callback; }, watchAssignment: options.watch},
+    window: {annotatedMedData: {id: 1}, addEventListener(name, callback) { events[name] = callback; }, watchAssignment: options.watch,
+      setupMetadataCheck: options.labels},
     CustomEvent: FakeEvent, Event: FakeEvent,
     document: {
       dispatchEvent: event => { if (event.type === 'annotationrequesterror') requestErrors.push(event.detail); },
@@ -125,6 +126,62 @@ test('inline repeated phrases advance once per canonical term in description ord
   assert.deepEqual(saves.map(call => JSON.parse(call.body).ExtractedKeyword), ['boundary', 'lesion']);
   assert.equal(elements['next-button'].textContent, 'Next Image');
   assert.equal(elements['skip-button'].disabled, true);
+});
+
+function fakeLabels() {
+  const labels = {done: false, enabled: null, loaded: null, complete: () => labels.done,
+    setEnabled(value) { labels.enabled = value; }, load(records) { labels.loaded = records; }};
+  return {labels, setup: settings => { labels.settings = settings; return labels; }};
+}
+
+async function finishTerm(elements, manager) {
+  manager.annotations = [{syntheticShape: true}];
+  manager.onAnnotationsChange();
+  await elements['next-button'].click();
+}
+
+test('Next Image waits for the label check and the status says what is missing', async () => {
+  const {labels, setup} = fakeLabels();
+  const {elements, manager, calls} = await page([new Element('lesion', 'lesion')], 1, {labels: setup});
+  assert.equal(labels.enabled, true);
+  await finishTerm(elements, manager);
+  assert.equal(elements['next-button'].textContent, 'Next Image');
+  assert.equal(elements['next-button'].disabled, true);
+  assert.match(elements['annotation-status'].textContent, /Confirm the image modality, speciality and body region/);
+
+  labels.done = true;
+  labels.settings.onChange();
+  assert.equal(elements['next-button'].disabled, false);
+  assert.match(elements['annotation-status'].textContent, /Select Next Image/);
+  await elements['next-button'].click();
+  assert.equal(calls.filter(call => call.url.includes('/MedData/NextImage')).length, 1);
+});
+
+test('the label check does not hold back saving the terms', async () => {
+  const {setup} = fakeLabels();
+  const {elements, manager} = await page([new Element('lesion', 'lesion')], 1, {labels: setup});
+  manager.annotations = [{syntheticShape: true}];
+  manager.onAnnotationsChange();
+  assert.equal(elements['next-button'].textContent, 'Save and Next Term');
+  assert.equal(elements['next-button'].disabled, false);
+});
+
+test('saved label answers are restored with the term answers', async () => {
+  const {labels, setup} = fakeLabels();
+  const records = [{field: 'modality', verdict: 'correct'}];
+  await page([new Element('lesion', 'lesion')], 1, {labels: setup, loadHistory: () => ({ok: true,
+    json: async () => ({annotations: [], metadataChecks: records})})});
+  assert.deepEqual(labels.loaded, records);
+});
+
+test('a released image closes the label check', async () => {
+  const {labels, setup} = fakeLabels();
+  let onReleased;
+  await page([new Element('lesion', 'lesion')], 1, {labels: setup,
+    watch: settings => { onReleased = settings.onReleased; return {check() {}}; }});
+  assert.equal(labels.enabled, true);
+  onReleased();
+  assert.equal(labels.enabled, false);
 });
 
 test('inspection restores the specialist status and keeps the current shapes and term', async () => {

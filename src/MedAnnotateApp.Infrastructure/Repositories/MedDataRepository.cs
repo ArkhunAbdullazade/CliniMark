@@ -187,6 +187,10 @@ public class MedDataRepository : IMedDataRepository
             return new(true);
         if (source.LockedByUserId != user.Id)
             return Failure(NoLongerAssigned, true);
+        var checkedFields = await context.MetadataChecks.Where(item => item.MedDataId == medDataId && item.UserId == user.Id)
+            .Select(item => item.Field).ToListAsync();
+        if (MetadataCheck.Fields.Except(checkedFields).Any())
+            return Failure("Confirm the image modality, speciality and body region before moving to the next image.");
         source.IsAnnotated = true;
         ClearProfessionalLock(source);
         await context.SaveChangesAsync();
@@ -320,6 +324,75 @@ public class MedDataRepository : IMedDataRepository
             return null;
         return await context.CustomAnnotations.AsNoTracking()
             .Where(item => item.MedDataId == medDataId && item.UserId == user.Id).OrderBy(item => item.Id).ToListAsync();
+    }
+
+    public async Task<AnnotationSaveResult> SaveMetadataChecksAsync(User user, int medDataId, IReadOnlyList<MetadataAnswer> answers)
+    {
+        await using var transaction = await BeginWorkflowAsync();
+        var source = await context.MedDatas.FindAsync(medDataId);
+        if (source == null || !UserFilters(user).Matches(source))
+            return Failure("This image does not match your selected filters.", true);
+        var existing = await context.MetadataChecks.Where(item => item.MedDataId == medDataId && item.UserId == user.Id).ToListAsync();
+        // A repeated submit (double click, retry after a lost answer) changes nothing, even after the image is completed.
+        if (answers.All(answer => existing.Any(item => item.Field == answer.Field && item.Verdict == answer.Verdict
+                && string.Equals(item.CorrectedValue, answer.CorrectedValue, StringComparison.OrdinalIgnoreCase))))
+            return new(true);
+        if (source.IsAnnotated || source.LockedByUserId != user.Id)
+            return Failure(NoLongerAssigned, true);
+
+        var now = DateTime.UtcNow;
+        foreach (var answer in answers)
+        {
+            var shown = MetadataCheck.LabelOf(source, answer.Field);
+            if (answer.Verdict == MetadataCheck.Correct && MetadataCheck.IsMissing(shown))
+                return Failure("This image has no label to confirm here. Choose the right one, or select Can't tell.");
+            if (answer.Verdict == MetadataCheck.Corrected && string.Equals(shown?.Trim(), answer.CorrectedValue, StringComparison.OrdinalIgnoreCase))
+                return Failure("That is the label already shown. Select Yes instead.");
+
+            var value = answer.IsNewValue ? await SpellingInUseAsync(answer.Field, answer.CorrectedValue!) : answer.CorrectedValue;
+            var check = existing.SingleOrDefault(item => item.Field == answer.Field);
+            if (check == null)
+            {
+                check = new MetadataCheck { MedDataId = medDataId, UserId = user.Id, Field = answer.Field, CreatedAt = now };
+                context.MetadataChecks.Add(check);
+            }
+            check.ShownValue = shown;
+            check.Verdict = answer.Verdict;
+            check.CorrectedValue = value;
+            check.IsNewValue = answer.IsNewValue;
+            check.UpdatedAt = now;
+        }
+        await context.SaveChangesAsync();
+        await transaction.CommitAsync();
+        return new(true);
+    }
+
+    public async Task<IReadOnlyList<MetadataCheck>?> GetMetadataChecksAsync(int medDataId, User user)
+    {
+        var image = await context.MedDatas.AsNoTracking().SingleOrDefaultAsync(item => item.Id == medDataId);
+        if (image == null || image.LockedByUserId != user.Id || !UserFilters(user).Matches(image))
+            return null;
+        return await context.MetadataChecks.AsNoTracking()
+            .Where(item => item.MedDataId == medDataId && item.UserId == user.Id).OrderBy(item => item.Id).ToListAsync();
+    }
+
+    // Offered to everyone in the correction search, so people reuse a value instead of creating spelling variants.
+    public async Task<IReadOnlyDictionary<string, IReadOnlyList<string>>> GetAddedMetadataValuesAsync()
+    {
+        var added = await context.MetadataChecks.AsNoTracking().Where(item => item.IsNewValue && item.CorrectedValue != null)
+            .Select(item => new { item.Field, Value = item.CorrectedValue! }).Distinct().ToListAsync();
+        return added.GroupBy(item => item.Field).ToDictionary(group => group.Key,
+            group => (IReadOnlyList<string>)group.Select(item => item.Value).Distinct(StringComparer.OrdinalIgnoreCase)
+                .Order(StringComparer.OrdinalIgnoreCase).ToList());
+    }
+
+    // The first spelling of an added value wins, so "rheumatology" and "Rheumatology" stay one value.
+    private async Task<string> SpellingInUseAsync(string field, string value)
+    {
+        var lowered = value.ToLower();
+        return await context.MetadataChecks.AsNoTracking()
+            .Where(item => item.Field == field && item.IsNewValue && item.CorrectedValue != null && item.CorrectedValue.ToLower() == lowered)
+            .OrderBy(item => item.Id).Select(item => item.CorrectedValue).FirstOrDefaultAsync() ?? value;
     }
 
     public async Task AddProblemReportAsync(ProblemReport report)

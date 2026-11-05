@@ -1,0 +1,46 @@
+@model MedData
+@using MedAnnotateApp.Core.Models
+@*
+    The specialist confirms or corrects the image's modality, speciality and body region (metadataCheck.js). Answers are
+    saved at once and required before Next Image. Rows keep the order of the Filters page.
+*@
+@{
+    var rows = new[]
+    {
+        (Field: MetadataCheck.Modality, Name: "Image modality", Lower: "image modality", Shown: Model.Modality,
+            Yes: "Yes: this is how the image was acquired."),
+        (Field: MetadataCheck.Speciality, Name: "Speciality", Lower: "speciality", Shown: Model.Speciality,
+            Yes: "Yes: a doctor in this field would normally read or manage this case, even if others also could."),
+        (Field: MetadataCheck.BodyRegion, Name: "Body region", Lower: "body region", Shown: Model.BodyRegion,
+            Yes: "Yes: this is the main region shown in the image.")
+    };
+    var anyMissing = rows.Any(row => MetadataCheck.IsMissing(row.Shown));
+}
+<section class="label-check" id="label-check" aria-labelledby="label-check-title"
+         data-options="@System.Text.Json.JsonSerializer.Serialize(ViewBag.MetadataOptions)">
+    <h2 class="label-check-title" id="label-check-title">Please confirm for this image</h2>
+    @foreach (var row in rows)
+    {
+        var missing = MetadataCheck.IsMissing(row.Shown);
+        <div class="label-row" data-label-row data-field="@row.Field" data-name="@row.Lower" data-shown="@(missing ? "" : row.Shown)" data-missing="@(missing ? "true" : "false")">
+            <p class="label-line"><span class="label-name">@row.Name</span> <span class="label-value">@(missing ? "Not set" : row.Shown)</span></p>
+            <div class="label-answers" role="group" aria-label="Is the @row.Lower correct?">
+                @if (!missing)
+                {
+                    <button type="button" class="label-answer" data-answer="correct" aria-pressed="false" disabled data-description="@row.Yes">Yes</button>
+                }
+                <button type="button" class="label-answer" data-answer="corrected" aria-pressed="false" disabled
+                        data-description="Search for the correct @row.Lower, or add it if it is not in the list.">@(missing ? "Choose" : "No")</button>
+                <button type="button" class="label-answer" data-answer="cannot_tell" aria-pressed="false" disabled
+                        data-description="Select this if you can't judge the @row.Lower from the image and its text.">Can't tell</button>
+            </div>
+            <p class="label-result" data-label-result hidden></p>
+        </div>
+    }
+    @if (!anyMissing)
+    {
+        <button type="button" class="label-all" data-label-all disabled
+                data-description="Select this if the image modality, speciality and body region are all correct.">All three correct</button>
+    }
+    <p class="label-error" data-label-error role="alert" hidden></p>
+</section>

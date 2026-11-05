@@ -88,7 +88,14 @@ document.addEventListener("DOMContentLoaded", () => {
   tools.zoomButton.addEventListener("click", () => manager.switchMode("zoom"));
   // Findings beyond the term list, saved on their own (customAnnotations.js); absent in some tests.
   const custom = window.setupCustomAnnotations?.({manager, imageId: assignmentId, request, showStatus, requestFailed});
-  let customRecords = [];
+  // The specialist confirms or corrects the image's labels (metadataCheck.js); required before Next Image.
+  const labels = window.setupMetadataCheck?.({imageId: assignmentId, request, requestFailed,
+    onConflict: error => lockLost(error),
+    onChange: () => {
+      buttons();
+      if (initialized && currentIndex === -1 && reviewIndex === -1 && !saving) showStatus(prompt());
+    }});
+  let customRecords = [], labelRecords = [];
   let history = [], currentIndex = -1, reviewIndex = -1;
   let historyLoaded = false, historyLoading = false;
   let started = Date.now(), firstDraw = 0;
@@ -99,13 +106,14 @@ document.addEventListener("DOMContentLoaded", () => {
   function buttons() {
     const complete = initialized && currentIndex === -1;
     next.textContent = complete ? "Next Image" : "Save and Next Term";
-    next.disabled = released || saving || !initialized || !manager.ready || (!complete && (reviewIndex !== -1 || !manager.annotations.length || manager.currentAction !== "none"));
+    next.disabled = released || saving || !initialized || !manager.ready || (complete ? labels?.complete() === false : reviewIndex !== -1 || !manager.annotations.length || manager.currentAction !== "none");
     skip.disabled = absent.disabled = released || saving || !initialized || !manager.ready || complete || reviewIndex !== -1 || manager.annotations.length > 0;
     comments.disabled = released || !initialized || !manager.ready || saving || reviewIndex !== -1 || complete;
     problem.disabled = saving;
     manager.readOnly = released || !initialized || !manager.ready || saving || reviewIndex !== -1 || complete;
     // Custom annotations can be added whenever the image is theirs, including while reviewing or after the last term.
     manager.customAllowed = !released && initialized && manager.ready && !saving;
+    labels?.setEnabled(!released && initialized && manager.ready && !saving);
     occurrences.forEach(term => {
       const i = terms.findIndex(first => first.dataset.keyword === term.dataset.keyword);
       term.classList.remove("current_keyword", "annotated_keyword", "not_annotated_keyword", "skipped_keyword");
@@ -114,7 +122,7 @@ document.addEventListener("DOMContentLoaded", () => {
       term.setAttribute("aria-pressed", String(i === (reviewIndex === -1 ? currentIndex : reviewIndex)));
     });
   }
-  const prompt = () => currentIndex === -1 ? "All terms saved. Select Next Image to continue. You can select a saved term to review it." : `Annotate the current term: ${termName(currentIndex)}. Draw a rectangular boundary box or a free contour. Zoom, move, resize, rotate, and delete as needed.`;
+  const prompt = () => currentIndex === -1 ? (labels?.complete() === false ? "All terms saved. Confirm the image modality, speciality and body region, then select Next Image." : "All terms saved. Select Next Image to continue. You can select a saved term to review it.") : `Annotate the current term: ${termName(currentIndex)}. Draw a rectangular boundary box or a free contour. Zoom, move, resize, rotate, and delete as needed.`;
   function showCurrent() {
     reviewIndex = -1;
     manager.resetAnnotation(); comments.value = ""; dirty = false;
@@ -141,6 +149,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const result = await request(`/MedData/CurrentAnnotations?medDataId=${encodeURIComponent(assignmentId)}`);
         history = result.annotations || [];
         customRecords = result.customAnnotations || [];
+        labelRecords = result.metadataChecks || [];
         historyLoaded = true;
         window.hasAnnotatedCurrentImage = history.length > 0;
       } catch (error) { requestFailed("Loading saved answers", error); showStatus(error.message, "error"); buttons(); return; }
@@ -149,6 +158,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!manager.ready) return;
     initialized = true;
     custom?.load(customRecords);
+    labels?.load(labelRecords);
     showCurrent();
   }
   manager.canvas.addEventListener("annotationimageready", initialize);

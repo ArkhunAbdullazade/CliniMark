@@ -236,6 +236,52 @@
     }
 </section>
 
+<section class="admin-card mb-3">
+    <div class="admin-card-header">
+        <div>
+            <h2 class="admin-card-title">Label check</h2>
+            <p class="admin-card-note">What specialists said about this image's modality, speciality and body region. The image's own labels never change.</p>
+        </div>
+    </div>
+    @if (Model.MetadataChecks.Count == 0)
+    {
+        <div class="empty-state"><i class="bi bi-check2-square"></i>No label check yet.</div>
+    }
+    else
+    {
+        <div class="admin-table-wrap">
+            <table class="table admin-table align-middle">
+                <thead><tr><th>Label</th><th>Shown</th><th>Verdict</th><th>Correct value</th><th>Specialist</th><th>Saved</th></tr></thead>
+                <tbody>
+                    @foreach (var check in Model.MetadataChecks)
+                    {
+                        <tr>
+                            <td class="fw-semibold">@AdminUi.MetadataFieldLabel(check.Field)</td>
+                            <td>@check.ShownValue</td>
+                            <td>@AdminUi.MetadataVerdictLabel(check.Verdict)</td>
+                            <td>
+                                @check.CorrectedValue
+                                @if (check.IsNewValue)
+                                {
+                                    <span class="badge text-bg-warning">Added</span>
+                                }
+                            </td>
+                            <td>
+                                @if (check.AnnotatorId != null)
+                                {
+                                    <a asp-controller="Participants" asp-action="Details" asp-route-id="@check.AnnotatorId">@check.AnnotatorName</a>
+                                }
+                                else { @check.AnnotatorName }
+                            </td>
+                            <td class="text-nowrap"><time datetime="@AdminUi.Iso(check.SavedAt)" data-local="datetime"></time></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</section>
+
 <section class="admin-card">
     <div class="admin-card-header">
         <div>

@@ -23,6 +23,40 @@ main[role="main"] { height: 100%; min-height: 0; padding-bottom: 0 !important; }
 .metadata-inner strong, .metadata-item .label { min-width: 0; color: var(--muted); font-weight: 400; }
 .metadata-item .value { min-width: 0; color: var(--ink); }
 
+/* Label check: Yes, No or Can't tell for each of the image's labels (see metadataCheck.js). */
+.metadata:has(.label-picker) { max-height: 72%; }
+.label-check { padding: 4px 0 6px; border-bottom: 1px solid var(--line-soft); }
+.label-check:last-child { border-bottom: 0; }
+.label-check-title { margin: 2px 0 4px; color: var(--cardinal); font-size: .875rem; font-weight: 700; }
+.label-row { padding: 5px 0; }
+.label-row + .label-row { border-top: 1px solid var(--line-soft); }
+.label-line { display: flex; flex-wrap: wrap; justify-content: space-between; column-gap: 8px; margin: 0 0 4px; line-height: 1.3; overflow-wrap: anywhere; }
+.label-name { color: var(--muted); }
+.label-value { color: var(--ink); font-weight: 600; text-align: right; }
+.label-answers { display: flex; flex-wrap: wrap; gap: 4px; }
+.label-answer { flex: 1 1 auto; min-height: 26px; padding: 1px 8px; color: var(--ink); background: var(--surface); border: 1px solid var(--line-soft); border-radius: var(--radius-control); font-size: .8rem; line-height: 1.2; cursor: pointer; transition: background-color .12s ease-out, border-color .12s ease-out; }
+.label-answer:hover:not(:disabled) { border-color: var(--cardinal); }
+.label-answer:disabled[data-description], .label-all:disabled[data-description] { pointer-events: auto; cursor: not-allowed; }
+.label-answer:disabled { opacity: .6; }
+.label-answer[aria-pressed="true"] { color: #fff; font-weight: 600; opacity: 1; }
+.label-answer[data-answer="correct"][aria-pressed="true"] { background: #1f7a3d; border-color: #1f7a3d; }
+.label-answer[data-answer="corrected"][aria-pressed="true"] { background: var(--cardinal); border-color: var(--cardinal); }
+.label-answer[data-answer="cannot_tell"][aria-pressed="true"] { background: #5f6670; border-color: #5f6670; }
+.label-result { margin: 4px 0 0; color: var(--cardinal); font-size: .8rem; font-weight: 600; overflow-wrap: anywhere; }
+.label-all { width: 100%; min-height: 30px; margin-top: 4px; color: #fff; background: #1f7a3d; border: 1px solid #1f7a3d; border-radius: var(--radius-control); font-size: .85rem; font-weight: 600; cursor: pointer; }
+.label-all:disabled { opacity: .55; }
+.label-all[aria-pressed="true"] { opacity: 1; }
+.label-error { margin: 4px 0 0; color: var(--cardinal); font-size: .8rem; }
+.label-picker { margin-top: 5px; }
+.label-search { width: 100%; min-height: 28px; padding: 2px 8px; color: var(--ink); background: var(--surface); border: 1px solid var(--cardinal); border-radius: var(--radius-control); font-size: .8rem; }
+.label-options { max-height: 132px; margin: 3px 0 0; padding: 0; overflow-y: auto; list-style: none; border: 1px solid var(--line-soft); border-radius: var(--radius-control); }
+.label-option, .label-none { padding: 3px 8px; font-size: .8rem; line-height: 1.3; overflow-wrap: anywhere; }
+.label-option { cursor: pointer; }
+.label-option:hover, .label-option.active { color: #fff; background: var(--cardinal); }
+.label-none { color: var(--muted); }
+.label-add { color: var(--cardinal); font-weight: 600; }
+.label-added { display: block; font-size: .7rem; opacity: .8; }
+
 /* Comments and Report a technical problem: rows whose panels slide down beneath them (see notePanels.js). */
 .note-panels { flex: 0 0 auto; display: flex; flex-direction: column; gap: 6px; }
 /* Comments and Report a technical problem sit side by side; a single button (student page) takes the full width. */

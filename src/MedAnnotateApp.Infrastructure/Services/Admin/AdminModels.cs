@@ -103,10 +103,18 @@ public sealed record StudentGroup(int Id, string? Label, string? Coordinates, Da
 public sealed record ImageDetail(
     MedData Image, IReadOnlyList<string> Keywords, IReadOnlyList<SpecialistAnswer> Answers,
     IReadOnlyList<AnnotatorSet> SpecialistSets, IReadOnlyList<StudentGroup> Groups,
-    LockHolder? SpecialistLock, LockHolder? StudentLock, IReadOnlyList<CustomRow> Customs);
+    LockHolder? SpecialistLock, LockHolder? StudentLock, IReadOnlyList<CustomRow> Customs, IReadOnlyList<MetadataCheckRow> MetadataChecks);
 
 /// <summary>A finding a specialist outlined and named themselves, beyond the image's terms.</summary>
 public sealed record CustomRow(int Id, string Term, string Coordinates, DateTime CreatedAt, string? AnnotatorId, string AnnotatorName);
+
+public sealed record MetadataCheckRow(string Field, string? ShownValue, string Verdict, string? CorrectedValue, bool IsNewValue, DateTime SavedAt, string? AnnotatorId, string AnnotatorName);
+
+public sealed record MetadataFieldSummary(string Field, int Confirmed, int Corrected, int CannotTell);
+
+public sealed record AddedMetadataValue(string Field, string Value, int Uses);
+
+public sealed record MetadataCheckSummary(IReadOnlyList<MetadataFieldSummary> Fields, IReadOnlyList<AddedMetadataValue> AddedValues);
 
 public sealed record LockRow(
     bool Student, int ImageId, string? Speciality, string? Modality, string? BodyRegion,

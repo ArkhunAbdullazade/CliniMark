@@ -81,12 +81,33 @@ public class MedDataController : Controller
         var annotations = await medDataRepository.GetProfessionalAnnotationsAsync(medDataId, user);
         if (annotations == null) return StatusCode(403, new { success = false, message = "This image is not assigned to you." });
         var customs = await medDataRepository.GetCustomAnnotationsAsync(medDataId, user) ?? [];
+        var checks = await medDataRepository.GetMetadataChecksAsync(medDataId, user) ?? [];
         return Json(new
         {
             success = true,
             annotations = annotations.Select(item => new { item.ExtractedKeyword, item.PressedButton, item.BoxCoordinates, item.Comment, item.TechnicalProblem }),
-            customAnnotations = customs.Select(item => new { item.Id, item.Term, item.Coordinates })
+            customAnnotations = customs.Select(item => new { item.Id, item.Term, item.Coordinates }),
+            metadataChecks = checks.Select(item => new { item.Field, item.Verdict, item.CorrectedValue, item.IsNewValue })
         });
+    }
+
+    [HttpPost]
+    [Authorize(Roles = "Professional")]
+    [RequestSizeLimit(64_000)]
+    public async Task<IActionResult> SaveMetadataChecks([FromBody] MetadataCheckListDto? dto)
+    {
+        if (!ModelState.IsValid || dto == null || dto.Id <= 0)
+            return BadRequest(new { success = false, message = "Invalid label check." });
+        if (!MetadataCheckOptions.TryRead(dto.Checks, out var answers, out var problem))
+            return BadRequest(new { success = false, message = problem });
+        var user = await userManager.GetUserAsync(User);
+        if (user == null) return Unauthorized(new { success = false, message = "Your session has ended. Sign in again." });
+        try { return SaveResult(await medDataRepository.SaveMetadataChecksAsync(user, dto.Id, answers)); }
+        catch (Exception exception)
+        {
+            logger.LogError(exception, "Label check save failed for image {MedDataId} and user {UserId}.", dto.Id, user.Id);
+            return StatusCode(503, new { success = false, message = "The answer could not be saved. Keep this page open and retry." });
+        }
     }
 
     [HttpPost]

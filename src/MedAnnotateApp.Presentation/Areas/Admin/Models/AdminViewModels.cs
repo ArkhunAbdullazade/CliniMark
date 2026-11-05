@@ -1,11 +1,12 @@
 using System.Globalization;
+using MedAnnotateApp.Core.Models;
 using MedAnnotateApp.Infrastructure.Services.Admin;
 using Microsoft.AspNetCore.Http.Extensions;
 using Microsoft.AspNetCore.WebUtilities;
 
 namespace MedAnnotateApp.Presentation.Areas.Admin.Models;
 
-public sealed record DashboardViewModel(OverviewStats Stats, TimeSpan StaleAfter, ProblemSummary Problems);
+public sealed record DashboardViewModel(OverviewStats Stats, TimeSpan StaleAfter, ProblemSummary Problems, MetadataCheckSummary MetadataChecks);
 
 public sealed record ImagesViewModel(Paged<ImageRow> Images, ImageQuery Query, CategoryOptions Categories);
 
@@ -34,6 +35,22 @@ public static class AdminUi
         "Professional" => "Specialist",
         "Medical_Student" => "Student",
         _ => role
+    };
+
+    public static string MetadataFieldLabel(string field) => field switch
+    {
+        MetadataCheck.Modality => "Image modality",
+        MetadataCheck.Speciality => "Speciality",
+        MetadataCheck.BodyRegion => "Body region",
+        _ => field
+    };
+
+    public static string MetadataVerdictLabel(string verdict) => verdict switch
+    {
+        MetadataCheck.Correct => "Confirmed",
+        MetadataCheck.Corrected => "Corrected",
+        MetadataCheck.CannotTell => "Can't tell",
+        _ => verdict
     };
 
     public static string ButtonLabel(string? button) => button switch

@@ -43,6 +43,7 @@ public sealed class ResultsExportService
                     WriteParticipants(zip, options, people);
                 await WriteProgressAsync(zip, options.Format, completeSets, cancellationToken);
                 await WriteCustomAnnotationsAsync(zip, options, people, cancellationToken);
+                await WriteMetadataChecksAsync(zip, options, people, cancellationToken);
                 await WriteProblemReportsAsync(zip, options.Format, people, cancellationToken);
                 WriteReadme(zip, options);
             }
@@ -207,6 +208,19 @@ public sealed class ResultsExportService
         }
     }
 
+    // Specialists' verdicts on each image's modality, speciality and body region; same identity rules as answers.
+    private async Task WriteMetadataChecksAsync(ZipArchive zip, ExportOptions options, People people, CancellationToken cancellationToken)
+    {
+        using var table = Entry(zip, "metadata_checks", options.Format);
+        table.Header(["MetadataCheckId", "ImageId", "Label", "ShownValue", "Verdict", "CorrectedValue", "IsNewValue", "SavedAtUtc", .. AnnotatorHeaders(options.Identity)]);
+        await foreach (var check in context.MetadataChecks.AsNoTracking().OrderBy(check => check.Id).AsAsyncEnumerable().WithCancellation(cancellationToken))
+        {
+            var person = people.ById(check.UserId);
+            table.Row([check.Id, check.MedDataId, check.Field, check.ShownValue, check.Verdict, check.CorrectedValue, check.IsNewValue, check.UpdatedAt,
+                .. AnnotatorValues(options.Identity, person, person?.Position, person?.ClinicalExperience ?? 0)]);
+        }
+    }
+
     // Problem reports carry account ids only, like the admin log, so they are safe in every identity mode.
     private async Task WriteProblemReportsAsync(ZipArchive zip, ExportFormat format, People people, CancellationToken cancellationToken)
     {
@@ -263,6 +277,11 @@ public sealed class ResultsExportService
             custom_annotations
                               findings a specialist outlined and named themselves because they were not among the
                               image's highlighted terms; one row per contour, Coordinates as below.
+            metadata_checks   a specialist's verdict on one label of an image. Label is modality, speciality or
+                              body_region; ShownValue is the label they saw; Verdict is correct, corrected or cannot_tell.
+                              CorrectedValue is the right label when corrected, and IsNewValue is true when the
+                              specialist added it because it is not in the study's lists. The image's own label is
+                              never changed. Images completed before this check existed have no rows.
             problem_reports   technical problems: reports typed by participants (user-report) and errors their pages
                               logged automatically (image-load-error, save-error, script-error). Account ids only.
 

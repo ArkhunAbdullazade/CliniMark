@@ -187,6 +187,8 @@ public sealed class AdminQueryService
             .OrderBy(group => group.Id).ToListAsync(cancellationToken);
         var customs = await context.CustomAnnotations.AsNoTracking().Where(custom => custom.MedDataId == id)
             .OrderBy(custom => custom.Id).ToListAsync(cancellationToken);
+        var checks = await context.MetadataChecks.AsNoTracking().Where(check => check.MedDataId == id)
+            .OrderBy(check => check.Id).ToListAsync(cancellationToken);
 
         var sets = answers.GroupBy(answer => answer.Email ?? "", StringComparer.OrdinalIgnoreCase).Select(set =>
         {
@@ -218,6 +220,12 @@ public sealed class AdminQueryService
             {
                 var person = people.ById(custom.UserId);
                 return new CustomRow(custom.Id, custom.Term, custom.Coordinates, custom.CreatedAt, person?.Id, person?.DisplayName ?? "Removed account");
+            }).ToList(),
+            checks.Select(check =>
+            {
+                var person = people.ById(check.UserId);
+                return new MetadataCheckRow(check.Field, check.ShownValue, check.Verdict, check.CorrectedValue, check.IsNewValue, check.UpdatedAt,
+                    person?.Id, person?.DisplayName ?? "Removed account");
             }).ToList());
     }
 
@@ -423,6 +431,22 @@ public sealed class AdminQueryService
         return new ProblemSummary(
             await context.ProblemReports.CountAsync(report => report.ResolvedAt == null, cancellationToken),
             await context.ProblemReports.CountAsync(report => report.CreatedAt >= since, cancellationToken));
+    }
+
+    // Specialists' verdicts per label, and the values they added that are not in the study's lists, for the team to review.
+    public async Task<MetadataCheckSummary> GetMetadataCheckSummaryAsync(CancellationToken cancellationToken = default)
+    {
+        var counts = await context.MetadataChecks.AsNoTracking().GroupBy(check => new { check.Field, check.Verdict })
+            .Select(group => new { group.Key.Field, group.Key.Verdict, Count = group.Count() }).ToListAsync(cancellationToken);
+        int Count(string field, string verdict) => counts.Where(item => item.Field == field && item.Verdict == verdict).Sum(item => item.Count);
+        var added = await context.MetadataChecks.AsNoTracking().Where(check => check.IsNewValue && check.CorrectedValue != null)
+            .GroupBy(check => new { check.Field, check.CorrectedValue })
+            .Select(group => new { group.Key.Field, Value = group.Key.CorrectedValue!, Uses = group.Count() }).ToListAsync(cancellationToken);
+        return new MetadataCheckSummary(
+            MetadataCheck.Fields.Select(field => new MetadataFieldSummary(field, Count(field, MetadataCheck.Correct),
+                Count(field, MetadataCheck.Corrected), Count(field, MetadataCheck.CannotTell))).ToList(),
+            added.OrderBy(item => Array.IndexOf(MetadataCheck.Fields, item.Field)).ThenByDescending(item => item.Uses).ThenBy(item => item.Value)
+                .Select(item => new AddedMetadataValue(item.Field, item.Value, item.Uses)).ToList());
     }
 
     internal static IQueryable<AnnotatedMedData> FilterSpecialist(IQueryable<AnnotatedMedData> answers, ResponseQuery query, string? annotatorEmail)

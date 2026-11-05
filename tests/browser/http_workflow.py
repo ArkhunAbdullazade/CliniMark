@@ -137,6 +137,8 @@ assert one.annotations(1)[0] == 200
 REPORT.append('Changed filters stay effective on assignment; restoring filters resumes partial work without mixing images')
 
 expect(one, '/MedData/ProcessAnnotatedMedData', dict(Id=1, ExtractedKeyword='boundary', BoxCoordinates='', PressedButton='Not Visible/Abstract'))
+expect(one, '/MedData/NextImage?medDataId=1', {}, expected=400, method='PUT')
+expect(one, '/MedData/SaveMetadataChecks', dict(Id=1, Checks=[dict(Field=field, Verdict='cannot_tell') for field in ('modality', 'speciality', 'body_region')]))
 expect(one, '/MedData/NextImage?medDataId=1', {}, method='PUT')
 expect(one, '/MedData/NextImage?medDataId=1', {}, method='PUT')
 status, url, body = one.request('/Home/Professional')

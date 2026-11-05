@@ -65,14 +65,7 @@
         <div class="right-column">
             <div class="metadata">
                 <div class="metadata-inner">
-                    @if (!string.IsNullOrWhiteSpace(Model.Speciality) && Model.Speciality != "u" && Model.Speciality != "na")
-                    {
-                        <p><strong>Speciality: </strong>@Model.Speciality</p>
-                    }
-                    @if (!string.IsNullOrWhiteSpace(Model.Modality) && Model.Modality != "u" && Model.Modality != "na")
-                    {
-                        <p><strong>Image Modality: </strong>@Model.Modality</p>
-                    }
+                    <partial name="_MetadataCheck" model="Model" />
                     @if (!string.IsNullOrWhiteSpace(Model.Sex) && Model.Sex != "u" && Model.Sex != "na")
                     {
                         <p><strong>Sex: </strong>@Model.Sex</p>
@@ -84,10 +77,6 @@
                     @if (!string.IsNullOrWhiteSpace(Model.SkinTone) && Model.SkinTone != "u" && Model.SkinTone != "na")
                     {
                         <p><strong>Skin Tone: </strong>@Model.SkinTone</p>
-                    }
-                    @if (!string.IsNullOrWhiteSpace(Model.BodyRegion) && Model.BodyRegion != "u" && Model.BodyRegion != "na")
-                    {
-                        <p><strong>Body Region: </strong>@Model.BodyRegion</p>
                     }
                 </div>
             </div>
@@ -163,4 +152,5 @@ else
 <script src="~/js/descriptionReader.js" asp-append-version="true" defer></script>
 <script src="~/js/notePanels.js" asp-append-version="true" defer></script>
 <script src="~/js/customAnnotations.js" asp-append-version="true" defer></script>
+<script src="~/js/metadataCheck.js" asp-append-version="true" defer></script>
 <script src="~/js/professionalPage.js" asp-append-version="true" defer></script>

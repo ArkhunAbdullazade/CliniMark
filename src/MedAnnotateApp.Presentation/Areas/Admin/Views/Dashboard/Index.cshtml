@@ -204,6 +204,49 @@
     </section>
 </div>
 
+<section class="admin-card mt-3">
+    <div class="admin-card-header">
+        <div>
+            <h2 class="admin-card-title">Label check</h2>
+            <p class="admin-card-note">Specialists' verdicts on each image's labels, and the values they added that are not in the study's lists</p>
+        </div>
+    </div>
+    <div class="admin-table-wrap">
+        <table class="table admin-table align-middle">
+            <thead><tr><th>Label</th><th>Confirmed</th><th>Corrected</th><th>Can't tell</th></tr></thead>
+            <tbody>
+                @foreach (var field in Model.MetadataChecks.Fields)
+                {
+                    <tr>
+                        <td class="fw-semibold">@AdminUi.MetadataFieldLabel(field.Field)</td>
+                        <td>@field.Confirmed</td>
+                        <td>@field.Corrected</td>
+                        <td>@field.CannotTell</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+    @if (Model.MetadataChecks.AddedValues.Count > 0)
+    {
+        <div class="admin-table-wrap">
+            <table class="table admin-table align-middle">
+                <thead><tr><th>Added value</th><th>Label</th><th>Times used</th></tr></thead>
+                <tbody>
+                    @foreach (var added in Model.MetadataChecks.AddedValues)
+                    {
+                        <tr>
+                            <td class="fw-semibold">@added.Value</td>
+                            <td>@AdminUi.MetadataFieldLabel(added.Field)</td>
+                            <td>@added.Uses</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</section>
+
 <script type="application/json" id="overview-data">@Html.Raw(System.Text.Json.JsonSerializer.Serialize(chartData))</script>
 
 @section Scripts {

@@ -18,6 +18,7 @@ public class MedDataDbContext : IdentityDbContext<User, IdentityRole, string>
     public DbSet<AdminAction> AdminActions => Set<AdminAction>();
     public DbSet<ProblemReport> ProblemReports => Set<ProblemReport>();
     public DbSet<CustomAnnotation> CustomAnnotations => Set<CustomAnnotation>();
+    public DbSet<MetadataCheck> MetadataChecks => Set<MetadataCheck>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -49,5 +50,7 @@ public class MedDataDbContext : IdentityDbContext<User, IdentityRole, string>
         modelBuilder.Entity<ProblemReport>().HasIndex(report => report.ResolvedAt);
         modelBuilder.Entity<CustomAnnotation>().HasIndex(custom => custom.MedDataId);
         modelBuilder.Entity<CustomAnnotation>().HasIndex(custom => custom.CreatedAt);
+        modelBuilder.Entity<MetadataCheck>().HasIndex(check => new { check.MedDataId, check.UserId, check.Field }).IsUnique();
+        modelBuilder.Entity<MetadataCheck>().HasIndex(check => check.IsNewValue);
     }
 }

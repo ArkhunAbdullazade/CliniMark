@@ -46,6 +46,7 @@ public sealed class AdminServicesTests
         Assert.Equal(1, (await db.AssignAsync(db.Second)).MedData?.Id);
         Assert.True((await db.Repository.SaveProfessionalAsync(db.Second, Answer("lesion"))).Success);
         Assert.True((await db.Repository.SaveProfessionalAsync(db.Second, Answer("margin"))).Success);
+        Assert.True((await db.Repository.SaveMetadataChecksAsync(db.Second, 1, LabelChecks.Answered)).Success);
         Assert.True((await db.Repository.CompleteProfessionalAsync(1, db.Second)).Success);
         // The first specialist's next save is refused with a message that tells them to reload.
         var late = await db.Repository.SaveProfessionalAsync(db.First, Answer("margin"));
@@ -121,6 +122,7 @@ public sealed class AdminServicesTests
         {
             MedDataId = 1, ExtractedKeyword = "margin", PressedButton = "Uncertain/Skip", Timestamps = "(0,0)"
         })).Success);
+        Assert.True((await db.Repository.SaveMetadataChecksAsync(db.First, 1, LabelChecks.Answered)).Success);
         Assert.True((await db.Repository.CompleteProfessionalAsync(1, db.First)).Success);
         await db.AssignAsync(db.Student, true);
 
@@ -195,7 +197,7 @@ public sealed class AdminServicesTests
 
         var files = await ReadArchiveAsync(await db.Export.CreateArchiveAsync(new ExportOptions { Identity = identity }));
 
-        var expected = new List<string> { "README.txt", "custom_annotations.csv", "images.csv", "problem_reports.csv", "progress.csv", "specialist_responses.csv", "student_annotations.csv" };
+        var expected = new List<string> { "README.txt", "custom_annotations.csv", "images.csv", "metadata_checks.csv", "problem_reports.csv", "progress.csv", "specialist_responses.csv", "student_annotations.csv" };
         if (identity != IdentityMode.None) expected.Add("participants.csv");
         Assert.Equal(expected.Order(), files.Keys.Order());
         Assert.Equal(identity == IdentityMode.Full, files.Values.Any(text => text.Contains("first@example.test")));
@@ -260,7 +262,7 @@ public sealed class AdminServicesTests
 
         using var zip = new ZipArchive(new MemoryStream(archive), ZipArchiveMode.Read);
         Assert.Equal(["README.txt", "custom_annotations" + extension, "images" + extension, "images/1.jpg", "images/2.png", "images/3.jpg", "images_manifest" + extension,
-            "participants" + extension, "problem_reports" + extension, "progress" + extension, "specialist_responses" + extension, "student_annotations" + extension],
+            "metadata_checks" + extension, "participants" + extension, "problem_reports" + extension, "progress" + extension, "specialist_responses" + extension, "student_annotations" + extension],
             zip.Entries.Select(entry => entry.FullName).Order(StringComparer.Ordinal));
         Assert.Equal(files[1], EntryBytes(zip, "images/1.jpg"));
         Assert.Equal(files[2], EntryBytes(zip, "images/2.png"));
@@ -478,6 +480,36 @@ public sealed class AdminServicesTests
         Assert.Contains("Image is blurred", csv["problem_reports.csv"]);
         Assert.Contains("image-load-error", csv["problem_reports.csv"]);
         Assert.DoesNotContain(db.First.Email!, csv["problem_reports.csv"]);
+    }
+
+    [Fact]
+    public async Task LabelChecksReachTheExportTheImagePageAndTheSummary()
+    {
+        await using var db = await AdminDatabase.CreateAsync();
+        await db.AssignAsync(db.First);
+        Assert.True((await db.Repository.SaveMetadataChecksAsync(db.First, 1,
+        [
+            new MetadataAnswer(MetadataCheck.Modality, MetadataCheck.Correct, null, false),
+            new MetadataAnswer(MetadataCheck.Speciality, MetadataCheck.Corrected, "Rheumatology", true),
+            new MetadataAnswer(MetadataCheck.BodyRegion, MetadataCheck.CannotTell, null, false)
+        ])).Success);
+
+        var files = await ReadArchiveAsync(await db.Export.CreateArchiveAsync(new ExportOptions { Identity = IdentityMode.Pseudonymous }));
+        var rows = files["metadata_checks.csv"].Split("\r\n", StringSplitOptions.RemoveEmptyEntries);
+        Assert.Equal(4, rows.Length);
+        Assert.Contains("MetadataCheckId", rows[0]);
+        Assert.Contains("Rheumatology", files["metadata_checks.csv"]);
+        Assert.DoesNotContain(db.First.Email!, files["metadata_checks.csv"]);
+        Assert.Contains("metadata_checks", files["README.txt"]);
+
+        var detail = await db.Queries.GetImageAsync(1);
+        Assert.Equal(3, detail!.MetadataChecks.Count);
+
+        var summary = await db.Queries.GetMetadataCheckSummaryAsync();
+        Assert.Equal(1, summary.Fields.Single(field => field.Field == MetadataCheck.Modality).Confirmed);
+        Assert.Equal(1, summary.Fields.Single(field => field.Field == MetadataCheck.Speciality).Corrected);
+        Assert.Equal(1, summary.Fields.Single(field => field.Field == MetadataCheck.BodyRegion).CannotTell);
+        Assert.Equal(new AddedMetadataValue(MetadataCheck.Speciality, "Rheumatology", 1), Assert.Single(summary.AddedValues));
     }
 
     [Fact]

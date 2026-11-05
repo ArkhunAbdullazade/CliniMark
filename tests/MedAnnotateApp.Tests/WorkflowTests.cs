@@ -52,11 +52,13 @@ public sealed class WorkflowTests
         Assert.Equal(1, first?.Id);
         Assert.Equal("0/2", firstCounter);
         Assert.True((await db.Repository.SaveProfessionalAsync(db.Owner, Response(1))).Success);
+        Assert.True((await db.Repository.SaveMetadataChecksAsync(db.Owner, 1, LabelChecks.Answered)).Success);
         Assert.True((await db.Repository.CompleteProfessionalAsync(1, db.Owner)).Success);
         var (second, secondCounter) = await db.AssignAsync();
         Assert.Equal(2, second?.Id);
         Assert.Equal("1/2", secondCounter);
         Assert.True((await db.Repository.SaveProfessionalAsync(db.Owner, Response(2))).Success);
+        Assert.True((await db.Repository.SaveMetadataChecksAsync(db.Owner, 2, LabelChecks.Answered)).Success);
         Assert.True((await db.Repository.CompleteProfessionalAsync(2, db.Owner)).Success);
         var (none, finalCounter) = await db.AssignAsync();
         Assert.Null(none);
@@ -207,6 +209,7 @@ public sealed class WorkflowTests
 
         Assert.True((await db.Repository.DeleteCustomAnnotationAsync(db.Owner, saved[1].Id)).Success);
         Assert.True((await db.Repository.SaveProfessionalAsync(db.Owner, Response(1))).Success);
+        Assert.True((await db.Repository.SaveMetadataChecksAsync(db.Owner, 1, LabelChecks.Answered)).Success);
         Assert.True((await db.Repository.CompleteProfessionalAsync(1, db.Owner)).Success);
         // Completed work stays as saved: no more custom annotations, and none can be deleted.
         Assert.True((await db.Repository.SaveCustomAnnotationAsync(db.Owner, 1, "late", CustomContour)).Result.Conflict);
@@ -230,6 +233,7 @@ public sealed class WorkflowTests
 
         Assert.Equal(0, await db.Repository.CountCompletedByAsync(db.Owner, false));
         Assert.True((await db.Repository.SaveProfessionalAsync(db.Owner, Response(1))).Success);
+        Assert.True((await db.Repository.SaveMetadataChecksAsync(db.Owner, 1, LabelChecks.Answered)).Success);
         Assert.True((await db.Repository.CompleteProfessionalAsync(1, db.Owner)).Success);
         Assert.Equal(1, await db.Repository.CountCompletedByAsync(db.Owner, false));
         Assert.Equal(0, await db.Repository.CountCompletedByAsync(db.Other, false));
@@ -265,6 +269,7 @@ public sealed class WorkflowTests
         nonVisible.PressedButton = "Not Visible/Abstract";
         nonVisible.BoxCoordinates = "";
         Assert.True((await db.Repository.SaveProfessionalAsync(db.Owner, nonVisible)).Success);
+        Assert.True((await db.Repository.SaveMetadataChecksAsync(db.Owner, 1, LabelChecks.Answered)).Success);
         Assert.True((await db.Repository.CompleteProfessionalAsync(1, db.Owner)).Success);
         Assert.True((await db.Repository.CompleteProfessionalAsync(1, db.Owner)).Success);
         Assert.True((await db.Context.MedDatas.FindAsync(1))!.IsAnnotated);
@@ -387,6 +392,117 @@ public sealed class WorkflowTests
     {
         MedDataId = id, BoxCoordinates = Coordinates, ExtractedKeyword = "lesion", PressedButton = "Save and Next Term", Timestamps = "(100,200)"
     };
+
+    private static MetadataAnswer Answer(string field, string verdict, string? value = null, bool isNew = false) => new(field, verdict, value, isNew);
+
+    [Fact]
+    public async Task TheNextImageNeedsAllThreeLabelsAnswered()
+    {
+        await using var db = await WorkflowDatabase.CreateAsync();
+        await db.AssignAsync();
+        Assert.True((await db.Repository.SaveProfessionalAsync(db.Owner, Response(1))).Success);
+        var refused = await db.Repository.CompleteProfessionalAsync(1, db.Owner);
+        Assert.False(refused.Success);
+        Assert.Contains("body region", refused.Message);
+
+        Assert.True((await db.Repository.SaveMetadataChecksAsync(db.Owner, 1,
+            [Answer(MetadataCheck.Modality, MetadataCheck.Correct), Answer(MetadataCheck.Speciality, MetadataCheck.CannotTell)])).Success);
+        Assert.False((await db.Repository.CompleteProfessionalAsync(1, db.Owner)).Success);
+        Assert.False((await db.Context.MedDatas.SingleAsync(item => item.Id == 1)).IsAnnotated);
+
+        Assert.True((await db.Repository.SaveMetadataChecksAsync(db.Owner, 1, [Answer(MetadataCheck.BodyRegion, MetadataCheck.Correct)])).Success);
+        Assert.True((await db.Repository.CompleteProfessionalAsync(1, db.Owner)).Success);
+    }
+
+    [Fact]
+    public async Task AnImageCompletedBeforeTheCheckExistedStillAnswersARepeatedCompletion()
+    {
+        await using var db = await WorkflowDatabase.CreateAsync();
+        await db.AssignAsync();
+        Assert.True((await db.Repository.SaveProfessionalAsync(db.Owner, Response(1))).Success);
+        (await db.Context.MedDatas.SingleAsync(item => item.Id == 1)).IsAnnotated = true;
+        await db.Context.SaveChangesAsync();
+        Assert.True((await db.Repository.CompleteProfessionalAsync(1, db.Owner)).Success);
+    }
+
+    [Fact]
+    public async Task LabelAnswersKeepTheLabelShownAndCanChangeUntilCompletion()
+    {
+        await using var db = await WorkflowDatabase.CreateAsync();
+        await db.AssignAsync();
+        Assert.True((await db.Repository.SaveMetadataChecksAsync(db.Owner, 1, [Answer(MetadataCheck.Modality, MetadataCheck.Correct)])).Success);
+        Assert.True((await db.Repository.SaveMetadataChecksAsync(db.Owner, 1, [Answer(MetadataCheck.Modality, MetadataCheck.Corrected, "MRI")])).Success);
+
+        var check = await db.Context.MetadataChecks.SingleAsync();
+        Assert.Equal("ct", check.ShownValue);
+        Assert.Equal(MetadataCheck.Corrected, check.Verdict);
+        Assert.Equal("MRI", check.CorrectedValue);
+        Assert.Equal("owner", check.UserId);
+        Assert.Equal("ct", (await db.Context.MedDatas.SingleAsync(item => item.Id == 1)).Modality);
+
+        Assert.True((await db.Repository.SaveMetadataChecksAsync(db.Owner, 1, [Answer(MetadataCheck.Modality, MetadataCheck.CannotTell)])).Success);
+        check = await db.Context.MetadataChecks.AsNoTracking().SingleAsync();
+        Assert.Equal(MetadataCheck.CannotTell, check.Verdict);
+        Assert.Null(check.CorrectedValue);
+    }
+
+    [Fact]
+    public async Task OnlyTheHolderCanAnswerAndNothingChangesAfterCompletion()
+    {
+        await using var db = await WorkflowDatabase.CreateAsync();
+        await db.AssignAsync();
+        Assert.True((await db.Repository.SaveMetadataChecksAsync(db.Other, 1, [Answer(MetadataCheck.Modality, MetadataCheck.Correct)])).Conflict);
+        Assert.Null(await db.Repository.GetMetadataChecksAsync(1, db.Other));
+        Assert.Empty(await db.Context.MetadataChecks.ToListAsync());
+
+        Assert.True((await db.Repository.SaveProfessionalAsync(db.Owner, Response(1))).Success);
+        var answers = MetadataCheck.Fields.Select(field => Answer(field, MetadataCheck.Correct)).ToList();
+        Assert.True((await db.Repository.SaveMetadataChecksAsync(db.Owner, 1, answers)).Success);
+        Assert.Equal(3, (await db.Repository.GetMetadataChecksAsync(1, db.Owner))!.Count);
+        Assert.True((await db.Repository.CompleteProfessionalAsync(1, db.Owner)).Success);
+
+        // A retry of what was saved is fine; a change is not.
+        Assert.True((await db.Repository.SaveMetadataChecksAsync(db.Owner, 1, answers)).Success);
+        Assert.True((await db.Repository.SaveMetadataChecksAsync(db.Owner, 1, [Answer(MetadataCheck.Modality, MetadataCheck.CannotTell)])).Conflict);
+        Assert.All(await db.Context.MetadataChecks.AsNoTracking().ToListAsync(), check => Assert.Equal(MetadataCheck.Correct, check.Verdict));
+    }
+
+    [Fact]
+    public async Task ACorrectionMustDifferFromTheLabelAndAMissingLabelCannotBeConfirmed()
+    {
+        await using var db = await WorkflowDatabase.CreateAsync();
+        await db.AssignAsync();
+        Assert.False((await db.Repository.SaveMetadataChecksAsync(db.Owner, 1, [Answer(MetadataCheck.Modality, MetadataCheck.Corrected, "CT")])).Success);
+
+        var image = await db.Context.MedDatas.SingleAsync(item => item.Id == 1);
+        image.BodyRegion = "Unknown";
+        db.Owner.BodyRegion = null;
+        await db.Context.SaveChangesAsync();
+        Assert.False((await db.Repository.SaveMetadataChecksAsync(db.Owner, 1, [Answer(MetadataCheck.BodyRegion, MetadataCheck.Correct)])).Success);
+        Assert.True((await db.Repository.SaveMetadataChecksAsync(db.Owner, 1, [Answer(MetadataCheck.BodyRegion, MetadataCheck.Corrected, "Abdomen")])).Success);
+        Assert.Empty((await db.Context.MetadataChecks.Where(check => check.Verdict == MetadataCheck.Correct).ToListAsync()));
+    }
+
+    [Fact]
+    public async Task AddedValuesAreOfferedToEveryoneInTheirFirstSpelling()
+    {
+        await using var db = await WorkflowDatabase.CreateAsync();
+        db.Owner.BodyRegion = "chest,abdomen";
+        await db.AssignAsync();
+        Assert.True((await db.Repository.SaveMetadataChecksAsync(db.Owner, 1, [Answer(MetadataCheck.Speciality, MetadataCheck.Corrected, "Rheumatology", true)])).Success);
+        Assert.True((await db.Repository.SaveProfessionalAsync(db.Owner, Response(1))).Success);
+        Assert.True((await db.Repository.SaveMetadataChecksAsync(db.Owner, 1,
+            [Answer(MetadataCheck.Modality, MetadataCheck.Correct), Answer(MetadataCheck.BodyRegion, MetadataCheck.Correct)])).Success);
+        Assert.True((await db.Repository.CompleteProfessionalAsync(1, db.Owner)).Success);
+
+        await db.AssignAsync();
+        Assert.True((await db.Repository.SaveMetadataChecksAsync(db.Owner, 3, [Answer(MetadataCheck.Speciality, MetadataCheck.Corrected, "RHEUMATOLOGY", true)])).Success);
+
+        Assert.Equal(["Rheumatology", "Rheumatology"], await db.Context.MetadataChecks.Where(check => check.IsNewValue).Select(check => check.CorrectedValue).ToListAsync());
+        var added = await db.Repository.GetAddedMetadataValuesAsync();
+        Assert.Equal(["Rheumatology"], added[MetadataCheck.Speciality]);
+        Assert.False(added.ContainsKey(MetadataCheck.Modality));
+    }
 
     private sealed class WorkflowDatabase : IAsyncDisposable
     {

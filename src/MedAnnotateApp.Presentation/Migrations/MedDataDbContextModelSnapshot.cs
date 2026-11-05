@@ -362,6 +362,54 @@ namespace MedAnnotateApp.Presentation.Migrations
                     b.ToTable("MedDataKeywords");
                 });
 
+            modelBuilder.Entity("MedAnnotateApp.Core.Models.MetadataCheck", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("CorrectedValue")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Field")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<bool>("IsNewValue")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("MedDataId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("ShownValue")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Verdict")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IsNewValue");
+
+                    b.HasIndex("MedDataId", "UserId", "Field")
+                        .IsUnique();
+
+                    b.ToTable("MetadataChecks");
+                });
+
             modelBuilder.Entity("MedAnnotateApp.Core.Models.ProblemReport", b =>
                 {
                     b.Property<long>("Id")

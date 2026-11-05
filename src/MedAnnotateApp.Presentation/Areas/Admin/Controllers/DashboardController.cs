@@ -9,7 +9,7 @@ public class DashboardController(AdminQueryService queries, IIdentityService ide
 {
     public async Task<IActionResult> Index(bool fresh = false, CancellationToken cancellationToken = default) =>
         View(new DashboardViewModel(await queries.GetOverviewAsync(fresh, cancellationToken), queries.StaleAfter,
-            await queries.GetProblemSummaryAsync(cancellationToken)));
+            await queries.GetProblemSummaryAsync(cancellationToken), await queries.GetMetadataCheckSummaryAsync(cancellationToken)));
 
     [HttpPost]
     public async Task<IActionResult> Logout()
