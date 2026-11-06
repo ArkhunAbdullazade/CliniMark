@@ -188,7 +188,7 @@ test('reviewing a saved term keeps saying that the labels are missing, until the
   assert.match(elements['annotation-status'].textContent, /^Saved annotation for lesion \(read only\)\. All terms are saved\. Select Next Image/);
 });
 
-test('Skip entire image moves on at once when nothing has been entered', async () => {
+test('Skip the case moves on at once when nothing has been entered', async () => {
   const {elements, calls, confirms, reloads, warnsBeforeLeaving} = await page([new Element('lesion', 'lesion')], 1);
   assert.equal(elements['skip-image-button'].disabled, false);
   await elements['skip-image-button'].click();
@@ -200,7 +200,7 @@ test('Skip entire image moves on at once when nothing has been entered', async (
   assert.equal(warnsBeforeLeaving(), false);
 });
 
-test('Skip entire image asks first when it would remove saved work, and declining changes nothing', async () => {
+test('Skip the case asks first when it would remove saved work, and declining changes nothing', async () => {
   const {elements, calls, confirms, reloads} = await page([new Element('lesion', 'lesion')], 1, {confirm: false,
     loadHistory: () => ({ok: true, json: async () => ({annotations: [{extractedKeyword: 'lesion', pressedButton: 'Save and Next Term', boxCoordinates: '{}'}]})})});
   await elements['skip-image-button'].click();
@@ -209,7 +209,7 @@ test('Skip entire image asks first when it would remove saved work, and declinin
   assert.equal(reloads.length, 0);
 });
 
-test('Skip entire image also asks when a shape is drawn but not saved', async () => {
+test('Skip the case also asks when a shape is drawn but not saved', async () => {
   const {elements, manager, confirms, calls} = await page([new Element('lesion', 'lesion')], 1);
   manager.annotations = [{type: 'rectangle'}];
   manager.onAnnotationsChange();

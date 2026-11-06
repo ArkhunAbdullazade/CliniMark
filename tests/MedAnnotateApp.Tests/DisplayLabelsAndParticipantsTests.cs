@@ -50,7 +50,7 @@ public class DisplayLabelsAndParticipantsTests
         foreach (var region in ImageFilterOptions.BodyRegions)
         {
             var stored = ImageFiltersDto.JoinSelection([region]);
-            var filters = ImageSelectionFilters.Parse(null, stored, null);
+            var filters = ImageSelectionFilters.Parse(null, stored, "ct");
             foreach (var other in ImageFilterOptions.BodyRegions)
                 Assert.Equal(other == region, filters.Matches(new MedData { BodyRegion = other, Speciality = "Surgery", Modality = "CT" }));
         }

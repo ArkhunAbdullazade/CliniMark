@@ -203,7 +203,7 @@ public class MedDataRepository : IMedDataRepository
         return new(true);
     }
 
-    // Skip entire image: the case is out of this specialist's field. The image opens again for everyone else and starts
+    // Skip the case: the case is out of this specialist's field. The image opens again for everyone else and starts
     // fresh, so one complete set per image still comes from one person. Anything they had saved on it leaves the results
     // tables, with a copy kept in the skip row, and they are not offered the image again.
     public async Task<AnnotationSaveResult> SkipImageAsync(int medDataId, User user)

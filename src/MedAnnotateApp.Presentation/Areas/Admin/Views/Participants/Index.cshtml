@@ -60,7 +60,7 @@
                             </td>
                             <td class="d-none d-sm-table-cell">
                                 <span class="role-pill"><span class="series-dot @(person.IsStudent ? "student" : "specialist")"></span>@AdminUi.RoleLabel(person.Role)</span>
-                                <div class="muted small text-nowrap">@(person.IsStudent ? "" : $"{person.ClinicalExperience} y experience")</div>
+                                <div class="muted small text-nowrap">@(person.IsStudent || person.ClinicalExperience == 0 ? "" : $"{person.ClinicalExperience} y experience")</div>
                             </td>
                             <td class="small selections d-none d-xl-table-cell">
                                 <div class="truncate" title="@AdminUi.List(person.Speciality)">@AdminUi.List(person.Speciality)</div>

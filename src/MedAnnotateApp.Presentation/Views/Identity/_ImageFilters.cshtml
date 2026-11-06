@@ -2,25 +2,25 @@
 @using MedAnnotateApp.Presentation.Dtos
 @{
     // Image modality first: it matches a clinician's reading skill and is the most reliable label; speciality narrows
-    // to familiar diseases; body region mainly helps organ-focused experts.
+    // to familiar diseases; body region mainly helps organ-focused experts. Only image modality is required.
     var groups = new[]
     {
-        (Name: "ImageModality", Label: "Image modality", Options: ImageFilterOptions.ImageModalities, Selected: Model?.ImageModality),
-        (Name: "Speciality", Label: "Speciality", Options: ImageFilterOptions.Specialities, Selected: Model?.Speciality),
-        (Name: "BodyRegion", Label: "Body region", Options: ImageFilterOptions.BodyRegions, Selected: Model?.BodyRegion)
+        (Name: "ImageModality", Label: "Image modality", Options: ImageFilterOptions.ImageModalities, Selected: Model?.ImageModality, Required: true),
+        (Name: "Speciality", Label: "Speciality", Options: ImageFilterOptions.Specialities, Selected: Model?.Speciality, Required: false),
+        (Name: "BodyRegion", Label: "Body region", Options: ImageFilterOptions.BodyRegions, Selected: Model?.BodyRegion, Required: false)
     };
     var compact = ViewData["CompactImageFilters"] as bool? == true;
 }
 @if (!compact)
 {
     <h2>Choose images to annotate</h2>
-    <p id="image-filter-help">Every list is optional: select at least one option in any of them. Leaving a list empty includes all of its options, and you can select several options in a list.</p>
+    <p id="image-filter-help">Select at least one image modality. Speciality and body region are optional: leaving one empty includes all of its options. You can select several options in a list.</p>
 }
 <div class="row g-3" @(compact ? "" : "aria-describedby=image-filter-help")>
     @foreach (var group in groups)
     {
-        <fieldset class="col-md-4" data-filter-group="@group.Name" data-filter-label="@group.Label" aria-describedby="image-filter-error">
-            <legend>@group.Label <span class="text-muted">(optional)</span></legend>
+        <fieldset class="col-md-4" data-filter-group="@group.Name" data-filter-label="@group.Label" data-filter-required="@(group.Required ? "true" : null)" aria-describedby="image-filter-error">
+            <legend>@group.Label @if (group.Required) { <span class="filter-required">(required)</span> } else { <span class="text-muted">(optional)</span> }</legend>
             <div class="border rounded p-2 image-filter-options">
                 @for (var index = 0; index < group.Options.Length; index++)
                 {
@@ -35,5 +35,5 @@
         </fieldset>
     }
 </div>
-@* One message for the whole form: only an entirely empty selection is refused. *@
+@* One message for the whole form: only image modality can be missing. *@
 <p id="image-filter-error" class="text-danger" data-filter-error aria-live="polite"></p>

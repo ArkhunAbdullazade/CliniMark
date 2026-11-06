@@ -1,13 +1,13 @@
 namespace MedAnnotateApp.Core.Models;
 
 /// <summary>
-/// The three category columns on MedData contain one value each; users may select several values. Every list is
-/// optional: an empty list does not restrict its category, so choosing only "microscopy" offers every microscopy image.
-/// At least one option must be chosen in some list.
+/// The three category columns on MedData contain one value each; users may select several values. At least one image
+/// modality is required. Speciality and body region are optional: an empty list does not restrict its category, so
+/// choosing only "microscopy" offers every microscopy image.
 /// </summary>
 public sealed record ImageSelectionFilters(string[] Specialities, string[] BodyRegions, string[] Modalities)
 {
-    public bool HasSelection => Specialities.Length > 0 || BodyRegions.Length > 0 || Modalities.Length > 0;
+    public bool HasSelection => Modalities.Length > 0;
 
     public static ImageSelectionFilters Parse(string? speciality, string? bodyRegion, string? imageModality) =>
         new(Split(speciality), Split(bodyRegion), Split(imageModality));

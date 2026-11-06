@@ -3,11 +3,13 @@ document.querySelectorAll('[data-image-filter-form]').forEach(form => {
   const error = form.querySelector('[data-filter-error]');
   // The tool's own Select all box has no name, so it is never submitted or counted as a choice.
   const options = group => [...group.querySelectorAll('input[type="checkbox"][name]')];
-  // Every list is optional (an empty list includes all its options); only an entirely empty selection is refused.
+  // Image modality is required; the other lists are optional (an empty list includes all its options).
+  const required = groups.find(group => group.hasAttribute('data-filter-required'));
+  const hasRequired = () => options(required).some(option => option.checked);
   function validate() {
-    const selected = groups.some(group => options(group).some(option => option.checked));
-    if (error) error.textContent = selected ? '' : 'Select at least one option in any of the lists.';
-    groups.forEach(group => group.setAttribute('aria-invalid', String(!selected)));
+    const selected = hasRequired();
+    if (error) error.textContent = selected ? '' : 'Select at least one image modality.';
+    required.setAttribute('aria-invalid', String(!selected));
     return selected;
   }
   let tried = false;
@@ -25,7 +27,7 @@ document.querySelectorAll('[data-image-filter-form]').forEach(form => {
       const params = new URLSearchParams();
       groups.forEach(group => options(group).filter(option => option.checked).forEach(option => params.append(option.name, option.value)));
       const request = ++availabilityRequest;
-      if (![...params.keys()].length) { availability.textContent = ''; availability.dataset.state = ''; return; }
+      if (!hasRequired()) { availability.textContent = ''; availability.dataset.state = ''; return; }
       try {
         const response = await fetch(`${availabilityUrl}?${params}`, {headers: {Accept: 'application/json'}, cache: 'no-store'});
         const {available} = await response.json();
@@ -45,8 +47,8 @@ document.querySelectorAll('[data-image-filter-form]').forEach(form => {
     tried = true;
     if (validate()) return;
     event.preventDefault();
-    groups[0].clearSearch?.();
-    options(groups[0])[0].focus();
+    required.clearSearch?.();
+    options(required)[0].focus();
   });
 
   // Search and Select all for one list. Search only hides options: hidden choices stay selected and are still saved,

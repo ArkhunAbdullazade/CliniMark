@@ -30,8 +30,7 @@ public class AuthAccessTests
     [Theory]
     [InlineData("Speciality")]
     [InlineData("BodyRegion")]
-    [InlineData("ImageModality")]
-    public void EachFilterIsOptionalButRejectsBlankOrUnlistedSelections(string property)
+    public void SpecialityAndBodyRegionAreOptionalButRejectBlankOrUnlistedSelections(string property)
     {
         foreach (var empty in new string[]?[] { null, [] })
         {
@@ -48,24 +47,33 @@ public class AuthAccessTests
     }
 
     [Fact]
-    public void AnEntirelyEmptySelectionIsRejected()
+    public void ImageModalityIsRequiredEvenWhenOtherListsAreChosen()
     {
-        foreach (var empty in new string[]?[] { null, [] })
+        foreach (var empty in new string[]?[] { null, [], ["  "] })
         {
-            var filters = new ImageFiltersDto { Speciality = empty, BodyRegion = empty, ImageModality = empty };
-            Assert.Equal([ImageFiltersDto.NothingSelected], Validate(filters).Select(error => error.ErrorMessage));
+            var nothing = new ImageFiltersDto { Speciality = null, BodyRegion = null, ImageModality = empty };
+            Assert.Equal([ImageFiltersDto.ModalityRequired], Validate(nothing).Select(error => error.ErrorMessage));
+            var others = new ImageFiltersDto { Speciality = ["cardiology"], BodyRegion = ["chest and thorax"], ImageModality = empty };
+            Assert.Equal([ImageFiltersDto.ModalityRequired], Validate(others).Select(error => error.ErrorMessage));
         }
     }
 
     [Fact]
-    public void SignupNeedsAnOptionInAnyListButNoListIsRequired()
+    public void SignupNeedsAnImageModalityButSpecialityAndBodyRegionAreOptional()
     {
         var signup = ValidSignup();
         signup.Speciality = null;
         signup.BodyRegion = [];
         Assert.Empty(Validate(signup));
+        signup.Speciality = ["cardiology"];
         signup.ImageModality = [];
-        Assert.Contains(Validate(signup), error => error.ErrorMessage == ImageFiltersDto.NothingSelected);
+        Assert.Contains(Validate(signup), error => error.ErrorMessage == ImageFiltersDto.ModalityRequired);
+    }
+
+    [Fact]
+    public void SignupDoesNotAskForClinicalExperience()
+    {
+        Assert.Null(typeof(SignupDto).GetProperty("ClinicalExperience"));
     }
 
     [Fact]
@@ -95,7 +103,7 @@ public class AuthAccessTests
     {
         Email = "specialist@gmail.com", FullName = "Research Specialist",
         Password = "Participant1!", ConfirmPassword = "Participant1!",
-        Position = "specialist", University = "Community clinic", ClinicalExperience = 3,
+        Position = "specialist", University = "Community clinic",
         Speciality = ["cardiology"], BodyRegion = ["chest and thorax"], ImageModality = ["ct"]
     };
 

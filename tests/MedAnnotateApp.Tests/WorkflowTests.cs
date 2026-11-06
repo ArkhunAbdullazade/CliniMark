@@ -19,8 +19,8 @@ public sealed class WorkflowTests
     // Images: 1 cardiology/chest/ct, 2 dermatology/head/mri, 3 cardiology/abdomen/ct, 4 cardiology/chest/xray, 5 no metadata.
     [Theory]
     [InlineData(null, null, "ct", 1, "0/2")]
-    [InlineData(null, "head", null, 2, "0/1")]
-    [InlineData("cardiology", null, null, 1, "0/3")]
+    [InlineData(null, "head", "mri", 2, "0/1")]
+    [InlineData("cardiology", null, "ct,xray", 1, "0/3")]
     [InlineData(" , ", "chest", "xray", 4, "0/1")]
     public async Task OnlyTheChosenListsRestrictTheImages(string? speciality, string? region, string? modality, int expected, string counter)
     {
@@ -33,6 +33,7 @@ public sealed class WorkflowTests
     [Theory]
     [InlineData(null, null, null)]
     [InlineData(" , ", "", null)]
+    [InlineData("cardiology", "chest", null)] // Image modality is required, whatever else is chosen.
     public async Task AnEmptySelectionCannotClaimAnImage(string? speciality, string? region, string? modality)
     {
         await using var db = await WorkflowDatabase.CreateAsync();
@@ -222,7 +223,7 @@ public sealed class WorkflowTests
     public async Task AvailabilityAndCompletedCountsFollowTheSelectionLocksAndTheAnnotator()
     {
         await using var db = await WorkflowDatabase.CreateAsync();
-        var cardiology = ImageSelectionFilters.Parse("cardiology", null, null); // images 1, 3 and 4
+        var cardiology = ImageSelectionFilters.Parse("cardiology", null, "ct,xray"); // images 1, 3 and 4
         Assert.Equal(3, await db.Repository.CountAvailableAsync(cardiology, false, db.Owner.Id));
         Assert.Equal(0, await db.Repository.CountAvailableAsync(ImageSelectionFilters.Parse(null, " , ", null), false, db.Owner.Id));
 

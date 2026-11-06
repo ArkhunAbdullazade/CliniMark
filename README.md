@@ -18,7 +18,7 @@ Specialists work through highlighted medical terms in the publication text and m
 
 Before moving on, specialists confirm or correct the image's modality, speciality and body region (Yes, No, Can't tell). Next Image stays locked until all three are answered; the box turns yellow and the status line says so in bold red once every term is saved. The dataset's own labels are never overwritten: `MetadataChecks` records what was shown and what the specialist said, for comparison later.
 
-**Skip entire image** sends a case outside the specialist's field back to the pool. It starts fresh for the next person, with nothing from the first specialist left in the results, and is never offered to that specialist again. Anything they had saved on it is copied into `ImageSkips.DiscardedWork` first, so no annotation is destroyed.
+**Skip the case** sends a case outside the specialist's field back to the pool. It starts fresh for the next person, with nothing from the first specialist left in the results, and is never offered to that specialist again. Anything they had saved on it is copied into `ImageSkips.DiscardedWork` first, so no annotation is destroyed.
 
 <img width="1865" height="902" alt="DEMOSS2" src="https://github.com/user-attachments/assets/0bb8cbea-b1e3-4299-8545-15a0b9eda3a2" />
 
@@ -46,7 +46,7 @@ Both workflows provide boundary box and freehand contour tools, with zoom to are
 
 ### Participant access and image assignment
 
-Participants register or log in with their own account password through ASP.NET Core Identity; there is no shared access password. Ordinary email addresses are accepted; ownership confirmation is not required. Each image selection list requires at least one option and supports multiple options. Images match any selected option within each list and must match all three lists. Selections can be changed at `/Identity/Filters`.
+Participants register or log in with their own account password through ASP.NET Core Identity; there is no shared access password. Ordinary email addresses are accepted; ownership confirmation is not required. At least one image modality is required; speciality and body region are optional, and an empty list includes all of its options. Every list supports multiple options. Images match any selected option within each list and must match every list that has a selection. Selections can be changed at `/Identity/Filters`.
 
 Selecting `medical student` assigns the `Medical_Student` role; other positions receive `Professional`. Each role has its own annotation workspace.
 
@@ -187,7 +187,7 @@ dotnet ef migrations script --idempotent --project src/MedAnnotateApp.Presentati
 - JavaScript tests: `node --test tests/js/*.test.cjs` (PowerShell: `node --test (Get-ChildItem tests/js/*.test.cjs).FullName`).
 - PostgreSQL concurrency test: set `MEDANNOTATE_TEST_POSTGRES_CONNECTION` to a disposable `medannotate_audit_*` database.
 
-Images need speciality, body-region and modality metadata to be assigned through the required filters. The app targets .NET 10 (LTS).
+Images need an image modality to be assigned, because that filter is required. The app targets .NET 10 (LTS).
 
 ## License
 

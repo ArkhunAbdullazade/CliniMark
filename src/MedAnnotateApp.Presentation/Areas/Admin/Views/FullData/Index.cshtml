@@ -125,7 +125,7 @@
                                     <a asp-controller="Participants" asp-action="Details" asp-route-id="@item.Specialist.Id">@item.Specialist.DisplayName</a>
                                     <div class="muted small">@item.Specialist.Code · @item.Specialist.Email</div>
                                     <div class="muted small">@item.Specialist.Position @item.Specialist.University</div>
-                                    <div class="muted small">@item.Specialist.ClinicalExperience years @item.Specialist.OrcidId</div>
+                                    <div class="muted small">@(item.Specialist.ClinicalExperience > 0 ? $"{item.Specialist.ClinicalExperience} years " : "")@item.Specialist.OrcidId</div>
                                 }
                             </td>
                             <td class="full-cell-wide">

@@ -1,7 +1,7 @@
-/* Research access, sign-in, account and filter forms. */
+/* Sign-in, account and filter forms. */
 .auth-page { color: var(--ink); }
 
-/* Gate, sign-in and sign-up: nothing competes with the form. One column, left-aligned, with the logo and heading in the same
+/* Sign-in and sign-up: nothing competes with the form. One column, left-aligned, with the logo and heading in the same
    block as the fields. These pages carry their own logo, so the header bar steps aside. */
 body:has(.auth-focus, .auth-account) > header { display: none; }
 body:has(.auth-focus) { background: var(--paper); }
@@ -55,6 +55,7 @@ body:has(.auth-focus) main { padding-bottom: 0 !important; }
 .auth-page fieldset { min-width: 0; }
 .auth-page legend { float: none; width: auto; margin-bottom: 8px; font-size: 1rem; font-weight: 700; }
 .auth-page legend .text-muted { color: var(--muted) !important; font-weight: 400; }
+.auth-page legend .filter-required { color: var(--cardinal); font-weight: 700; }
 .auth-page .image-filter-options { max-height: 15rem; padding: 4px !important; overflow-y: auto; border-radius: var(--radius-control) !important; }
 .auth-page .image-filter-options .form-check { display: flex; align-items: flex-start; gap: 8px; min-height: 36px; margin: 0; padding: 0 8px; border-radius: var(--radius-control); }
 .auth-page .image-filter-options .form-check:hover { background: var(--paper); }

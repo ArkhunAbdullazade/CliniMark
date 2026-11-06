@@ -51,7 +51,7 @@
                     <dt>Email</dt><dd>@person.Email</dd>
                     <dt>Position</dt><dd>@person.Position</dd>
                     <dt>University</dt><dd>@(person.University ?? "—")</dd>
-                    @if (!person.IsStudent)
+                    @if (!person.IsStudent && person.ClinicalExperience > 0)
                     {
                         <dt>Experience</dt><dd>@person.ClinicalExperience years</dd>
                     }

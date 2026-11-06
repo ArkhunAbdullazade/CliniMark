@@ -253,7 +253,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const hasWork = () => !historyLoaded || history.length > 0 || dirty || problem.value.trim() !== "" || custom?.hasSaved() || custom?.hasPending();
   skipImage.addEventListener("click", async () => {
     if (released || saving) return;
-    if (hasWork() && !confirm("Skip this image? What you have entered on it will be removed, and another specialist will start it fresh.")) return;
+    if (hasWork() && !confirm("Skip this case? What you have entered on it will be removed, and another specialist will start it fresh.")) return;
     saving = true; buttons(); showStatus("Moving to the next image…", "saving");
     try {
       await request(`/MedData/SkipImage?medDataId=${encodeURIComponent(assignmentId)}`, {method: "PUT"});

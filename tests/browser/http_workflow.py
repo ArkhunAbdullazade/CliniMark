@@ -49,14 +49,14 @@ class Client:
         self.request('/Identity/Signup')
         fields = dict(Email=f'{name}-{uuid4().hex[:8]}@example.net', FullName='Synthetic Audit Researcher',
             Password=PASSWORD, ConfirmPassword=PASSWORD, Position=position, University='Local test institute',
-            ClinicalExperience='5', Speciality=['cardiology', 'dermatology'],
+            Speciality=['cardiology', 'dermatology'],
             BodyRegion=['Chest and Thorax', 'head and neck'], ImageModality=['ct', 'mri'])
         if invalid:
-            # Every list is optional, but an entirely empty selection is refused.
-            bad = {key: value for key, value in fields.items() if key not in ('Speciality', 'BodyRegion', 'ImageModality')}
+            # Speciality and body region are optional, but image modality is required.
+            bad = {key: value for key, value in fields.items() if key != 'ImageModality'}
             status, url, body = self.request('/Identity/PostSignup', form=bad)
-            assert status == 200 and 'Select at least one option in any of the lists.' in body
-            REPORT.append('Empty filter selection rejected by server before account creation')
+            assert status == 200 and 'Select at least one image modality.' in body
+            REPORT.append('A selection with no image modality is rejected by the server before account creation')
         status, url, body = self.request('/Identity/PostSignup', form=fields)
         assert status == 200 and url.endswith('/Identity/Login'), (status, url, body[:300])
         self.email = fields['Email']

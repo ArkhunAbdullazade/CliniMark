@@ -248,7 +248,7 @@ public sealed class ResultsExportService
             "SpecialityFilter", "BodyRegionFilter", "ModalityFilter", "SignedUpAtUtc"]);
         foreach (var person in people.All)
             table.Row([
-                person.Code, person.Role, person.Position, person.ClinicalExperience, person.University,
+                person.Code, person.Role, person.Position, Experience(person.ClinicalExperience), person.University,
                 .. full ? new object?[] { person.Email, person.FullName, person.OrcidId } : [],
                 person.Speciality, person.BodyRegion, person.ImageModality, person.CreatedAt]);
     }
@@ -308,7 +308,7 @@ public sealed class ResultsExportService
                 report.UserId, people.Ref(report.UserId)?.Role, report.ResolvedAt);
     }
 
-    // Images a specialist sent back with Skip entire image. DiscardedWork holds what they had saved on it, if anything.
+    // Images a specialist sent back with Skip the case. DiscardedWork holds what they had saved on it, if anything.
     private async Task WriteImageSkipsAsync(ZipArchive zip, ExportOptions options, People people, CancellationToken cancellationToken)
     {
         using var table = Entry(zip, "image_skips", options.Format);
@@ -489,7 +489,7 @@ public sealed class ResultsExportService
                               never changed. Images completed before this check existed have no rows.
             problem_reports   technical problems: reports typed by participants (user-report) and errors their pages
                               logged automatically (image-load-error, save-error, script-error). Account ids only.
-            image_skips       images a specialist sent back with Skip entire image, usually as outside their speciality.
+            image_skips       images a specialist sent back with Skip the case, usually as outside their speciality.
                               The image went back to the pool and started fresh for the next person. DiscardedWork keeps
                               a copy of what they had saved on it; those rows are not in the other tables.
             pixel_masks       every drawn annotation as a pixel mask: 1 inside the shape, 0 outside. CocoRle is COCO run-length
@@ -518,12 +518,15 @@ public sealed class ResultsExportService
         _ => []
     };
 
+    // Sign-up no longer asks for clinical experience, so 0 means unknown and stays empty rather than reading as none.
     private static object?[] AnnotatorValues(IdentityMode identity, Person? person, string? position, int experience) => identity switch
     {
-        IdentityMode.Full => [person?.Code ?? "REMOVED", person?.Email, person?.FullName, person?.University, person?.OrcidId, position, experience],
-        IdentityMode.Pseudonymous => [person?.Code ?? "REMOVED", position, experience],
+        IdentityMode.Full => [person?.Code ?? "REMOVED", person?.Email, person?.FullName, person?.University, person?.OrcidId, position, Experience(experience)],
+        IdentityMode.Pseudonymous => [person?.Code ?? "REMOVED", position, Experience(experience)],
         _ => []
     };
+
+    private static int? Experience(int years) => years > 0 ? years : null;
 
     private async Task<IDbContextTransaction?> BeginSnapshotAsync(CancellationToken cancellationToken)
     {

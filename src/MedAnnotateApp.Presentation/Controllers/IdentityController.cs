@@ -165,7 +165,6 @@ public class IdentityController : Controller
                 Speciality = ImageFiltersDto.JoinSelection(signupDto.Speciality),
                 BodyRegion = ImageFiltersDto.JoinSelection(signupDto.BodyRegion),
                 ImageModality = ImageFiltersDto.JoinSelection(signupDto.ImageModality),
-                ClinicalExperience = signupDto.ClinicalExperience ?? 0,
                 OrcidId = signupDto.OrcidId,
             };
 

@@ -1,7 +1,7 @@
 namespace MedAnnotateApp.Core.Models;
 
 /// <summary>
-/// A specialist sent an image back with Skip entire image, usually because it is outside their speciality. The image is
+/// A specialist sent an image back with Skip the case, usually because it is outside their speciality. The image is
 /// open again for everyone else, and this row keeps it from being offered to the same person a second time.
 /// </summary>
 public class ImageSkip

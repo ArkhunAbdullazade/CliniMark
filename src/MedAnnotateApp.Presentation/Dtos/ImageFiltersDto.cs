@@ -2,10 +2,10 @@ using System.ComponentModel.DataAnnotations;
 
 namespace MedAnnotateApp.Presentation.Dtos;
 
-// Every list is optional; an empty list includes all of its options. Only an entirely empty selection is refused.
+// Image modality is required. Speciality and body region are optional: an empty list includes all of its options.
 public class ImageFiltersDto : IValidatableObject
 {
-    public const string NothingSelected = "Select at least one option in any of the lists.";
+    public const string ModalityRequired = "Select at least one image modality.";
 
     public string[]? Speciality { get; set; }
 
@@ -15,9 +15,9 @@ public class ImageFiltersDto : IValidatableObject
 
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
-        if (new[] { Speciality, BodyRegion, ImageModality }.All(values => values is null || values.All(string.IsNullOrWhiteSpace)))
+        if (ImageModality is null || ImageModality.All(string.IsNullOrWhiteSpace))
         {
-            yield return new ValidationResult(NothingSelected);
+            yield return new ValidationResult(ModalityRequired);
             yield break;
         }
         foreach (var (values, allowed, member, label) in new[]

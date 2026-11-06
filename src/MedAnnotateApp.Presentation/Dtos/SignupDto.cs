@@ -33,10 +33,6 @@ public class SignupDto : ImageFiltersDto
     [StringLength(300, ErrorMessage = "University or institution must be at most 300 characters long")]
     public string? University { get; set; }
 
-    [Required(ErrorMessage = "Clinical experience is required")]
-    [Range(0, 80, ErrorMessage = "Clinical experience must be between 0 and 80 years")]
-    public int? ClinicalExperience { get; set; }
-
     [StringLength(100, ErrorMessage = "ORCID iD must be at most 100 characters long")]
     public string? OrcidId { get; set; }
 }

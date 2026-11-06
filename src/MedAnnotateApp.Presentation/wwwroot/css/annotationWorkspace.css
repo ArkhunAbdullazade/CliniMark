@@ -8,9 +8,11 @@ body > header .navbar { margin-bottom: 0 !important; }
 body > .container { flex: 1 1 0; min-height: 0; max-width: none; width: 100%; padding: 0 16px; overflow: hidden; }
 main[role="main"] { height: 100%; min-height: 0; padding-bottom: 0 !important; }
 
-.annotation-workspace { display: flex; flex-direction: row; align-items: stretch; width: 100%; height: 100%; min-height: 0; margin: 0; padding: 8px 0; gap: 12px; }
+.annotation-workspace { --right-column: 304px; --column-gap: 12px; display: flex; flex-direction: row; align-items: stretch; width: 100%; height: 100%; min-height: 0; margin: 0; padding: 8px 0; gap: var(--column-gap); }
 .annotation-workspace .left-column { display: flex; flex-direction: column; flex: 1 1 0; min-width: 0; min-height: 0; height: 100%; gap: 5px; }
-.annotation-workspace .right-column { display: flex; flex-direction: column; flex: 0 0 304px; width: 304px; min-width: 0; min-height: 0; height: 100%; gap: 8px; }
+.annotation-workspace .right-column { display: flex; flex-direction: column; flex: 0 0 var(--right-column); width: var(--right-column); min-width: 0; min-height: 0; height: 100%; gap: 8px; }
+/* Room for Skip the case, which sits in this column's bottom corner. */
+.annotation-workspace .right-column:not(.student-mode) { padding-bottom: 48px; }
 
 /* Image details */
 .metadata { flex: 0 1 auto; max-height: 45%; min-height: 0; display: flex; overflow: hidden; background: var(--surface); border: 1px solid var(--cardinal); border-radius: var(--radius); box-shadow: 0 1px 5px rgba(0, 0, 0, .1); }
@@ -132,9 +134,10 @@ main[role="main"] { height: 100%; min-height: 0; padding-bottom: 0 !important; }
 .zoom-selection { position: absolute; z-index: 1; box-sizing: border-box; pointer-events: none; border: 2px dashed #1a6fe0; background: rgba(26, 111, 224, .14); box-shadow: 0 0 0 1px rgba(255, 255, 255, .85), inset 0 0 0 1px rgba(255, 255, 255, .6); }
 
 /* Filters sits in the left corner while the decision buttons stay centred under the image. */
-.buttons-section { flex: 0 0 auto; display: grid; grid-template-columns: minmax(max-content, 1fr) auto minmax(max-content, 1fr); align-items: center; width: 100%; max-width: 100%; gap: 8px; margin: 0; padding: 6px 8px 4px; }
+.buttons-section { position: relative; flex: 0 0 auto; display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; width: 100%; max-width: 100%; gap: 8px; margin: 0; padding: 6px 8px 4px; }
 .buttons-section .filters-button { grid-column: 1; justify-self: start; }
-.buttons-section #skip-image-button { grid-column: 3; justify-self: end; white-space: nowrap; }
+/* Level with the buttons under the image, but out in the page's bottom right corner, across the right column. */
+.buttons-section #skip-image-button { position: absolute; top: 50%; right: calc(-1 * (var(--right-column) + var(--column-gap))); transform: translateY(-50%); white-space: nowrap; }
 .decision-buttons { grid-column: 2; display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
 .decision-buttons-wide { width: min(560px, 50vw); }
 .decision-buttons-wide #submit-button { width: 100%; }
@@ -234,14 +237,9 @@ main[role="main"] { height: 100%; min-height: 0; padding-bottom: 0 !important; }
   .floating-textbox, .annotation-dialog[open] { animation: none; }
   .annotation-item, .annotation-actions button, .tool-button, .tool-button::after, .hover-description, .note-panel, .note-toggle, .description-tool, .annotation-dialog-action, .button, .primary-button, .problem-send { transition: none; }
 }
-/* Keeps every button on one row on a small laptop. */
-@media (max-width: 1120px) {
-  .buttons-section .button, .buttons-section .primary-button, .buttons-section .filters-button { font-size: .8rem; padding: 6px 8px; }
-}
 @media (max-width: 850px) {
   body > .container { padding-inline: 8px; }
-  .annotation-workspace { gap: 8px; }
-  .annotation-workspace .right-column { flex-basis: 210px; width: 210px; }
+  .annotation-workspace { --right-column: 210px; --column-gap: 8px; }
   .note-toggle { white-space: normal; }
   .metadata-inner > p, .metadata-inner > .metadata-item { grid-template-columns: minmax(0, 1fr); row-gap: 2px; }
   .buttons-section .button, .buttons-section .primary-button, .buttons-section .filters-button { font-size: .75rem; padding: 4px 6px; }
