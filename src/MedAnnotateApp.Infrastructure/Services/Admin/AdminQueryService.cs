@@ -394,6 +394,26 @@ public sealed class AdminQueryService
         }).ToList(), currentPage, PageSize, count);
     }
 
+    public async Task<Paged<FullCase>> GetFullDataAsync(FullDataQuery query, CancellationToken cancellationToken = default)
+    {
+        var cases = FullData.Cases(context, query);
+        var total = await cases.CountAsync(cancellationToken);
+        var page = Math.Clamp(query.Page, 1, Math.Max(1, (int)Math.Ceiling(total / (double)FullData.PageSize)));
+        var ids = await cases.OrderBy(image => image.Id).Skip((page - 1) * FullData.PageSize).Take(FullData.PageSize)
+            .Select(image => image.Id).ToListAsync(cancellationToken);
+        var people = await AdminData.LoadPeopleAsync(context, cancellationToken);
+        return new Paged<FullCase>(await FullData.LoadAsync(context, ids, people, cancellationToken), page, FullData.PageSize, total);
+    }
+
+    /// <summary>The stored mask of one annotation: kind is term, custom or student.</summary>
+    public async Task<string?> GetPixelMaskAsync(string? kind, int id, CancellationToken cancellationToken = default) => kind switch
+    {
+        ResultsExportService.TermMask => await context.AnnotatedMedDatas.AsNoTracking().Where(item => item.Id == id).Select(item => item.PixelMask).SingleOrDefaultAsync(cancellationToken),
+        ResultsExportService.CustomMask => await context.CustomAnnotations.AsNoTracking().Where(item => item.Id == id).Select(item => item.PixelMask).SingleOrDefaultAsync(cancellationToken),
+        ResultsExportService.StudentMask => await context.AnnotatedByStudentsMedDatas.AsNoTracking().Where(item => item.Id == id).Select(item => item.PixelMask).SingleOrDefaultAsync(cancellationToken),
+        _ => null
+    };
+
     public async Task<Paged<AdminActionRow>> GetActionsAsync(int page, CancellationToken cancellationToken = default)
     {
         var total = await context.AdminActions.CountAsync(cancellationToken);

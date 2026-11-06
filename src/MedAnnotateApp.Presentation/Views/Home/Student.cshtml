@@ -38,15 +38,15 @@
                 <div class="metadata-inner">
                     <div class="metadata-item">
                         <span class="label">Specialty:</span>
-                        <span class="value">@Model.Speciality</span>
+                        <span class="value filter-value">@Model.Speciality</span>
                     </div>
                     <div class="metadata-item">
                         <span class="label">Body Region:</span>
-                        <span class="value">@Model.BodyRegion</span>
+                        <span class="value filter-value">@Model.BodyRegion</span>
                     </div>
                     <div class="metadata-item">
                         <span class="label">Image Modality:</span>
-                        <span class="value">@Model.Modality</span>
+                        <span class="value filter-value">@Model.Modality</span>
                     </div>
                     @if (!string.IsNullOrWhiteSpace(Model.Diagnosis) && Model.Diagnosis != "u" && Model.Diagnosis != "na")
                     {

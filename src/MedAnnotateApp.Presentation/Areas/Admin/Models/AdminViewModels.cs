@@ -24,6 +24,8 @@ public sealed record LocksViewModel(IReadOnlyList<LockRow> Locks, TimeSpan Stale
 
 public sealed record ParticipantsViewModel(IReadOnlyList<ParticipantRow> Rows, int Total, string? Role, string? Search);
 
+public sealed record FullDataViewModel(Paged<FullCase> Cases, FullDataQuery Query);
+
 public sealed record ResponsesViewModel(Paged<ResponseRow> Responses, ResponseQuery Query, CategoryOptions Categories, IReadOnlyList<Person> People);
 
 public static class AdminUi

@@ -15,7 +15,6 @@ services:
       ASPNETCORE_URLS: http://+:8080
       ASPNETCORE_HTTPS_PORT: 443
       ConnectionStrings__MedDataDb: ${AZURE_POSTGRES_CONNECTION_STRING:?Set the managed PostgreSQL connection string}
-      AuthorizationAccessPasswordHash: ${AUTHORIZATION_ACCESS_PASSWORD_HASH:?Set the research gate hash}
       DataProtection__KeysPath: /app/keys
       AllowedHosts: ${PUBLIC_HOST:?Set the public hostname}
       ReverseProxy__KnownProxies__0: ${REVERSE_PROXY_IP:?Set the actual reverse proxy source address}

@@ -33,63 +33,6 @@ public class IdentityController : Controller
         this.logger = logger;
     }
 
-    [AllowAnonymous]
-    public IActionResult AuthorizationAccess()
-    {
-        if (User.Identity?.IsAuthenticated == true)
-        {
-            return RedirectToRoleBasedPage();
-        }
-
-        if (HasResearchAccess())
-        {
-            return RedirectToAction(nameof(Login));
-        }
-
-        ModelState.Clear();
-        HandleTempDataErrors();
-
-        return View();
-    }
-
-    [HttpPost]
-    [AllowAnonymous]
-    [ValidateAntiForgeryToken]
-    [EnableRateLimiting(ResearchAccessRateLimit.PolicyName)]
-    public IActionResult PostAuthorizationAccess(AuthorizationAccessDto authDto)
-    {
-        logger.LogInformation("Authorization access attempt");
-
-        if (!ModelState.IsValid)
-        {
-            logger.LogWarning(
-                "Authorization access validation failed: {Errors}",
-                string.Join(", ", ModelState.Values.SelectMany(value => value.Errors).Select(error => error.ErrorMessage)));
-
-            return View("AuthorizationAccess", authDto);
-        }
-
-        var hashedPassword = configuration["AuthorizationAccessPasswordHash"];
-        if (AuthorizationAccessPasswordService.VerifyPassword(authDto.Password ?? string.Empty, hashedPassword))
-        {
-            logger.LogInformation("Authorization access granted");
-            HttpContext.Session.SetString("Authorized", "true");
-            return RedirectToAction(nameof(Login));
-        }
-
-        if (string.IsNullOrWhiteSpace(hashedPassword))
-        {
-            logger.LogError("AuthorizationAccessPasswordHash is not configured.");
-        }
-        else
-        {
-            logger.LogWarning("Authorization access denied.");
-        }
-
-        ModelState.AddModelError(string.Empty, "The research access password is incorrect. Please try again or contact the researcher.");
-        return View("AuthorizationAccess", authDto);
-    }
-
     [HttpGet]
     [AllowAnonymous]
     public IActionResult Login(string? returnUrl = null)
@@ -98,8 +41,6 @@ public class IdentityController : Controller
         {
             return RedirectToRoleBasedPage();
         }
-
-        if (!HasResearchAccess()) return RedirectToAction(nameof(AuthorizationAccess));
 
         if (!string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl))
         {
@@ -115,11 +56,9 @@ public class IdentityController : Controller
     [HttpPost]
     [AllowAnonymous]
     [ValidateAntiForgeryToken]
-    [EnableRateLimiting(ResearchAccessRateLimit.PolicyName)]
+    [EnableRateLimiting(SignInRateLimit.PolicyName)]
     public async Task<IActionResult> PostLogin(LoginDto loginDto)
     {
-        if (!HasResearchAccess()) return RedirectToAction(nameof(AuthorizationAccess));
-
         if (!ModelState.IsValid)
         {
             logger.LogWarning("Login form validation failed");
@@ -195,7 +134,6 @@ public class IdentityController : Controller
         }
 
         if (!RegistrationEnabled) return SignupClosed();
-        if (!HasResearchAccess()) return RedirectToAction(nameof(AuthorizationAccess));
         HandleTempDataErrors();
         // Drop any legacy form cache: older versions stored passwords in TempData.
         TempData.Remove("FormData");
@@ -205,11 +143,10 @@ public class IdentityController : Controller
     [HttpPost]
     [AllowAnonymous]
     [ValidateAntiForgeryToken]
-    [EnableRateLimiting(ResearchAccessRateLimit.PolicyName)]
+    [EnableRateLimiting(SignInRateLimit.PolicyName)]
     public async Task<IActionResult> PostSignup([FromForm] SignupDto signupDto)
     {
         if (!RegistrationEnabled) return SignupClosed();
-        if (!HasResearchAccess()) return RedirectToAction(nameof(AuthorizationAccess));
         try
         {
 
@@ -315,8 +252,6 @@ public class IdentityController : Controller
             ImageFiltersDto.JoinSelection(filters.BodyRegion), ImageFiltersDto.JoinSelection(filters.ImageModality));
         return Json(new { available = await medDataRepository.CountAvailableAsync(selection, User.IsInRole("Medical_Student"), userId) });
     }
-
-    private bool HasResearchAccess() => HttpContext.Session.GetString("Authorized") == "true";
 
     // Registration:Enabled (default true). When false the study team creates every account (create-participants).
     public const string RegistrationSetting = "Registration:Enabled";

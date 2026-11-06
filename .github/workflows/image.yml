@@ -40,4 +40,4 @@ jobs:
           push: true
           tags: |
             ghcr.io/arkhunabdullazade/medannotateapp:${{ github.sha }}
-            ghcr.io/arkhunabdullazade/medannotateapp:latest
+            ${{ github.ref == 'refs/heads/master' && 'ghcr.io/arkhunabdullazade/medannotateapp:latest' || '' }}

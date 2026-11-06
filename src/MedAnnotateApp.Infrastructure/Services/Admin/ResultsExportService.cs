@@ -3,6 +3,9 @@ using System.Globalization;
 using System.IO.Compression;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
+using MedAnnotateApp.Core.Models;
+using MedAnnotateApp.Core.Services;
 using MedAnnotateApp.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
@@ -15,6 +18,10 @@ namespace MedAnnotateApp.Infrastructure.Services.Admin;
 /// </summary>
 public sealed class ResultsExportService
 {
+    public const string TermMask = "term";
+    public const string CustomMask = "custom";
+    public const string StudentMask = "student";
+    private const int FullDataBatch = 200;
     private static readonly SemaphoreSlim OneAtATime = new(1, 1);
     private static readonly UTF8Encoding Utf8Bom = new(encoderShouldEmitUTF8Identifier: true);
     private readonly MedDataDbContext context;
@@ -45,6 +52,10 @@ public sealed class ResultsExportService
                 await WriteCustomAnnotationsAsync(zip, options, people, cancellationToken);
                 await WriteMetadataChecksAsync(zip, options, people, cancellationToken);
                 await WriteProblemReportsAsync(zip, options.Format, people, cancellationToken);
+                await WriteImageSkipsAsync(zip, options, people, cancellationToken);
+                await WritePixelMaskTableAsync(zip, options, people, completeSets, cancellationToken);
+                using (var table = Entry(zip, "full_data", options.Format))
+                    await WriteFullDataRowsAsync(table, options.Identity, new FullDataQuery(), people, cancellationToken);
                 WriteReadme(zip, options);
             }
             file.Position = 0;
@@ -81,6 +92,72 @@ public sealed class ResultsExportService
                     await WriteSpecialistRowsAsync(table, options, people, await AdminData.LoadCompleteSetsAsync(context, cancellationToken),
                         query, annotatorEmail, cancellationToken);
                 table.Finish();
+            }
+            file.Position = 0;
+            return file;
+        }
+        catch
+        {
+            await file.DisposeAsync();
+            throw;
+        }
+        finally
+        {
+            OneAtATime.Release();
+        }
+    }
+
+    /// <summary>The cases of one Full data page filter (all pages), one row per image-text pair.</summary>
+    public async Task<Stream> CreateFullDataAsync(FullDataQuery query, IdentityMode identity, ExportFormat format, CancellationToken cancellationToken = default)
+    {
+        if (!await OneAtATime.WaitAsync(TimeSpan.FromSeconds(30), cancellationToken)) throw new ExportBusyException();
+        var file = TemporaryFile();
+        try
+        {
+            await using var snapshot = await BeginSnapshotAsync(cancellationToken);
+            var people = await AdminData.LoadPeopleAsync(context, cancellationToken);
+            await using (var writer = new StreamWriter(file, format == ExportFormat.Csv ? Utf8Bom : new UTF8Encoding(false), 1 << 16, leaveOpen: true))
+            {
+                var table = new TableWriter(writer, format);
+                await WriteFullDataRowsAsync(table, identity, query, people, cancellationToken);
+                table.Finish();
+            }
+            file.Position = 0;
+            return file;
+        }
+        catch
+        {
+            await file.DisposeAsync();
+            throw;
+        }
+        finally
+        {
+            OneAtATime.Release();
+        }
+    }
+
+    /// <summary>Every annotation as a PNG mask the size of its image, with the index table and a README.</summary>
+    public async Task<Stream> CreateMasksArchiveAsync(IdentityMode identity, CancellationToken cancellationToken = default)
+    {
+        if (!await OneAtATime.WaitAsync(TimeSpan.FromSeconds(30), cancellationToken)) throw new ExportBusyException();
+        var file = TemporaryFile();
+        try
+        {
+            await using var snapshot = await BeginSnapshotAsync(cancellationToken);
+            var people = await AdminData.LoadPeopleAsync(context, cancellationToken);
+            var completeSets = await AdminData.LoadCompleteSetsAsync(context, cancellationToken);
+            using (var zip = new ZipArchive(file, ZipArchiveMode.Create, leaveOpen: true))
+            {
+                await WritePixelMaskTableAsync(zip, new ExportOptions { Identity = identity, Format = ExportFormat.Csv }, people, completeSets, cancellationToken);
+                // A ZIP takes one entry at a time, so the images follow in a second pass over the same snapshot.
+                await foreach (var mask in MaskRowsAsync(cancellationToken))
+                {
+                    await using var entry = zip.CreateEntry(MaskFile(mask), CompressionLevel.NoCompression).Open();
+                    await entry.WriteAsync(AnnotationMask.Parse(mask.Mask).ToPng(), cancellationToken);
+                }
+                var readme = zip.CreateEntry("README.txt", CompressionLevel.Optimal);
+                await using var writer = new StreamWriter(readme.Open(), Utf8Bom);
+                await writer.WriteAsync(MasksReadme);
             }
             file.Position = 0;
             return file;
@@ -231,6 +308,134 @@ public sealed class ResultsExportService
                 report.UserId, people.Ref(report.UserId)?.Role, report.ResolvedAt);
     }
 
+    // Images a specialist sent back with Skip entire image. DiscardedWork holds what they had saved on it, if anything.
+    private async Task WriteImageSkipsAsync(ZipArchive zip, ExportOptions options, People people, CancellationToken cancellationToken)
+    {
+        using var table = Entry(zip, "image_skips", options.Format);
+        table.Header(["SkipId", "ImageId", "SkippedAtUtc", "DiscardedWork", .. AnnotatorHeaders(options.Identity)]);
+        await foreach (var skip in context.ImageSkips.AsNoTracking().OrderBy(skip => skip.Id).AsAsyncEnumerable().WithCancellation(cancellationToken))
+        {
+            var person = people.ById(skip.UserId);
+            table.Row([skip.Id, skip.MedDataId, skip.CreatedAt, skip.DiscardedWork, .. AnnotatorValues(options.Identity, person, person?.Position, person?.ClinicalExperience ?? 0)]);
+        }
+    }
+
+    private sealed record MaskRow(string Kind, long Id, int ImageId, string? Term, string Mask, Person? Person);
+
+    private static string MaskFile(MaskRow mask) => $"masks/{mask.ImageId}_{mask.Kind}_{mask.Id}.png";
+
+    private async IAsyncEnumerable<MaskRow> MaskRowsAsync([System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        var people = await AdminData.LoadPeopleAsync(context, cancellationToken);
+        await foreach (var answer in context.AnnotatedMedDatas.AsNoTracking().Where(item => item.PixelMask != null).OrderBy(item => item.Id)
+                           .Select(item => new { item.Id, item.MedDataId, item.ExtractedKeyword, item.PixelMask, item.Email }).AsAsyncEnumerable().WithCancellation(cancellationToken))
+            yield return new MaskRow(TermMask, answer.Id, answer.MedDataId, answer.ExtractedKeyword, answer.PixelMask!, people.ByEmail(answer.Email));
+        await foreach (var custom in context.CustomAnnotations.AsNoTracking().Where(item => item.PixelMask != null).OrderBy(item => item.Id)
+                           .Select(item => new { item.Id, item.MedDataId, item.Term, item.PixelMask, item.UserId }).AsAsyncEnumerable().WithCancellation(cancellationToken))
+            yield return new MaskRow(CustomMask, custom.Id, custom.MedDataId, custom.Term, custom.PixelMask!, people.ById(custom.UserId));
+        await foreach (var group in context.AnnotatedByStudentsMedDatas.AsNoTracking().Where(item => item.PixelMask != null).OrderBy(item => item.Id)
+                           .Select(item => new { item.Id, item.MedDataId, item.TextualAnnotation, item.PixelMask, item.Email }).AsAsyncEnumerable().WithCancellation(cancellationToken))
+            yield return new MaskRow(StudentMask, group.Id, group.MedDataId, group.TextualAnnotation, group.PixelMask!, people.ByEmail(group.Email));
+    }
+
+    private async Task WritePixelMaskTableAsync(ZipArchive zip, ExportOptions options, People people, HashSet<(int, string)> completeSets, CancellationToken cancellationToken)
+    {
+        using var table = Entry(zip, "pixel_masks", options.Format);
+        table.Header(["MaskFile", "ImageId", "Kind", "RowId", "Term", "Width", "Height", "MaskPixels", "SetComplete", .. AnnotatorHeaders(options.Identity), "CocoRle"]);
+        await foreach (var mask in MaskRowsAsync(cancellationToken))
+        {
+            var decoded = AnnotationMask.Parse(mask.Mask);
+            var complete = mask.Kind == StudentMask || completeSets.Contains((mask.ImageId, AdminData.Normalize(mask.Person?.Email)));
+            table.Row([MaskFile(mask), mask.ImageId, mask.Kind, mask.Id, mask.Term, decoded.Width, decoded.Height, decoded.Pixels, complete,
+                .. AnnotatorValues(options.Identity, mask.Person, mask.Person?.Position, mask.Person?.ClinicalExperience ?? 0), mask.Mask]);
+        }
+    }
+
+    private async Task WriteFullDataRowsAsync(TableWriter table, IdentityMode identity, FullDataQuery query, People people, CancellationToken cancellationToken)
+    {
+        table.Header([
+            "ImageId", "Pmcid", "ImageUrl", "SourceUrl", "SourceLicense", "Attribution", "ImageDescription", "Terms", "Sex", "Age", "SkinTone", "Diagnosis", "TreatmentName",
+            "OriginalModality", "OriginalSpeciality", "OriginalBodyRegion", "SpecialistCompleted", "StudentCompleted", "RemovedFromStudy",
+            .. AnnotatorHeaders(identity).Select(name => "Specialist" + name),
+            "ModalityVerdict", "ModalitySubmitted", "ModalityIsNewValue", "SpecialityVerdict", "SpecialitySubmitted", "SpecialityIsNewValue",
+            "BodyRegionVerdict", "BodyRegionSubmitted", "BodyRegionIsNewValue", "FirstSaveAtUtc", "LastSaveAtUtc", "TotalMsUntilFirstDraw", "TotalMsDrawingToSave",
+            "TermAnswers", "CustomAnnotations", .. AnnotatorHeaders(identity).Select(name => "Student" + name), "StudentGroups", "AllLabelChecks", "ProblemReports", "Skips"]);
+        var ids = await FullData.Cases(context, query).OrderBy(image => image.Id).Select(image => image.Id).ToListAsync(cancellationToken);
+        foreach (var batch in ids.Chunk(FullDataBatch))
+            foreach (var item in await FullData.LoadAsync(context, batch, people, cancellationToken))
+            {
+                var image = item.Image;
+                object?[] Check(string field) => item.Check(field) is { } check ? [check.Verdict, check.Submitted, check.IsNewValue] : [null, null, null];
+                string? Who(Person? person) => identity == IdentityMode.None ? null : person?.Code ?? "REMOVED";
+                table.Row([
+                    image.Id, image.Pmcid, image.ImageUrl, image.SourceUrl, image.SourceLicense, image.Attribution, image.ImageDescription,
+                    string.Join("; ", item.Terms), image.Sex, image.Age, image.SkinTone, image.Diagnosis, image.TreatmentName,
+                    image.Modality, image.Speciality, image.BodyRegion, image.IsAnnotated, image.IsAnnotatedByStudent, image.ExcludedAt != null,
+                    .. AnnotatorValues(identity, item.Specialist, item.Specialist?.Position, item.Specialist?.ClinicalExperience ?? 0),
+                    .. Check(MetadataCheck.Modality), .. Check(MetadataCheck.Speciality), .. Check(MetadataCheck.BodyRegion),
+                    item.FirstSavedAt, item.LastSavedAt, item.TotalMsUntilFirstDraw, item.TotalMsDrawing,
+                    Nested(item.Answers.Select(answer => new
+                    {
+                        ResponseId = answer.Id, answer.Term, answer.Response, Coordinates = Geometry(answer.Coordinates), answer.MaskPixels, answer.Comment, answer.TechnicalProblem,
+                        MsUntilFirstDraw = answer.FirstDrawMs, MsDrawingToSave = answer.DrawingMs, SavedAtUtc = answer.SavedAt, answer.SetComplete, Annotator = Who(answer.Annotator)
+                    })),
+                    Nested(item.Customs.Select(custom => new
+                    {
+                        CustomAnnotationId = custom.Id, custom.Term, Coordinates = Geometry(custom.Coordinates), custom.MaskPixels, SavedAtUtc = custom.SavedAt, Annotator = Who(custom.Annotator)
+                    })),
+                    .. AnnotatorValues(identity, item.Student, item.Student?.Position, item.Student?.ClinicalExperience ?? 0),
+                    Nested(item.Groups.Select(group => new { GroupId = group.Id, group.Label, Coordinates = Geometry(group.Coordinates), group.MaskPixels, SavedAtUtc = group.SavedAt })),
+                    Nested(item.Checks.Select(check => new { check.Field, check.ShownValue, check.Verdict, check.CorrectedValue, check.IsNewValue, SavedAtUtc = check.SavedAt, Annotator = Who(check.Annotator) })),
+                    Nested(item.Problems.Select(problem => new { ReportId = problem.Id, ReportedAtUtc = problem.At, problem.Kind, problem.Term, problem.Message, ResolvedAtUtc = problem.ResolvedAt })),
+                    Nested(item.Skips.Select(skip => new { SkippedAtUtc = skip.At, Annotator = Who(skip.Annotator), skip.HadSavedWork }))]);
+            }
+    }
+
+    private static string? Nested<T>(IEnumerable<T> items)
+    {
+        var list = items.ToList();
+        return list.Count == 0 ? null : JsonSerializer.Serialize(list);
+    }
+
+    // Saved coordinates are JSON themselves, so they nest as JSON rather than as a string of escaped quotes.
+    private static JsonNode? Geometry(string? coordinates)
+    {
+        if (string.IsNullOrWhiteSpace(coordinates)) return null;
+        try { return JsonNode.Parse(coordinates); }
+        catch (JsonException) { return JsonValue.Create(coordinates); }
+    }
+
+    private const string MasksReadme = """
+        MedAnnotate pixel masks
+
+        masks/            one PNG per annotation, named <ImageId>_<Kind>_<RowId>.png. Same width and height as the image.
+                          White (1) marks every pixel inside what the annotator drew, black (0) everything else.
+        pixel_masks.csv   one row per mask: its file, image, kind, term and annotator, and the same mask as COCO run-length
+                          encoding in CocoRle. SetComplete is true when that specialist answered every term of the image.
+
+        Kind              term: a specialist's answer to one term. All shapes drawn for that term are merged into one mask.
+                          custom: a finding a specialist outlined and named themselves.
+                          student: one labelled group from a medical student.
+        Terms answered Not Visible/Abstract or Uncertain/Skip have nothing drawn, so they have no mask.
+
+        A pixel is inside when its centre is: pixel (column x, row y) has its centre at (x + 0.5, y + 0.5) in the saved
+        coordinates. A contour that crosses itself is filled throughout. Masks are computed from the saved coordinates on the
+        server by this one rule, so they do not depend on the annotator's browser.
+
+        Comparing a model's prediction (a 0/1 array the size of the image) with a mask, in Python:
+
+            import numpy as np
+            from PIL import Image
+            truth = np.array(Image.open("masks/123_term_456.png")).astype(bool)
+            pred = prediction.astype(bool)
+            intersection = (truth & pred).sum()
+            dice = 2 * intersection / (truth.sum() + pred.sum())
+            iou = intersection / (truth | pred).sum()
+
+        CocoRle reads column by column, with runs of 0s and 1s alternating, starting with 0s. pycocotools reads it with
+        mask.frPyObjects(json.loads(row["CocoRle"]), height, width) followed by mask.decode.
+        """;
+
     private static void WriteReadme(ZipArchive zip, ExportOptions options)
     {
         var entry = zip.CreateEntry("README.txt", CompressionLevel.Optimal);
@@ -284,6 +489,17 @@ public sealed class ResultsExportService
                               never changed. Images completed before this check existed have no rows.
             problem_reports   technical problems: reports typed by participants (user-report) and errors their pages
                               logged automatically (image-load-error, save-error, script-error). Account ids only.
+            image_skips       images a specialist sent back with Skip entire image, usually as outside their speciality.
+                              The image went back to the pool and started fresh for the next person. DiscardedWork keeps
+                              a copy of what they had saved on it; those rows are not in the other tables.
+            pixel_masks       every drawn annotation as a pixel mask: 1 inside the shape, 0 outside. CocoRle is COCO run-length
+                              encoding, column by column. Kind is term, custom or student. The Export page downloads the
+                              same masks as PNG files, named as in MaskFile, with a README on Dice and IoU.
+            full_data         one row per image-text pair anyone has saved anything about: the dataset's own values, the
+                              specialist's verdict and submitted value for each of the three labels, then every answer,
+                              contour, group, problem and skip as JSON. MaskPixels is a mask's area; the mask itself is in
+                              pixel_masks. If an admin released a part-done image, another specialist's answers can sit
+                              beside the complete set; each is marked with its Annotator and SetComplete.
 
             Coordinates are JSON in original image pixels: {"version":1,"coordinateSystem":"image-pixels",
             "imageWidth":W,"imageHeight":H,"annotations":[{"type":"rectangle"|"freehand","points":[[x,y],...]}]}.

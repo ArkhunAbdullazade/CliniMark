@@ -125,6 +125,7 @@
         render();
       },
       hasPending: () => Boolean(manager.pendingCustom),
+      hasSaved: () => saved.length > 0,
       cancel: () => manager.cancelPendingCustom()
     };
   }

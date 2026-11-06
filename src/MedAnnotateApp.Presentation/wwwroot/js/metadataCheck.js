@@ -206,6 +206,10 @@
         render();
       },
       complete,
+      // Tints the box when it is the one thing still holding back Next Image.
+      setAttention(value) {
+        root.classList.toggle("needs-answer", value);
+      },
       setEnabled(value) {
         if (enabled === value) return;
         enabled = value;

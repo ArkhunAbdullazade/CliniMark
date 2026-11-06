@@ -71,6 +71,21 @@ public class MedDataController : Controller
         }
     }
 
+    [HttpPut]
+    [Authorize(Roles = "Professional")]
+    public async Task<IActionResult> SkipImage([FromQuery] int medDataId)
+    {
+        if (medDataId <= 0) return BadRequest(new { success = false, message = "Invalid image id." });
+        var user = await userManager.GetUserAsync(User);
+        if (user == null) return Unauthorized(new { success = false, message = "Your session has ended. Sign in again." });
+        try { return SaveResult(await medDataRepository.SkipImageAsync(medDataId, user)); }
+        catch (Exception exception)
+        {
+            logger.LogError(exception, "Skipping image {MedDataId} failed for user {UserId}.", medDataId, user.Id);
+            return StatusCode(503, new { success = false, message = "The image could not be skipped. Keep this page open and retry." });
+        }
+    }
+
     [HttpGet]
     [Authorize(Roles = "Professional")]
     public async Task<IActionResult> CurrentAnnotations([FromQuery] int medDataId)

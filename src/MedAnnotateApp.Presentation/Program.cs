@@ -22,9 +22,10 @@ const string ResetPasswordCommand = "reset-password";
 const string CreateAdminCommand = "create-admin";
 const string CheckTermsCommand = "check-terms";
 const string CreateParticipantsCommand = "create-participants";
+const string BackfillMasksCommand = "backfill-masks";
 
 // Operator-only shell commands, never HTTP endpoints: `dotnet MedAnnotateApp.Presentation.dll reset-password|create-admin <email>`,
-// `check-terms`, or `create-participants <participants.csv> <credentials.csv>` (Models/ParticipantImport.cs).
+// `check-terms`, `backfill-masks`, or `create-participants <participants.csv> <credentials.csv>` (Models/ParticipantImport.cs).
 var operatorEmail = args is [ResetPasswordCommand or CreateAdminCommand, var email] ? email : null;
 if (args.Length > 0 && args[0] is ResetPasswordCommand or CreateAdminCommand && operatorEmail is null)
 {
@@ -33,6 +34,7 @@ if (args.Length > 0 && args[0] is ResetPasswordCommand or CreateAdminCommand && 
     return;
 }
 var isCheckTerms = args is [CheckTermsCommand];
+var isBackfillMasks = args is [BackfillMasksCommand];
 var participantFiles = args is [CreateParticipantsCommand, var participantInput, var credentialsOutput]
     ? (Input: participantInput, Output: credentialsOutput) : ((string Input, string Output)?)null;
 if (args.Length > 0 && args[0] == CreateParticipantsCommand && participantFiles is null)
@@ -41,7 +43,7 @@ if (args.Length > 0 && args[0] == CreateParticipantsCommand && participantFiles 
     Environment.ExitCode = 2;
     return;
 }
-var isOperatorCommand = operatorEmail is not null || isCheckTerms || participantFiles is not null;
+var isOperatorCommand = operatorEmail is not null || isCheckTerms || isBackfillMasks || participantFiles is not null;
 
 var builder = WebApplication.CreateBuilder(isOperatorCommand ? [] : args);
 builder.WebHost.ConfigureKestrel(options => options.AddServerHeader = false);
@@ -57,10 +59,6 @@ if (string.IsNullOrWhiteSpace(medDataConnectionString))
 {
     throw new InvalidOperationException("ConnectionStrings:MedDataDb must be configured before the application starts.");
 }
-if (!builder.Environment.IsDevelopment() && !isOperatorCommand && string.IsNullOrWhiteSpace(builder.Configuration["AuthorizationAccessPasswordHash"]))
-{
-    throw new InvalidOperationException("Configure AuthorizationAccessPasswordHash before deploying the research access gate.");
-}
 
 var dataProtectionKeysPath = builder.Configuration["DataProtection:KeysPath"];
 if (!builder.Environment.IsDevelopment() && !isOperatorCommand && string.IsNullOrWhiteSpace(dataProtectionKeysPath))
@@ -73,9 +71,9 @@ if (!string.IsNullOrWhiteSpace(dataProtectionKeysPath))
     builder.Services.AddDataProtection().PersistKeysToFileSystem(keyDirectory);
 }
 
-builder.Services.AddDistributedMemoryCache(); // One web instance; session loss requires entering the shared gate again.
-// Clinicians can take as long as they need: neither the gate session nor the sign-in runs out while the browser stays
-// open. Both cookies still end when the browser is closed, so a shared hospital computer does not stay signed in.
+builder.Services.AddDistributedMemoryCache(); // One web instance; the session only carries one-off page messages.
+// Clinicians can take as long as they need: neither the session nor the sign-in runs out while the browser stays open.
+// Both cookies still end when the browser is closed, so a shared hospital computer does not stay signed in.
 var noTimeLimit = TimeSpan.FromDays(3650);
 builder.Services.AddSession(options =>
 {
@@ -108,14 +106,14 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
     foreach (var address in builder.Configuration.GetSection("ReverseProxy:KnownProxies").Get<string[]>() ?? [])
         options.KnownProxies.Add(IPAddress.Parse(address));
 });
-var accessAttemptLimit = builder.Configuration.GetValue(ResearchAccessRateLimit.LimitSetting, ResearchAccessRateLimit.DefaultPermitLimit);
+var accessAttemptLimit = builder.Configuration.GetValue(SignInRateLimit.LimitSetting, SignInRateLimit.DefaultPermitLimit);
 if (accessAttemptLimit < 1)
 {
-    throw new InvalidOperationException($"{ResearchAccessRateLimit.LimitSetting} must be at least 1.");
+    throw new InvalidOperationException($"{SignInRateLimit.LimitSetting} must be at least 1.");
 }
 builder.Services.AddRateLimiter(options =>
 {
-    options.AddPolicy(ResearchAccessRateLimit.PolicyName, context => ResearchAccessRateLimit.Partition(context, accessAttemptLimit));
+    options.AddPolicy(SignInRateLimit.PolicyName, context => SignInRateLimit.Partition(context, accessAttemptLimit));
     options.AddPolicy(ProblemReportRateLimit.PolicyName, ProblemReportRateLimit.Partition);
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
     options.OnRejected = async (context, token) =>
@@ -228,6 +226,14 @@ if (isCheckTerms)
     return;
 }
 
+if (isBackfillMasks)
+{
+    // Fills only masks that are empty, and runs before database initialization, like the commands below.
+    using var scope = app.Services.CreateScope();
+    Console.WriteLine($"{await MaskBackfill.RunAsync(scope.ServiceProvider.GetRequiredService<MedDataDbContext>())} annotations given a pixel mask.");
+    return;
+}
+
 if (participantFiles is var (participantsCsv, credentialsCsv))
 {
     // Runs before database initialization, like the commands below.
@@ -252,7 +258,7 @@ if (isOperatorCommand)
     Console.WriteLine(!succeeded
         ? string.Join(Environment.NewLine, errors ?? [])
         : isCreateAdmin
-            ? $"Admin account created. Password: {temporaryPassword}{Environment.NewLine}Sign in through the access gate; the panel is at /Admin."
+            ? $"Admin account created. Password: {temporaryPassword}{Environment.NewLine}Sign in as usual; the panel is at /Admin."
             : $"Temporary password: {temporaryPassword}{Environment.NewLine}Share it privately. Saved work and assignments are unchanged.");
     Environment.ExitCode = succeeded ? 0 : 1;
     return;
@@ -305,7 +311,7 @@ app.Use(async (context, next) =>
     var isAuthenticated = context.User.Identity?.IsAuthenticated == true;
     if (isAuthenticated)
     {
-        if (path is "/identity/login" or "/identity/signup" or "/identity/authorizationaccess")
+        if (path is "/identity/login" or "/identity/signup")
         {
             var redirectPath = context.User.IsInRole(IdentityService.AdminRole) ? "/Admin"
                 : context.User.IsInRole("Medical_Student") ? "/Home/Student"
@@ -319,14 +325,13 @@ app.Use(async (context, next) =>
         return;
     }
 
-    var hasAuthSession = context.Session.Keys.Contains("Authorized");
-    if (hasAuthSession && IsLoginOrSignupPath(path))
+    if (IsLoginOrSignupPath(path))
     {
         await next();
         return;
     }
 
-    context.Response.Redirect(hasAuthSession ? "/Identity/Login" : "/Identity/AuthorizationAccess");
+    context.Response.Redirect("/Identity/Login");
 });
 
 app.MapControllerRoute(
@@ -334,7 +339,7 @@ app.MapControllerRoute(
     pattern: "{area:exists}/{controller=Dashboard}/{action=Index}/{id?}");
 app.MapControllerRoute(
     name: "default",
-    pattern: "{controller=Identity}/{action=AuthorizationAccess}/{id?}");
+    pattern: "{controller=Identity}/{action=Login}/{id?}");
 app.MapGet("/health/ready", async (MedDataDbContext context, CancellationToken cancellationToken) =>
     await context.Database.CanConnectAsync(cancellationToken)
         ? Results.Ok(new { status = "ready" })
@@ -432,8 +437,6 @@ static bool ShouldAllowPath(string path)
 
     string[] allowedPaths =
     [
-        "/identity/authorizationaccess",
-        "/identity/postauthorizationaccess",
         "/identity/accessdenied",
         "/health/ready",
         "/home/error"

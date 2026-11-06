@@ -24,7 +24,7 @@
         else
         {
             <h3>No images are available in your filters right now</h3>
-            <p>The remaining images may be assigned to someone else at the moment. Choose new filters to continue, or come back later.</p>
+            <p>The remaining images are assigned to someone else at the moment, or you skipped them. Choose new filters to continue, or come back later.</p>
         }
         <a asp-controller="Identity" asp-action="Filters" asp-route-completed="@(completedByMe > 0 ? "true" : null)" class="button series-next">Choose new filters</a>
         <button id="end-button-center" type="button" class="button mt-4">

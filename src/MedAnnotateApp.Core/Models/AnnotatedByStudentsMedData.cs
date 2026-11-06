@@ -18,6 +18,8 @@ public class AnnotatedByStudentsMedData
 
     // AnnotationData
     public string? Coordinates { get; set; }
+    // The same annotation as a pixel mask (AnnotationMask).
+    public string? PixelMask { get; set; }
     public string? TextualAnnotation { get; set; }
     public DateTime? CreatedAt { get; set; }
 

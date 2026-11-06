@@ -11,16 +11,23 @@ document.addEventListener("DOMContentLoaded", () => {
   };
   // The term in the current-term prompt is shown in bold red, so the specialist sees at once what to outline.
   const currentTermPrompt = /^(Annotate the current term: )(.+)(\. Draw a rectangular boundary box or a free contour\. Zoom, move, resize, rotate, and delete as needed\.)$/s;
+  // So is the reason Next Image is still locked once every term is saved.
+  const confirmLabels = "Confirm the image modality, speciality and body region";
+  const emphasised = text => {
+    const element = document.createElement("strong");
+    element.className = "status-term";
+    element.textContent = text;
+    return element;
+  };
   const renderStatus = () => {
     if (!status) return;
     const hint = inspecting && !["error", "saving"].includes(baseStatus.state);
     const message = hint ? inspectionHints[inspecting] : baseStatus.message;
     const parts = hint ? null : currentTermPrompt.exec(message);
-    if (parts) {
-      const term = document.createElement("strong");
-      term.className = "status-term";
-      term.textContent = parts[2];
-      status.replaceChildren(parts[1], term, parts[3]);
+    if (parts) status.replaceChildren(parts[1], emphasised(parts[2]), parts[3]);
+    else if (!hint && message.includes(confirmLabels)) {
+      const [before, after] = message.split(confirmLabels);
+      status.replaceChildren(before, emphasised(confirmLabels), after);
     } else status.textContent = message;
     status.dataset.state = hint ? "inspection" : baseStatus.state;
   };
@@ -66,6 +73,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const next = document.getElementById("next-button");
   const skip = document.getElementById("skip-button");
   const absent = document.getElementById("not-present-button");
+  const skipImage = document.getElementById("skip-image-button");
   const comments = document.getElementById("comments");
   // Saved with the term like the comment, but kept separate so technical issues never mix with clinical notes. It can
   // also be sent at once (problemReport.js), so it never depends on the image or the tools working.
@@ -93,10 +101,12 @@ document.addEventListener("DOMContentLoaded", () => {
     onConflict: error => lockLost(error),
     onChange: () => {
       buttons();
-      if (initialized && currentIndex === -1 && reviewIndex === -1 && !saving) showStatus(prompt());
+      if (!initialized || currentIndex !== -1 || saving) return;
+      if (reviewIndex === -1) showStatus(prompt());
+      else if (reviewLead) showStatus(`${reviewLead} ${reviewNext()}`);
     }});
   let customRecords = [], labelRecords = [];
-  let history = [], currentIndex = -1, reviewIndex = -1;
+  let history = [], currentIndex = -1, reviewIndex = -1, reviewLead = "";
   let historyLoaded = false, historyLoading = false;
   let started = Date.now(), firstDraw = 0;
   window.setAnnotationStartTime = () => { if (!firstDraw) firstDraw = Date.now(); };
@@ -108,12 +118,15 @@ document.addEventListener("DOMContentLoaded", () => {
     next.textContent = complete ? "Next Image" : "Save and Next Term";
     next.disabled = released || saving || !initialized || !manager.ready || (complete ? labels?.complete() === false : reviewIndex !== -1 || !manager.annotations.length || manager.currentAction !== "none");
     skip.disabled = absent.disabled = released || saving || !initialized || !manager.ready || complete || reviewIndex !== -1 || manager.annotations.length > 0;
+    // Also while the image is failing to load: a broken case must not trap the specialist.
+    skipImage.disabled = released || saving;
     comments.disabled = released || !initialized || !manager.ready || saving || reviewIndex !== -1 || complete;
     problem.disabled = saving;
     manager.readOnly = released || !initialized || !manager.ready || saving || reviewIndex !== -1 || complete;
     // Custom annotations can be added whenever the image is theirs, including while reviewing or after the last term.
     manager.customAllowed = !released && initialized && manager.ready && !saving;
     labels?.setEnabled(!released && initialized && manager.ready && !saving);
+    labels?.setAttention(complete && labels.complete() === false);
     occurrences.forEach(term => {
       const i = terms.findIndex(first => first.dataset.keyword === term.dataset.keyword);
       term.classList.remove("current_keyword", "annotated_keyword", "not_annotated_keyword", "skipped_keyword");
@@ -122,7 +135,10 @@ document.addEventListener("DOMContentLoaded", () => {
       term.setAttribute("aria-pressed", String(i === (reviewIndex === -1 ? currentIndex : reviewIndex)));
     });
   }
-  const prompt = () => currentIndex === -1 ? (labels?.complete() === false ? "All terms saved. Confirm the image modality, speciality and body region, then select Next Image." : "All terms saved. Select Next Image to continue. You can select a saved term to review it.") : `Annotate the current term: ${termName(currentIndex)}. Draw a rectangular boundary box or a free contour. Zoom, move, resize, rotate, and delete as needed.`;
+  const prompt = () => currentIndex === -1 ? (labels?.complete() === false ? `All terms saved. ${confirmLabels}, then select Next Image.` : "All terms saved. Select Next Image to continue. You can select a saved term to review it.") : `Annotate the current term: ${termName(currentIndex)}. Draw a rectangular boundary box or a free contour. Zoom, move, resize, rotate, and delete as needed.`;
+  const reviewNext = () => currentIndex >= 0 ? "Select the current term to continue."
+    : labels?.complete() === false ? `All terms are saved. ${confirmLabels}, then select Next Image.`
+    : "All terms are saved. Select Next Image to continue.";
   function showCurrent() {
     reviewIndex = -1;
     manager.resetAnnotation(); comments.value = ""; dirty = false;
@@ -195,12 +211,12 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!record && i !== currentIndex) return;
     if (dirty && !confirm("Discard unsaved changes to review another term?")) return;
     if (!record) { showCurrent(); return; }
-    manager.resetAnnotation(); dirty = false; reviewIndex = i; comments.value = record.comment || "";
-    const reviewNext = currentIndex < 0 ? "All terms are saved. Select Next Image to continue." : "Select the current term to continue.";
+    manager.resetAnnotation(); dirty = false; reviewIndex = i; comments.value = record.comment || ""; reviewLead = "";
     if (record.boxCoordinates) {
-      try { manager.loadCoordinates(record.boxCoordinates); showStatus(`Saved annotation for ${termName(i)} (read only). ${reviewNext}`); }
+      try { manager.loadCoordinates(record.boxCoordinates); reviewLead = `Saved annotation for ${termName(i)} (read only).`; }
       catch (error) { showStatus(`This saved response has legacy or changed image coordinates. It is preserved and has not been converted. ${error.message}`, "error"); }
-    } else showStatus(`Saved response for ${termName(i)}: ${record.pressedButton}. ${reviewNext}`);
+    } else reviewLead = `Saved response for ${termName(i)}: ${record.pressedButton}.`;
+    if (reviewLead) showStatus(`${reviewLead} ${reviewNext()}`);
     buttons();
     });
   });
@@ -232,6 +248,17 @@ document.addEventListener("DOMContentLoaded", () => {
       await request(`/MedData/NextImage?medDataId=${encodeURIComponent(assignmentId)}`,{method:"PUT"});
       saving = false; dirty = false; navigating = true; location.reload();
     } catch (error) { requestFailed("Moving to the next image", error); saving = false; buttons(); showStatus(error.message,"error"); lockLost(error); }
+  });
+  // Saved answers can't be seen until they have loaded, so a failed load is treated as if there were some.
+  const hasWork = () => !historyLoaded || history.length > 0 || dirty || problem.value.trim() !== "" || custom?.hasSaved() || custom?.hasPending();
+  skipImage.addEventListener("click", async () => {
+    if (released || saving) return;
+    if (hasWork() && !confirm("Skip this image? What you have entered on it will be removed, and another specialist will start it fresh.")) return;
+    saving = true; buttons(); showStatus("Moving to the next image…", "saving");
+    try {
+      await request(`/MedData/SkipImage?medDataId=${encodeURIComponent(assignmentId)}`, {method: "PUT"});
+      saving = false; dirty = false; navigating = true; location.reload();
+    } catch (error) { requestFailed("Skipping the image", error); saving = false; buttons(); showStatus(error.message, "error"); lockLost(error); }
   });
   skip.addEventListener("click", () => save("Uncertain/Skip"));
   absent.addEventListener("click", () => save("Not Visible/Abstract"));

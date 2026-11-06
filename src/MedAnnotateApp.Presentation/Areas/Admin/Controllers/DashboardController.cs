@@ -16,6 +16,6 @@ public class DashboardController(AdminQueryService queries, IIdentityService ide
     {
         await identityService.SignoutAsync();
         HttpContext.Session.Clear();
-        return Redirect("/Identity/AuthorizationAccess");
+        return Redirect("/Identity/Login");
     }
 }

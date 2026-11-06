@@ -13,5 +13,7 @@ public class CustomAnnotation
     public string Term { get; set; } = string.Empty;
     // Same versioned original-image-pixel JSON as term answers.
     public string Coordinates { get; set; } = string.Empty;
+    // The same annotation as a pixel mask (AnnotationMask).
+    public string? PixelMask { get; set; }
     public DateTime CreatedAt { get; set; }
 }

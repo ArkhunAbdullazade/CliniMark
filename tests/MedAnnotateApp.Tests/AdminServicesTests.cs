@@ -197,7 +197,7 @@ public sealed class AdminServicesTests
 
         var files = await ReadArchiveAsync(await db.Export.CreateArchiveAsync(new ExportOptions { Identity = identity }));
 
-        var expected = new List<string> { "README.txt", "custom_annotations.csv", "images.csv", "metadata_checks.csv", "problem_reports.csv", "progress.csv", "specialist_responses.csv", "student_annotations.csv" };
+        var expected = new List<string> { "README.txt", "custom_annotations.csv", "full_data.csv", "image_skips.csv", "images.csv", "metadata_checks.csv", "pixel_masks.csv", "problem_reports.csv", "progress.csv", "specialist_responses.csv", "student_annotations.csv" };
         if (identity != IdentityMode.None) expected.Add("participants.csv");
         Assert.Equal(expected.Order(), files.Keys.Order());
         Assert.Equal(identity == IdentityMode.Full, files.Values.Any(text => text.Contains("first@example.test")));
@@ -261,8 +261,8 @@ public sealed class AdminServicesTests
         var archive = await WriteImageArchiveAsync(db, new ImageServer(request => files[IdOf(request)]), new ExportOptions { Format = format, IncludeImages = true });
 
         using var zip = new ZipArchive(new MemoryStream(archive), ZipArchiveMode.Read);
-        Assert.Equal(["README.txt", "custom_annotations" + extension, "images" + extension, "images/1.jpg", "images/2.png", "images/3.jpg", "images_manifest" + extension,
-            "metadata_checks" + extension, "participants" + extension, "problem_reports" + extension, "progress" + extension, "specialist_responses" + extension, "student_annotations" + extension],
+        Assert.Equal(["README.txt", "custom_annotations" + extension, "full_data" + extension, "image_skips" + extension, "images" + extension, "images/1.jpg", "images/2.png", "images/3.jpg", "images_manifest" + extension,
+            "metadata_checks" + extension, "participants" + extension, "pixel_masks" + extension, "problem_reports" + extension, "progress" + extension, "specialist_responses" + extension, "student_annotations" + extension],
             zip.Entries.Select(entry => entry.FullName).Order(StringComparer.Ordinal));
         Assert.Equal(files[1], EntryBytes(zip, "images/1.jpg"));
         Assert.Equal(files[2], EntryBytes(zip, "images/2.png"));
@@ -594,9 +594,9 @@ public sealed class AdminServicesTests
     public void TimingsParseTheBrowserFormat(string? value, long? first, long? drawing) =>
         Assert.Equal((first, drawing), ResponseTimings.Parse(value));
 
-    private static AnnotatedMedData Answer(string keyword, string? comment = null) => new()
+    private static AnnotatedMedData Answer(string keyword, string? comment = null, int imageId = 1) => new()
     {
-        MedDataId = 1, ExtractedKeyword = keyword, PressedButton = "Save and Next Term", BoxCoordinates = Coordinates,
+        MedDataId = imageId, ExtractedKeyword = keyword, PressedButton = "Save and Next Term", BoxCoordinates = Coordinates,
         Timestamps = "(1200,3400)", Comment = comment
     };
 
@@ -613,6 +613,228 @@ public sealed class AdminServicesTests
             }
             return files;
         }
+    }
+
+    private async Task<int> FinishImageAsync(AdminDatabase db, User user, int imageId, params string[] terms)
+    {
+        foreach (var term in terms)
+            Assert.True((await db.Repository.SaveProfessionalAsync(user, Answer(term, imageId: imageId))).Success);
+        Assert.True((await db.Repository.SaveMetadataChecksAsync(user, imageId, [
+            new MetadataAnswer(MetadataCheck.Modality, MetadataCheck.Correct, null, false),
+            new MetadataAnswer(MetadataCheck.Speciality, MetadataCheck.Corrected, "Rheumatology", true),
+            new MetadataAnswer(MetadataCheck.BodyRegion, MetadataCheck.CannotTell, null, false)])).Success);
+        Assert.True((await db.Repository.CompleteProfessionalAsync(imageId, user)).Success);
+        return imageId;
+    }
+
+    [Fact]
+    public async Task SkippingOpensTheImageForOthersAndMovesTheSpecialistToTheNextOne()
+    {
+        await using var db = await AdminDatabase.CreateAsync();
+        var (first, _) = await db.AssignAsync(db.First);
+        Assert.Equal(1, first!.Id);
+
+        Assert.True((await db.Repository.SkipImageAsync(1, db.First)).Success);
+
+        var image = await db.Context.MedDatas.AsNoTracking().SingleAsync(item => item.Id == 1);
+        Assert.Null(image.LockedByUserId);
+        Assert.False(image.IsAnnotated);
+        Assert.Equal(2, (await db.AssignAsync(db.First)).MedData!.Id);
+        Assert.Equal(1, (await db.AssignAsync(db.Second)).MedData!.Id);
+    }
+
+    [Fact]
+    public async Task ASkippedImageIsNeverOfferedToThatSpecialistAgain()
+    {
+        await using var db = await AdminDatabase.CreateAsync();
+        await db.AssignAsync(db.First);
+        Assert.True((await db.Repository.SkipImageAsync(1, db.First)).Success);
+        await db.AssignAsync(db.First);
+        Assert.True((await db.Repository.SkipImageAsync(2, db.First)).Success);
+
+        Assert.Null((await db.AssignAsync(db.First)).MedData);
+        var filters = ImageSelectionFilters.Parse("cardiology", "chest", "ct");
+        Assert.Equal(0, await db.Repository.CountAvailableAsync(filters, false, db.First.Id));
+        Assert.Equal(2, await db.Repository.CountAvailableAsync(filters, false, db.Second.Id));
+    }
+
+    [Fact]
+    public async Task ASkippedImageStartsFreshAndTheNextSpecialistsSetIsTheOnlyOne()
+    {
+        await using var db = await AdminDatabase.CreateAsync();
+        await db.AssignAsync(db.First);
+        Assert.True((await db.Repository.SaveProfessionalAsync(db.First, Answer("lesion", "my comment"))).Success);
+        Assert.True((await db.Repository.SaveMetadataChecksAsync(db.First, 1, [new MetadataAnswer(MetadataCheck.Modality, MetadataCheck.Correct, null, false)])).Success);
+        Assert.True((await db.Repository.SaveCustomAnnotationAsync(db.First, 1, "my finding", Coordinates)).Result.Success);
+
+        Assert.True((await db.Repository.SkipImageAsync(1, db.First)).Success);
+
+        Assert.Empty(db.Context.AnnotatedMedDatas);
+        Assert.Empty(db.Context.CustomAnnotations);
+        Assert.Empty(db.Context.MetadataChecks);
+        var skip = await db.Context.ImageSkips.AsNoTracking().SingleAsync();
+        // Nothing is destroyed, and the copy carries no names, so exports can include it under every identity setting.
+        Assert.Contains("my comment", skip.DiscardedWork);
+        Assert.Contains("my finding", skip.DiscardedWork);
+        Assert.DoesNotContain(db.First.Email!, skip.DiscardedWork);
+
+        Assert.Equal(1, (await db.AssignAsync(db.Second)).MedData!.Id);
+        await FinishImageAsync(db, db.Second, 1, "lesion", "margin");
+        Assert.Equal([db.Second.Email], await db.Context.AnnotatedMedDatas.Select(item => item.Email).Distinct().ToListAsync());
+    }
+
+    [Fact]
+    public async Task RepeatedSkipIsHarmlessAndOnlyTheHolderCanSkip()
+    {
+        await using var db = await AdminDatabase.CreateAsync();
+        await db.AssignAsync(db.First);
+
+        var notHolder = await db.Repository.SkipImageAsync(1, db.Second);
+        Assert.False(notHolder.Success);
+        Assert.True(notHolder.Conflict);
+        Assert.Equal(db.First.Id, (await db.Context.MedDatas.AsNoTracking().SingleAsync(item => item.Id == 1)).LockedByUserId);
+
+        Assert.True((await db.Repository.SkipImageAsync(1, db.First)).Success);
+        Assert.True((await db.Repository.SkipImageAsync(1, db.First)).Success); // A retry after a lost answer.
+        Assert.Single(db.Context.ImageSkips);
+    }
+
+    [Fact]
+    public async Task ACompletedImageCannotBeSkipped()
+    {
+        await using var db = await AdminDatabase.CreateAsync();
+        await db.AssignAsync(db.First);
+        await FinishImageAsync(db, db.First, 1, "lesion", "margin");
+
+        var result = await db.Repository.SkipImageAsync(1, db.First);
+
+        Assert.False(result.Success);
+        Assert.Equal(2, await db.Context.AnnotatedMedDatas.CountAsync());
+    }
+
+    [Fact]
+    public async Task EveryDrawnAnnotationIsStoredAsAPixelMaskToo()
+    {
+        await using var db = await AdminDatabase.CreateAsync();
+        await db.AssignAsync(db.First);
+        await db.AssignAsync(db.Student, true);
+        Assert.True((await db.Repository.SaveProfessionalAsync(db.First, Answer("lesion"))).Success);
+        Assert.True((await db.Repository.SaveProfessionalAsync(db.First, new AnnotatedMedData
+        {
+            MedDataId = 1, ExtractedKeyword = "margin", PressedButton = "Not Visible/Abstract", Timestamps = "(0,0)"
+        })).Success);
+        Assert.True((await db.Repository.SaveCustomAnnotationAsync(db.First, 1, "finding", Coordinates)).Result.Success);
+        Assert.True((await db.Repository.SaveStudentAsync(db.Student, [new AnnotatedByStudentsMedData { MedDataId = 1, Coordinates = Coordinates, TextualAnnotation = "group" }])).Success);
+
+        var answers = await db.Context.AnnotatedMedDatas.AsNoTracking().OrderBy(item => item.Id).ToListAsync();
+        Assert.Equal(90 * 60, AnnotationMask.Parse(answers[0].PixelMask!).Pixels);
+        Assert.Equal(Coordinates, answers[0].BoxCoordinates); // The coordinates stay as they were.
+        Assert.Null(answers[1].PixelMask);                    // Nothing was drawn for Not Visible.
+        Assert.Equal(answers[0].PixelMask, (await db.Context.CustomAnnotations.AsNoTracking().SingleAsync()).PixelMask);
+        Assert.Equal(answers[0].PixelMask, (await db.Context.AnnotatedByStudentsMedDatas.AsNoTracking().SingleAsync()).PixelMask);
+    }
+
+    [Fact]
+    public async Task BackfillGivesOlderAnnotationsMasksAndLeavesTheRestAlone()
+    {
+        await using var db = await AdminDatabase.CreateAsync();
+        await db.AssignAsync(db.First);
+        Assert.True((await db.Repository.SaveProfessionalAsync(db.First, Answer("lesion"))).Success);
+        var saved = await db.Context.AnnotatedMedDatas.SingleAsync();
+        saved.PixelMask = null;
+        db.Context.AnnotatedMedDatas.Add(new AnnotatedMedData { MedDataId = 1, ExtractedKeyword = "old", BoxCoordinates = "[[1,2],[3,4]]" });
+        await db.Context.SaveChangesAsync();
+
+        Assert.Equal(1, await MaskBackfill.RunAsync(db.Context));
+        Assert.Equal(0, await MaskBackfill.RunAsync(db.Context));
+
+        Assert.Equal(90 * 60, AnnotationMask.Parse(saved.PixelMask!).Pixels);
+        Assert.Null((await db.Context.AnnotatedMedDatas.SingleAsync(item => item.ExtractedKeyword == "old")).PixelMask);
+    }
+
+    [Fact]
+    public async Task MaskArchiveHoldsOnePngPerAnnotationAndAnIndex()
+    {
+        await using var db = await AdminDatabase.CreateAsync();
+        await db.AssignAsync(db.First);
+        Assert.True((await db.Repository.SaveProfessionalAsync(db.First, Answer("lesion"))).Success);
+        Assert.True((await db.Repository.SaveCustomAnnotationAsync(db.First, 1, "finding", Coordinates)).Result.Success);
+
+        await using var archive = await db.Export.CreateMasksArchiveAsync(IdentityMode.Pseudonymous);
+        using var zip = new ZipArchive(archive, ZipArchiveMode.Read);
+
+        Assert.Equal(["README.txt", "masks/1_custom_1.png", "masks/1_term_1.png", "pixel_masks.csv"], zip.Entries.Select(entry => entry.FullName).Order(StringComparer.Ordinal));
+        using var index = new StreamReader(zip.GetEntry("pixel_masks.csv")!.Open());
+        var text = await index.ReadToEndAsync();
+        Assert.Contains("masks/1_term_1.png,1,term,1,lesion,1000,500,5400", text);
+        Assert.DoesNotContain(db.First.Email!, text);
+        using var png = zip.GetEntry("masks/1_term_1.png")!.Open();
+        var signature = new byte[4];
+        await png.ReadExactlyAsync(signature);
+        Assert.Equal([0x89, 0x50, 0x4E, 0x47], signature);
+    }
+
+    [Fact]
+    public async Task FullDataShowsOneRowPerCaseWithEverythingKnownAndCollected()
+    {
+        await using var db = await AdminDatabase.CreateAsync();
+        var seed = await db.Context.MedDatas.SingleAsync(item => item.Id == 1);
+        (seed.ImageDescription, seed.Diagnosis, seed.SourceLicense) = ("Lesion with a clear margin.", "Melanoma", "CC BY 4.0");
+        await db.Context.SaveChangesAsync();
+        await db.AssignAsync(db.First);
+        Assert.True((await db.Repository.SaveCustomAnnotationAsync(db.First, 1, "finding", Coordinates)).Result.Success);
+        await FinishImageAsync(db, db.First, 1, "lesion", "margin");
+        await db.AssignAsync(db.Student, true);
+        Assert.True((await db.Repository.SaveStudentAsync(db.Student, [new AnnotatedByStudentsMedData { MedDataId = 1, Coordinates = Coordinates, TextualAnnotation = "group" }])).Success);
+        await db.AssignAsync(db.Second);
+        Assert.True((await db.Repository.SkipImageAsync(2, db.Second)).Success);
+
+        var page = await db.Queries.GetFullDataAsync(new FullDataQuery());
+
+        Assert.Equal([1, 2], page.Items.Select(item => item.Image.Id));
+        var full = page.Items[0];
+        Assert.Equal("Lesion with a clear margin.", full.Image.ImageDescription);
+        Assert.Equal(["lesion", "margin"], full.Terms);
+        Assert.Equal(db.First.Id, full.Specialist!.Id);
+        Assert.Equal(2, full.Answers.Count);
+        Assert.All(full.Answers, answer => Assert.Equal(90 * 60, answer.MaskPixels));
+        Assert.Equal("ct", full.Check(MetadataCheck.Modality)!.Submitted);
+        Assert.Equal("Rheumatology", full.Check(MetadataCheck.Speciality)!.Submitted);
+        Assert.True(full.Check(MetadataCheck.Speciality)!.IsNewValue);
+        Assert.Null(full.Check(MetadataCheck.BodyRegion)!.Submitted);
+        Assert.Equal("finding", Assert.Single(full.Customs).Term);
+        Assert.Equal("group", Assert.Single(full.Groups).Label);
+        Assert.Equal(db.Student.Id, full.Student!.Id);
+        Assert.NotNull(full.FirstSavedAt);
+        Assert.Equal(db.Second.Id, Assert.Single(page.Items[1].Skips).Annotator!.Id);
+
+        Assert.Equal([1], (await db.Queries.GetFullDataAsync(new FullDataQuery { Status = FullDataQuery.Complete })).Items.Select(item => item.Image.Id));
+        Assert.Equal([2], (await db.Queries.GetFullDataAsync(new FullDataQuery { Status = FullDataQuery.InProgress })).Items.Select(item => item.Image.Id));
+        Assert.Equal([2], (await db.Queries.GetFullDataAsync(new FullDataQuery { ImageId = 2 })).Items.Select(item => item.Image.Id));
+    }
+
+    [Theory]
+    [InlineData(IdentityMode.Pseudonymous, false)]
+    [InlineData(IdentityMode.None, false)]
+    [InlineData(IdentityMode.Full, true)]
+    public async Task FullDataDownloadHoldsEachLabelSeparatelyAndRespectsIdentity(IdentityMode identity, bool showsEmail)
+    {
+        await using var db = await AdminDatabase.CreateAsync();
+        await db.AssignAsync(db.First);
+        await FinishImageAsync(db, db.First, 1, "lesion", "margin");
+
+        await using var stream = await db.Export.CreateFullDataAsync(new FullDataQuery(), identity, ExportFormat.Csv);
+        using var reader = new StreamReader(stream);
+        var text = await reader.ReadToEndAsync();
+
+        var header = text.Split("\r\n")[0];
+        foreach (var column in new[] { "ImageDescription", "Terms", "OriginalModality", "ModalityVerdict", "ModalitySubmitted", "SpecialityVerdict", "SpecialitySubmitted",
+                     "BodyRegionVerdict", "BodyRegionSubmitted", "TermAnswers", "CustomAnnotations", "StudentGroups", "FirstSaveAtUtc", "TotalMsDrawingToSave", "ProblemReports", "Skips" })
+            Assert.Contains(column, header);
+        Assert.Contains("Rheumatology", text);
+        Assert.Contains("rectangle", text);
+        Assert.Equal(showsEmail, text.Contains(db.First.Email!));
+        Assert.Equal(identity != IdentityMode.None, text.Contains("SPEC-001"));
     }
 
     private sealed class AdminDatabase : IAsyncDisposable

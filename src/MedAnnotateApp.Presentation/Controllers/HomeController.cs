@@ -55,9 +55,7 @@ public class HomeController : Controller
             });
         }
 
-        return HttpContext.Session.Keys.Contains("Authorized")
-            ? RedirectToAction("Login", "Identity")
-            : RedirectToAction("AuthorizationAccess", "Identity");
+        return RedirectToAction("Login", "Identity");
     }
 
     [Authorize(Roles = "Professional")]

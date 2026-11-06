@@ -6,13 +6,11 @@
     <h1>Access denied</h1>
     <p>You don't have permission to access the requested page. You might need to:</p>
     <ul>
-        <li>Enter the research access password if you haven't already</li>
         <li>Sign in with an account that has the right permissions</li>
         <li>Request access from the study team</li>
     </ul>
     <div class="notice-actions">
-        <a asp-controller="Identity" asp-action="AuthorizationAccess" class="btn btn-primary">Enter research access password</a>
-        <a asp-controller="Identity" asp-action="Login" class="btn btn-secondary">Sign in</a>
+        <a asp-controller="Identity" asp-action="Login" class="btn btn-primary">Sign in</a>
         <a asp-controller="Home" asp-action="Index" class="btn btn-secondary">Go to annotations</a>
     </div>
 </div>

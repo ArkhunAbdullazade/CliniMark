@@ -27,6 +27,20 @@ public class ExportController(AdminQueryService queries, ResultsExportService ex
         }
     }
 
+    public async Task<IActionResult> Masks(IdentityMode identity, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var stream = await export.CreateMasksArchiveAsync(identity, cancellationToken);
+            return File(stream, "application/zip", $"medannotate-pixel-masks-{DateTime.UtcNow:yyyyMMdd-HHmm}.zip");
+        }
+        catch (ExportBusyException exception)
+        {
+            Flash(exception.Message, false);
+            return RedirectToAction(nameof(Index));
+        }
+    }
+
     private async Task<IActionResult> DownloadWithImagesAsync(ExportOptions options, CancellationToken cancellationToken)
     {
         await using var archive = await imageArchive.PrepareAsync(options, cancellationToken);

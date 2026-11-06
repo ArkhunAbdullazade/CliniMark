@@ -58,8 +58,10 @@ public class MedDataRepository : IMedDataRepository
             }
         }
 
+        // An image someone skipped stays open for everyone else, but is never offered to them again.
         assigned ??= await eligible.Where(image => isStudent
-                ? image.LockedByStudentUserId == null : image.LockedByUserId == null)
+                ? image.LockedByStudentUserId == null
+                : image.LockedByUserId == null && !context.ImageSkips.Any(skip => skip.MedDataId == image.Id && skip.UserId == userId))
             .OrderBy(image => image.Id).FirstOrDefaultAsync();
         if (assigned != null)
         {
@@ -91,12 +93,13 @@ public class MedDataRepository : IMedDataRepository
     }
 
     // Shown live on the Filters page: images this person could still be given with a selection (not yet completed for
-    // their role, and free or already theirs).
+    // their role, free or already theirs, and not skipped by them).
     public Task<int> CountAvailableAsync(ImageSelectionFilters filters, bool isStudent, string userId) =>
         !filters.HasSelection ? Task.FromResult(0)
         : isStudent
             ? InStudy(filters, true).CountAsync(image => !image.IsAnnotatedByStudent && (image.LockedByStudentUserId == null || image.LockedByStudentUserId == userId))
-            : InStudy(filters, false).CountAsync(image => !image.IsAnnotated && (image.LockedByUserId == null || image.LockedByUserId == userId));
+            : InStudy(filters, false).CountAsync(image => !image.IsAnnotated && (image.LockedByUserId == null || image.LockedByUserId == userId)
+                && !context.ImageSkips.Any(skip => skip.MedDataId == image.Id && skip.UserId == userId));
 
     // For the end-of-series screen: images in the person's current selection that they themselves completed.
     public Task<int> CountCompletedByAsync(User user, bool isStudent)
@@ -127,6 +130,8 @@ public class MedDataRepository : IMedDataRepository
         {
             if (!AnnotationCoordinates.TryValidate(annotation.BoxCoordinates, out var error))
                 return Failure(error);
+            // Computed before the workflow lock, so a large image never holds up other annotators.
+            annotation.PixelMask = AnnotationMask.FromCoordinates(annotation.BoxCoordinates!).ToJson();
         }
         else if (!string.IsNullOrWhiteSpace(annotation.BoxCoordinates))
             return Failure("Skipped or non-visible terms must not include geometry.");
@@ -198,6 +203,41 @@ public class MedDataRepository : IMedDataRepository
         return new(true);
     }
 
+    // Skip entire image: the case is out of this specialist's field. The image opens again for everyone else and starts
+    // fresh, so one complete set per image still comes from one person. Anything they had saved on it leaves the results
+    // tables, with a copy kept in the skip row, and they are not offered the image again.
+    public async Task<AnnotationSaveResult> SkipImageAsync(int medDataId, User user)
+    {
+        await using var transaction = await BeginWorkflowAsync();
+        var source = await context.MedDatas.FindAsync(medDataId);
+        if (source == null) return Failure(NoLongerAssigned, true);
+        // A repeated request (retry after a lost answer) finds the skip already done.
+        if (await context.ImageSkips.AnyAsync(skip => skip.MedDataId == medDataId && skip.UserId == user.Id)) return new(true);
+        if (source.IsAnnotated || source.LockedByUserId != user.Id) return Failure(NoLongerAssigned, true);
+
+        var answers = await context.AnnotatedMedDatas.Where(item => item.MedDataId == medDataId && item.Email == user.Email).OrderBy(item => item.Id).ToListAsync();
+        var customs = await context.CustomAnnotations.Where(item => item.MedDataId == medDataId && item.UserId == user.Id).OrderBy(item => item.Id).ToListAsync();
+        var checks = await context.MetadataChecks.Where(item => item.MedDataId == medDataId && item.UserId == user.Id).OrderBy(item => item.Id).ToListAsync();
+        context.ImageSkips.Add(new ImageSkip
+        {
+            MedDataId = medDataId, UserId = user.Id, CreatedAt = DateTime.UtcNow,
+            // Annotation fields only: the skip row already says who, so exports can share this copy under any identity setting.
+            DiscardedWork = answers.Count + customs.Count + checks.Count == 0 ? null : JsonSerializer.Serialize(new
+            {
+                answers = answers.Select(item => new { item.ExtractedKeyword, item.PressedButton, item.BoxCoordinates, item.PixelMask, item.Comment, item.TechnicalProblem, item.Timestamps, item.CreatedAt }),
+                customs = customs.Select(item => new { item.Term, item.Coordinates, item.PixelMask, item.CreatedAt }),
+                checks = checks.Select(item => new { item.Field, item.ShownValue, item.Verdict, item.CorrectedValue, item.IsNewValue, item.UpdatedAt })
+            })
+        });
+        context.AnnotatedMedDatas.RemoveRange(answers);
+        context.CustomAnnotations.RemoveRange(customs);
+        context.MetadataChecks.RemoveRange(checks);
+        ClearProfessionalLock(source);
+        await context.SaveChangesAsync();
+        await transaction.CommitAsync();
+        return new(true);
+    }
+
     public async Task<AnnotationSaveResult> SaveStudentAsync(User user, IReadOnlyList<AnnotatedByStudentsMedData> annotations)
     {
         if (annotations.Count is < 1 or > 200 || annotations.Select(item => item.MedDataId).Distinct().Count() != 1)
@@ -210,6 +250,7 @@ public class MedDataRepository : IMedDataRepository
                 return Failure("Give every annotation group a label of at most 500 characters.");
             if (!AnnotationCoordinates.TryValidate(item.Coordinates, out var error))
                 return Failure(error);
+            item.PixelMask = AnnotationMask.FromCoordinates(item.Coordinates!).ToJson();
         }
 
         await using var transaction = await BeginWorkflowAsync();
@@ -281,6 +322,7 @@ public class MedDataRepository : IMedDataRepository
             return (Failure("Name what this annotation shows, in at most 1,000 characters."), null);
         if (!AnnotationCoordinates.TryValidate(coordinates, out var error))
             return (Failure(error), null);
+        var mask = AnnotationMask.FromCoordinates(coordinates!).ToJson();
 
         await using var transaction = await BeginWorkflowAsync();
         var source = await context.MedDatas.FindAsync(medDataId);
@@ -295,7 +337,7 @@ public class MedDataRepository : IMedDataRepository
         if (!await DimensionsAgreeAsync(source.Id, [coordinates!]))
             return (Failure("The image dimensions differ from earlier annotations. Stop and ask the research administrator to check the source image.", true), null);
 
-        var custom = new CustomAnnotation { MedDataId = medDataId, UserId = user.Id, Term = term, Coordinates = coordinates!, CreatedAt = DateTime.UtcNow };
+        var custom = new CustomAnnotation { MedDataId = medDataId, UserId = user.Id, Term = term, Coordinates = coordinates!, PixelMask = mask, CreatedAt = DateTime.UtcNow };
         context.CustomAnnotations.Add(custom);
         await context.SaveChangesAsync();
         await transaction.CommitAsync();

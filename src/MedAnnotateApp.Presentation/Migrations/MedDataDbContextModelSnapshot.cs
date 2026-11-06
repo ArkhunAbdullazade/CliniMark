@@ -103,6 +103,9 @@ namespace MedAnnotateApp.Presentation.Migrations
                     b.Property<string>("OrcidId")
                         .HasColumnType("text");
 
+                    b.Property<string>("PixelMask")
+                        .HasColumnType("text");
+
                     b.Property<string>("Position")
                         .HasColumnType("text");
 
@@ -186,6 +189,9 @@ namespace MedAnnotateApp.Presentation.Migrations
                     b.Property<string>("OrcidId")
                         .HasColumnType("text");
 
+                    b.Property<string>("PixelMask")
+                        .HasColumnType("text");
+
                     b.Property<string>("Position")
                         .HasColumnType("text");
 
@@ -242,6 +248,9 @@ namespace MedAnnotateApp.Presentation.Migrations
                     b.Property<int>("MedDataId")
                         .HasColumnType("integer");
 
+                    b.Property<string>("PixelMask")
+                        .HasColumnType("text");
+
                     b.Property<string>("Term")
                         .IsRequired()
                         .HasColumnType("text");
@@ -257,6 +266,35 @@ namespace MedAnnotateApp.Presentation.Migrations
                     b.HasIndex("MedDataId");
 
                     b.ToTable("CustomAnnotations");
+                });
+
+            modelBuilder.Entity("MedAnnotateApp.Core.Models.ImageSkip", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("DiscardedWork")
+                        .HasColumnType("text");
+
+                    b.Property<int>("MedDataId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MedDataId", "UserId")
+                        .IsUnique();
+
+                    b.ToTable("ImageSkips");
                 });
 
             modelBuilder.Entity("MedAnnotateApp.Core.Models.MedData", b =>

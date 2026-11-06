@@ -88,9 +88,14 @@ public sealed class PostgreSqlAdminTests
             var export = new ResultsExportService(context);
             await using var archive = await export.CreateArchiveAsync(new ExportOptions { Identity = IdentityMode.Full });
             using var zip = new ZipArchive(archive, ZipArchiveMode.Read);
-            Assert.Equal(9, zip.Entries.Count); // Includes custom_annotations, metadata_checks and problem_reports.
+            Assert.Equal(12, zip.Entries.Count); // Includes custom_annotations, metadata_checks, problem_reports, image_skips, pixel_masks and full_data.
             await using var csv = await export.CreateResponsesCsvAsync(new ResponseQuery { AnnotatorId = specialist.Id }, IdentityMode.None);
             Assert.True(csv.Length > 0);
+            Assert.NotEmpty((await queries.GetFullDataAsync(new FullDataQuery())).Items);
+            await using var full = await export.CreateFullDataAsync(new FullDataQuery(), IdentityMode.Pseudonymous, ExportFormat.Json);
+            Assert.True(full.Length > 0);
+            await using var masks = await export.CreateMasksArchiveAsync(IdentityMode.Pseudonymous);
+            Assert.True(masks.Length > 0);
         }
         finally
         {

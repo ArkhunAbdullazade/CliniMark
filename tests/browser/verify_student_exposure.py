@@ -1,11 +1,9 @@
 """Check the existing synthetic student's HTML without submitting annotations.
 
-Start the preview at port 5210 and set MEDANNOTATE_SMOKE_GATE. The existing
-preview-student account must have an available synthetic image. Sign-in can
+Start the preview at port 5210. The existing preview-student account must have an available synthetic image. Sign-in can
 reserve that image; this script creates no accounts and writes no annotations.
 """
 import json
-import os
 from pathlib import Path
 import re
 
@@ -13,12 +11,8 @@ from verify_inline_keywords import Client, PASSWORD, SOURCE_DESCRIPTION
 
 
 def main():
-    gate = os.environ.get("MEDANNOTATE_SMOKE_GATE")
-    assert gate, "Set MEDANNOTATE_SMOKE_GATE before this local preview check"
     client = Client()
-    client.request("/Identity/AuthorizationAccess")
-    route, _ = client.request("/Identity/PostAuthorizationAccess", {"Password": gate})
-    assert route == "/Identity/Login", "Research gate did not reach sign-in"
+    client.request("/Identity/Login")
     route, document = client.request("/Identity/PostLogin", {
         "Email": "preview-student@example.net", "Password": PASSWORD})
     assert route == "/Home/Student", "Existing student account did not reach student view"

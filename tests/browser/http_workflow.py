@@ -1,6 +1,6 @@
 """Smoke test the synthetic isolated local audit app, never the research database.
 
-Requires the fixtures.sql dataset and MEDANNOTATE_SMOKE_GATE in the environment.
+Requires the fixtures.sql dataset.
 Creates test accounts/annotations. Run only on a disposable medannotate_audit_* DB.
 """
 import html
@@ -15,8 +15,7 @@ import urllib.parse
 import urllib.request
 from uuid import uuid4
 
-BASE = 'http://127.0.0.1:5210'
-GATE = os.environ['MEDANNOTATE_SMOKE_GATE']
+BASE = os.environ.get('MEDANNOTATE_URL', 'http://127.0.0.1:5210')
 PASSWORD = 'SyntheticOnly!2026'
 REPORT = []
 
@@ -45,11 +44,6 @@ class Client:
         token = re.search(r'name="__RequestVerificationToken"[^>]*value="([^"]+)"', body)
         if token: self.token = html.unescape(token.group(1))
         return response.status, response.geturl(), body
-
-    def gate(self):
-        self.request('/Identity/AuthorizationAccess')
-        status, url, body = self.request('/Identity/PostAuthorizationAccess', form={'Password': GATE})
-        assert status == 200 and url.endswith('/Identity/Login'), (status, url)
 
     def register(self, name, position='specialist', invalid=False):
         self.request('/Identity/Signup')
@@ -83,13 +77,15 @@ def expect(client, route, payload, expected=200, method='POST', csrf=True):
     return json.loads(body) if body else None
 
 anon = Client()
-anon.request('/Identity/AuthorizationAccess')
-status, url, body = anon.request('/Identity/PostSignup', form={'Email':'no-gate@example.net'})
-assert status == 200 and url.endswith('/Identity/AuthorizationAccess')
-REPORT.append('Direct signup cannot bypass the shared research gate')
+status, url, body = anon.request('/')
+assert status == 200 and url.endswith('/Identity/Login') and 'name="Password"' in body, (status, url)
+status, url, _ = anon.request('/Identity/AuthorizationAccess')
+assert status == 200 and url.endswith('/Identity/Login'), (status, url)
+status, url, _ = anon.request('/Home/Professional')
+assert status == 200 and '/Identity/Login' in url, (status, url)
+REPORT.append('Visitors reach the sign-in page directly, with no shared password, and nothing else without signing in')
 
 one = Client()
-one.gate()
 one.register('specialist-one', invalid=True)
 status, data = one.annotations(1)
 assert status == 200 and data['annotations'] == []
@@ -120,7 +116,6 @@ assert len(data['annotations']) == 1
 REPORT.append('Reload resumes the same assignment and saved term')
 
 two = Client()
-two.gate()
 two.register('specialist-two')
 assert two.annotations(2)[0] == 200
 assert two.annotations(1)[0] == 403
@@ -142,11 +137,10 @@ expect(one, '/MedData/SaveMetadataChecks', dict(Id=1, Checks=[dict(Field=field, 
 expect(one, '/MedData/NextImage?medDataId=1', {}, method='PUT')
 expect(one, '/MedData/NextImage?medDataId=1', {}, method='PUT')
 status, url, body = one.request('/Home/Professional')
-assert status == 200 and 'No available images match' in body
+assert status == 200 and 'Choose new filters' in body and 'id="sourceImage"' not in body
 REPORT.append('Completion requires every term and repeated completion is safe; no matching available image shows the empty state')
 
 student = Client()
-student.gate()
 student.register('student', position='medical student')
 status, denied_url, body = student.request('/MedData/NextImage?medDataId=1', payload={}, method='PUT')
 assert '/Identity/AccessDenied' in denied_url or status == 403

@@ -10,7 +10,7 @@
             <div class="admin-card-header">
                 <div>
                     <h2 class="admin-card-title">Full results archive</h2>
-                    <p class="admin-card-note">A ZIP with the image list, specialist answers, student groups, participants, progress and a README</p>
+                    <p class="admin-card-note">A ZIP with the image list, specialist answers, student groups, participants, label checks, skips, pixel masks, the Full data table and a README</p>
                 </div>
             </div>
             <form class="admin-card-body" method="get" asp-action="Download">
@@ -84,6 +84,21 @@
                     <dt>Participants</dt><dd>@Model.Specialists @(Model.Specialists == 1 ? "specialist" : "specialists"), @Model.Students @(Model.Students == 1 ? "student" : "students")</dd>
                 </dl>
                 <p class="muted small mt-3 mb-0">Counts as of <time datetime="@AdminUi.Iso(Model.GeneratedAt)" data-local="datetime"></time>; the download itself is always current.</p>
+            </div>
+        </section>
+        <section class="admin-card">
+            <div class="admin-card-header">
+                <div>
+                    <h2 class="admin-card-title">Pixel masks</h2>
+                    <p class="admin-card-note">Every drawn annotation as a black-and-white PNG the size of its image, for Dice and IoU</p>
+                </div>
+            </div>
+            <div class="admin-card-body">
+                <div class="d-flex flex-wrap gap-2">
+                    <a class="btn btn-primary" asp-action="Masks" asp-route-identity="Pseudonymous"><i class="bi bi-download"></i> Download masks</a>
+                    <a class="btn btn-outline-secondary" asp-action="Masks" asp-route-identity="Full">With names and emails</a>
+                </div>
+                <p class="muted small mt-3 mb-0">The ZIP has a table linking each mask to its image, term and annotator, and a README with the Dice and IoU code.</p>
             </div>
         </section>
         <section class="admin-card">

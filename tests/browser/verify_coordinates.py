@@ -3,7 +3,6 @@
 Draws through the real pages, saves through the real app, and reads the rows back from PostgreSQL. Creates accounts
 and annotations, so run it only against a disposable medannotate_audit_* database. Needs playwright and Pillow, the app
 on http://127.0.0.1:5210 in Development, and:
-  MEDANNOTATE_SMOKE_GATE      the research access password
   MEDANNOTATE_AUDIT_PSQL      path to psql
   MEDANNOTATE_AUDIT_DB        libpq connection string whose dbname starts with medannotate_audit_ (PGPASSWORD for its password)
   MEDANNOTATE_ADMIN_EMAIL / MEDANNOTATE_ADMIN_PASSWORD   an account from create-admin
@@ -28,7 +27,6 @@ from playwright.sync_api import sync_playwright
 
 BASE = 'http://127.0.0.1:5210'
 IMAGE_PORT = 5212
-GATE = os.environ['MEDANNOTATE_SMOKE_GATE']
 PSQL = os.environ['MEDANNOTATE_AUDIT_PSQL']
 DATABASE = os.environ['MEDANNOTATE_AUDIT_DB']
 PASSWORD = 'SyntheticOnly!2026'
@@ -108,10 +106,7 @@ class Session:
         self.errors = []
         self.page.on('console', lambda message: self.errors.append(message.text) if message.type == 'error' else None)
         self.page.on('pageerror', lambda error: self.errors.append(str(error)))
-        self.page.goto(BASE + '/Identity/AuthorizationAccess')
-        self.page.fill('input[name=Password]', GATE)
-        self.page.click('button[type=submit]')
-        self.page.wait_for_url('**/Identity/Login')
+        self.page.goto(BASE + '/Identity/Login')
         self.email = email
 
     def login(self):
@@ -403,10 +398,7 @@ def draw_speed(browser, email, image_id):
 def admin_case(browser, image_id, saved):
     context = browser.new_context(viewport={'width': 1440, 'height': 900})
     page = context.new_page()
-    page.goto(BASE + '/Identity/AuthorizationAccess')
-    page.fill('input[name=Password]', GATE)
-    page.click('button[type=submit]')
-    page.wait_for_url('**/Identity/Login')
+    page.goto(BASE + '/Identity/Login')
     page.fill('input[name=Email]', os.environ['MEDANNOTATE_ADMIN_EMAIL'])
     page.fill('input[name=Password]', os.environ['MEDANNOTATE_ADMIN_PASSWORD'])
     page.click('button[type=submit]')

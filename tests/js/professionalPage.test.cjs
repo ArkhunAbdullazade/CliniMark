@@ -42,8 +42,9 @@ class Element {
 async function page(occurrences, expectedCount, options = {}) {
   const loadHistory = options.loadHistory;
   const saveAnnotation = options.saveAnnotation;
+  const skipImage = options.skipImage;
   const events = {};
-  const elements = Object.fromEntries(['annotation-status', 'next-button', 'skip-button',
+  const elements = Object.fromEntries(['annotation-status', 'next-button', 'skip-button', 'skip-image-button',
     'not-present-button', 'comments', 'technical-problem', 'image-container'].map(id => [id, new Element()]));
   const header = new Element();
   header.dataset.keywordCount = String(expectedCount);
@@ -64,7 +65,7 @@ async function page(occurrences, expectedCount, options = {}) {
     getAllAnnotationsJSON() { return 'synthetic image-coordinate envelope'; }
     loadCoordinates(coordinates) { this.loaded = coordinates; }
   }
-  const requestErrors = [];
+  const requestErrors = [], confirms = [], reloads = [];
   const context = {
     window: {annotatedMedData: {id: 1}, addEventListener(name, callback) { events[name] = callback; }, watchAssignment: options.watch,
       setupMetadataCheck: options.labels},
@@ -77,12 +78,13 @@ async function page(occurrences, expectedCount, options = {}) {
       querySelectorAll: selector => selector === '.header-text .keyword' ? occurrences : [],
       querySelector: selector => selector === '.header-text' ? header : {value: 'synthetic-csrf'}
     },
-    CanvasManager, confirm: () => true,
-    location: {reload() {}},
+    CanvasManager, confirm: message => { confirms.push(message); return options.confirm ?? true; },
+    location: {reload() { reloads.push(true); }},
     fetch: async (url, options = {}) => {
       calls.push({url, ...options});
       if (url.includes('CurrentAnnotations') && loadHistory) return loadHistory();
       if (url === '/MedData/ProcessAnnotatedMedData' && saveAnnotation) return saveAnnotation();
+      if (url.includes('SkipImage') && skipImage) return skipImage();
       return {ok: true, json: async () => url.includes('CurrentAnnotations') ? {annotations: []} : {success: true}};
     }
   };
@@ -94,7 +96,7 @@ async function page(occurrences, expectedCount, options = {}) {
     events.beforeunload({preventDefault() { warned = true; }});
     return warned;
   };
-  return {elements, calls, manager: context.window.canvasManager, warnsBeforeLeaving, requestErrors};
+  return {elements, calls, manager: context.window.canvasManager, warnsBeforeLeaving, requestErrors, confirms, reloads};
 }
 
 test('inline repeated phrases advance once per canonical term in description order', async () => {
@@ -129,8 +131,8 @@ test('inline repeated phrases advance once per canonical term in description ord
 });
 
 function fakeLabels() {
-  const labels = {done: false, enabled: null, loaded: null, complete: () => labels.done,
-    setEnabled(value) { labels.enabled = value; }, load(records) { labels.loaded = records; }};
+  const labels = {done: false, enabled: null, loaded: null, attention: false, complete: () => labels.done,
+    setEnabled(value) { labels.enabled = value; }, setAttention(value) { labels.attention = value; }, load(records) { labels.loaded = records; }};
   return {labels, setup: settings => { labels.settings = settings; return labels; }};
 }
 
@@ -155,6 +157,83 @@ test('Next Image waits for the label check and the status says what is missing',
   assert.match(elements['annotation-status'].textContent, /Select Next Image/);
   await elements['next-button'].click();
   assert.equal(calls.filter(call => call.url.includes('/MedData/NextImage')).length, 1);
+});
+
+test('what is still missing is shown in bold red and the label box is tinted, only once every term is saved', async () => {
+  const {labels, setup} = fakeLabels();
+  const {elements, manager} = await page([new Element('lesion', 'lesion')], 1, {labels: setup});
+  assert.equal(labels.attention, false);
+  await finishTerm(elements, manager);
+  assert.equal(labels.attention, true);
+  const emphasised = elements['annotation-status'].children.find(node => typeof node !== 'string');
+  assert.equal(emphasised.className, 'status-term');
+  assert.equal(emphasised.textContent, 'Confirm the image modality, speciality and body region');
+
+  labels.done = true;
+  labels.settings.onChange();
+  assert.equal(labels.attention, false);
+  assert.doesNotMatch(elements['annotation-status'].textContent, /Confirm the image modality/);
+});
+
+test('reviewing a saved term keeps saying that the labels are missing, until they are answered', async () => {
+  const {labels, setup} = fakeLabels();
+  const term = new Element('lesion', 'lesion');
+  const {elements, manager} = await page([term], 1, {labels: setup});
+  await finishTerm(elements, manager);
+  await term.click();
+  assert.match(elements['annotation-status'].textContent, /^Saved annotation for lesion \(read only\)\. .*Confirm the image modality/);
+
+  labels.done = true;
+  labels.settings.onChange();
+  assert.match(elements['annotation-status'].textContent, /^Saved annotation for lesion \(read only\)\. All terms are saved\. Select Next Image/);
+});
+
+test('Skip entire image moves on at once when nothing has been entered', async () => {
+  const {elements, calls, confirms, reloads, warnsBeforeLeaving} = await page([new Element('lesion', 'lesion')], 1);
+  assert.equal(elements['skip-image-button'].disabled, false);
+  await elements['skip-image-button'].click();
+  const skip = calls.find(call => call.url.includes('/MedData/SkipImage'));
+  assert.equal(skip.url, '/MedData/SkipImage?medDataId=1');
+  assert.equal(skip.method, 'PUT');
+  assert.equal(confirms.length, 0);
+  assert.equal(reloads.length, 1);
+  assert.equal(warnsBeforeLeaving(), false);
+});
+
+test('Skip entire image asks first when it would remove saved work, and declining changes nothing', async () => {
+  const {elements, calls, confirms, reloads} = await page([new Element('lesion', 'lesion')], 1, {confirm: false,
+    loadHistory: () => ({ok: true, json: async () => ({annotations: [{extractedKeyword: 'lesion', pressedButton: 'Save and Next Term', boxCoordinates: '{}'}]})})});
+  await elements['skip-image-button'].click();
+  assert.equal(confirms.length, 1);
+  assert.equal(calls.filter(call => call.url.includes('SkipImage')).length, 0);
+  assert.equal(reloads.length, 0);
+});
+
+test('Skip entire image also asks when a shape is drawn but not saved', async () => {
+  const {elements, manager, confirms, calls} = await page([new Element('lesion', 'lesion')], 1);
+  manager.annotations = [{type: 'rectangle'}];
+  manager.onAnnotationsChange();
+  await elements['skip-image-button'].click();
+  assert.equal(confirms.length, 1);
+  assert.equal(calls.filter(call => call.url.includes('SkipImage')).length, 1);
+});
+
+test('a broken image can still be skipped, so it never traps the specialist', async () => {
+  const {elements, calls} = await page([new Element('lesion', 'lesion')], 1, {imageReady: false});
+  assert.equal(elements['next-button'].disabled, true);
+  assert.equal(elements['skip-image-button'].disabled, false);
+  await elements['skip-image-button'].click();
+  assert.equal(calls.filter(call => call.url.includes('SkipImage')).length, 1);
+});
+
+test('a failed skip stays on the image and says why', async () => {
+  const {elements, reloads, requestErrors} = await page([new Element('lesion', 'lesion')], 1,
+    {skipImage: () => ({ok: false, status: 409, json: async () => ({success: false, message: 'This image is no longer assigned to you.'})})});
+  await elements['skip-image-button'].click();
+  assert.equal(reloads.length, 0);
+  assert.equal(elements['skip-image-button'].disabled, false);
+  assert.match(elements['annotation-status'].textContent, /no longer assigned/);
+  assert.equal(requestErrors.length, 1);
 });
 
 test('the label check does not hold back saving the terms', async () => {

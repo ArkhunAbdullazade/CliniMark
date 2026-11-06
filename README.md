@@ -16,6 +16,10 @@ Built with **ASP.NET Core MVC, .NET 10, and PostgreSQL**, with custom canvas too
 
 Specialists work through highlighted medical terms in the publication text and mark the corresponding image regions. They can add comments, flag a term as not visible or abstract, or skip it when uncertain. Saving advances to the next term and records annotation timing.
 
+Before moving on, specialists confirm or correct the image's modality, speciality and body region (Yes, No, Can't tell). Next Image stays locked until all three are answered; the box turns yellow and the status line says so in bold red once every term is saved. The dataset's own labels are never overwritten: `MetadataChecks` records what was shown and what the specialist said, for comparison later.
+
+**Skip entire image** sends a case outside the specialist's field back to the pool. It starts fresh for the next person, with nothing from the first specialist left in the results, and is never offered to that specialist again. Anything they had saved on it is copied into `ImageSkips.DiscardedWork` first, so no annotation is destroyed.
+
 <img width="1865" height="902" alt="DEMOSS2" src="https://github.com/user-attachments/assets/0bb8cbea-b1e3-4299-8545-15a0b9eda3a2" />
 
 **Specialist demo · 56 seconds.** Drawing regions, using the magnifier, adding comments, and moving between terms.
@@ -42,7 +46,7 @@ Both workflows provide boundary box and freehand contour tools, with zoom to are
 
 ### Participant access and image assignment
 
-Participants pass a shared research access gate, then register or log in with their own account password through ASP.NET Core Identity. Ordinary email addresses are accepted; ownership confirmation is not required. Each image selection list requires at least one option and supports multiple options. Images match any selected option within each list and must match all three lists. Selections can be changed at `/Identity/Filters`.
+Participants register or log in with their own account password through ASP.NET Core Identity; there is no shared access password. Ordinary email addresses are accepted; ownership confirmation is not required. Each image selection list requires at least one option and supports multiple options. Images match any selected option within each list and must match all three lists. Selections can be changed at `/Identity/Filters`.
 
 Selecting `medical student` assigns the `Medical_Student` role; other positions receive `Professional`. Each role has its own annotation workspace.
 
@@ -79,7 +83,11 @@ PostgreSQL stores annotations alongside source-image and participant metadata. P
 | --- | --- |
 | <img width="757" height="216" alt="AnnotatedData1DB" src="https://github.com/user-attachments/assets/737b242b-0302-4df0-9f25-926f202920da" /> | <img width="111" height="215" alt="AnnotatedData2DB" src="https://github.com/user-attachments/assets/369f6c14-270e-41ba-9f27-ed3f43a8f3a3" /> |
 
-Saved keyword states preserve progress when a specialist has not finished every term on an image. Separate ownership fields—`LockedByUserId` for professionals and `LockedByStudentUserId` for students—track image locks independently for each workflow, helping reduce overlapping work within a role. Completion is tracked through `IsAnnotated` and `IsAnnotatedByStudent`.
+Saved keyword states preserve progress when a specialist has not finished every term on an image. Separate ownership fields—`LockedByUserId` for professionals and `LockedByStudentUserId` for students—hold one person per image in each workflow: every assignment takes a database-wide lock, so two specialists working in parallel can never receive the same image, and one specialist's set is the only one an image gets. The specialist and student workflows are independent, so an image can have one set from each. Completion is tracked through `IsAnnotated` and `IsAnnotatedByStudent`.
+
+**Pixel masks.** Every drawn annotation is stored twice: as coordinates, and as a binary mask of the whole image (1 inside the shape, 0 outside) for evaluating segmentation models with Dice and IoU. The server computes the mask from the coordinates when the annotation is saved (`AnnotationMask`), so it doesn't depend on the annotator's browser: a pixel is inside when its centre is, the shapes of one term are merged, and a contour that crosses itself is filled throughout. Masks are kept as COCO run-length encoding in `PixelMask`. The admin Export page downloads them as PNG files the size of each image, with an index table and a README. For annotations saved before masks existed, run the operator command `backfill-masks`.
+
+**Full data.** The admin panel's Full data page shows one row per image-text pair anyone has saved anything about: every dataset value, each label's original value, verdict and submitted value, every answer with its coordinates, mask and timing, custom annotations, student groups, problem reports and skips. It downloads as CSV or JSON and is included in the results archive as `full_data`.
 
 <img width="1095" height="132" alt="MedDataDB" src="https://github.com/user-attachments/assets/df6f775c-26a4-4d47-b5eb-c78cd420e7b8" />
 
@@ -92,6 +100,9 @@ Saved keyword states preserve progress when a specialist has not finished every 
 | `MedDataKeywords` | Extracted terms associated with images |
 | `AnnotatedMedDatas` | Professional annotation records |
 | `AnnotatedByStudentsMedDatas` | Student annotation groups |
+| `CustomAnnotations` | Findings a specialist outlined and named themselves |
+| `MetadataChecks` | Specialists' verdicts on each image's modality, speciality and body region |
+| `ImageSkips` | Images a specialist sent back, and a copy of anything they had saved on them |
 | ASP.NET Core Identity tables | User accounts and roles |
 
 </details>
@@ -108,7 +119,7 @@ The application uses ASP.NET Core Identity for accounts, EF Core 10 with Npgsql 
 
 ## Run with Docker
 
-Configure the intended database, shared gate hash, persistent keys, hostname, trusted HTTPS proxy and backups before public deployment. Production does not automatically migrate or seed data.
+Configure the intended database, persistent keys, hostname, trusted HTTPS proxy and backups before public deployment. Production does not automatically migrate or seed data.
 
 ```powershell
 # Create .env from .env.example only if it does not exist; configure real values.
@@ -128,16 +139,15 @@ Keep private values in `.env`, environment variables, or .NET user secrets.
 | Setting | Purpose |
 | --- | --- |
 | `ConnectionStrings:MedDataDb` | PostgreSQL connection string |
-| `AuthorizationAccessPasswordHash` | BCrypt hash for the shared authorization gate |
 | `DataProtection:KeysPath` | Required persistent key path in production |
 | `AllowedHosts` | Public hostname |
 | `ReverseProxy:KnownProxies` | Explicit trusted proxy addresses |
-| `RateLimiting:AccessAttemptsPerTenMinutes` | Gate, sign-in and sign-up submissions allowed per client address every ten minutes (default 78: about 13 people joining together from one hospital or university network, with a few retries each) |
+| `RateLimiting:AccessAttemptsPerTenMinutes` | Sign-in and sign-up submissions allowed per client address every ten minutes (default 78: about 13 people joining together from one hospital or university network, with a few retries each) |
 | `Database:ApplyMigrations` | Defaults to development only; false in production Compose |
 | `Database:SeedExcel` | Opt-in sample seed, false by default |
 | `Registration:Enabled` | Public signup (default true). Set `false` when the study team creates the accounts with `create-participants` |
 
-Environment variables use double underscores for nested settings, such as `ConnectionStrings__MedDataDb`. Supply a BCrypt hash for the shared gate. SMTP is not required for research signup/sign-in. Ignored `appsettings.Local.json` is excluded from the image.
+Environment variables use double underscores for nested settings, such as `ConnectionStrings__MedDataDb`. SMTP is not required for research signup/sign-in. Ignored `appsettings.Local.json` is excluded from the image.
 
 <details>
 <summary>Run locally with the .NET SDK</summary>
@@ -147,16 +157,15 @@ Requires the .NET 10 SDK and a running PostgreSQL instance. The commands below u
 ```powershell
 dotnet user-secrets init --project src/MedAnnotateApp.Presentation
 dotnet user-secrets set "ConnectionStrings:MedDataDb" "Host=localhost;Port=5432;Database=meddatadb;Username=postgres;Password=<password>" --project src/MedAnnotateApp.Presentation
-dotnet user-secrets set "AuthorizationAccessPasswordHash" '<bcrypt-hash>' --project src/MedAnnotateApp.Presentation
 
 dotnet restore MedAnnotateApp.sln
 dotnet build MedAnnotateApp.sln
 dotnet run --project src/MedAnnotateApp.Presentation
 ```
 
-Alternatively, set the database connection and shared gate hash in ignored `src/MedAnnotateApp.Presentation/appsettings.Local.json`. Development launch profiles use [https://localhost:7243](https://localhost:7243) or [http://localhost:5210](http://localhost:5210); use the URL printed at startup.
+Alternatively, set the database connection in ignored `src/MedAnnotateApp.Presentation/appsettings.Local.json`. Development launch profiles use [https://localhost:7243](https://localhost:7243) or [http://localhost:5210](http://localhost:5210); use the URL printed at startup.
 
-Entry route: `/Identity/AuthorizationAccess`. After authentication, users are routed to `/Home/Professional` or `/Home/Student`.
+Entry route: `/Identity/Login`. After authentication, users are routed to `/Home/Professional` or `/Home/Student`.
 
 </details>
 

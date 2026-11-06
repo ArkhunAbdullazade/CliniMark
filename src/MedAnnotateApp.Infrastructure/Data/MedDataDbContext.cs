@@ -19,6 +19,7 @@ public class MedDataDbContext : IdentityDbContext<User, IdentityRole, string>
     public DbSet<ProblemReport> ProblemReports => Set<ProblemReport>();
     public DbSet<CustomAnnotation> CustomAnnotations => Set<CustomAnnotation>();
     public DbSet<MetadataCheck> MetadataChecks => Set<MetadataCheck>();
+    public DbSet<ImageSkip> ImageSkips => Set<ImageSkip>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -52,5 +53,6 @@ public class MedDataDbContext : IdentityDbContext<User, IdentityRole, string>
         modelBuilder.Entity<CustomAnnotation>().HasIndex(custom => custom.CreatedAt);
         modelBuilder.Entity<MetadataCheck>().HasIndex(check => new { check.MedDataId, check.UserId, check.Field }).IsUnique();
         modelBuilder.Entity<MetadataCheck>().HasIndex(check => check.IsNewValue);
+        modelBuilder.Entity<ImageSkip>().HasIndex(skip => new { skip.MedDataId, skip.UserId }).IsUnique();
     }
 }

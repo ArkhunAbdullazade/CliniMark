@@ -17,7 +17,6 @@ services:
       ASPNETCORE_URLS: http://+:8080
       ASPNETCORE_HTTPS_PORT: 443
       ConnectionStrings__MedDataDb: Host=postgres;Port=5432;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
-      AuthorizationAccessPasswordHash: ${AUTHORIZATION_ACCESS_PASSWORD_HASH}
       DataProtection__KeysPath: /app/keys
       AllowedHosts: ${PUBLIC_HOST:-localhost}
       ReverseProxy__KnownProxies__0: ${REVERSE_PROXY_IP:-127.0.0.1}

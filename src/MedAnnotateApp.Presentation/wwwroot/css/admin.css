@@ -132,6 +132,19 @@ a.ledger-fact:hover { background: var(--paper); text-decoration: none !important
 .admin-table-wrap { overflow-x: auto; border-radius: 0 0 var(--radius) var(--radius); -webkit-overflow-scrolling: touch; }
 .thumb { display: block; width: 56px; height: 42px; object-fit: cover; background: var(--paper); border: 1px solid var(--line); border-radius: 4px; }
 .muted { color: var(--muted); }
+/* Full data: wide on purpose. The first column stays in view while the rest scrolls sideways. */
+.full-data-table { width: max-content; min-width: 100%; }
+.full-data-table td { vertical-align: top; background: var(--surface); }
+.full-data-table th:first-child, .full-data-table td:first-child { position: sticky; left: 0; z-index: 1; background: var(--surface); box-shadow: 1px 0 0 var(--line-soft); }
+.full-cell-narrow { width: 13rem; min-width: 13rem; max-width: 13rem; overflow-wrap: anywhere; }
+.full-cell { width: 20rem; min-width: 20rem; max-width: 20rem; overflow-wrap: anywhere; }
+.full-cell-wide { width: 30rem; min-width: 30rem; max-width: 30rem; overflow-wrap: anywhere; }
+.full-scroll { max-height: 10rem; overflow-y: auto; }
+.full-list { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 0 .5rem; margin: 0; font-size: .86rem; }
+.full-list dt { color: var(--muted); font-weight: 400; }
+.full-list dd { margin: 0; }
+.full-entry + .full-entry { margin-top: .4rem; padding-top: .4rem; border-top: 1px solid var(--line-soft); }
+.full-code { display: block; max-height: 8rem; overflow: auto; font-size: .75rem; word-break: break-all; }
 .truncate { max-width: 22rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* A specialist's technical problem report, shown under the comment so it stands out from clinical notes. */
 .technical-problem { margin-top: 2px; color: var(--amber); font-weight: 600; }

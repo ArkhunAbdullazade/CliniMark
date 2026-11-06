@@ -18,6 +18,8 @@ public class AnnotatedMedData
 
     // AnnotationData
     public string? BoxCoordinates { get; set; }
+    // The same annotation as a pixel mask (AnnotationMask); empty when nothing was drawn.
+    public string? PixelMask { get; set; }
     public string? ExtractedKeyword { get; set; }
     public string? PressedButton { get; set; }
     public string? Timestamps { get; set; }

@@ -1,0 +1,196 @@
+@model FullDataViewModel
+@{
+    var q = Model.Query;
+    ViewData["Title"] = "Full data";
+    ViewData["Subtitle"] = "One row per image-text pair anyone has saved anything about: what the dataset said, then all that annotators added. Scroll sideways for every column.";
+    var fields = new[] { MetadataCheck.Modality, MetadataCheck.Speciality, MetadataCheck.BodyRegion };
+    string Who(Person? person) => person?.DisplayName ?? "Removed account";
+}
+@section Actions {
+    <div class="dropdown">
+        <button class="btn btn-sm btn-primary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" @(Model.Cases.Total == 0 ? "disabled" : "")>
+            <i class="bi bi-download"></i> Download these @Model.Cases.Total cases
+        </button>
+        <ul class="dropdown-menu dropdown-menu-end">
+            @foreach (var (identity, format, label) in new[]
+            {
+                ("Pseudonymous", "Csv", "CSV with annotator codes"), ("Full", "Csv", "CSV with names and emails"), ("None", "Csv", "CSV without annotator columns"),
+                ("Pseudonymous", "Json", "JSON with annotator codes"), ("Full", "Json", "JSON with names and emails")
+            })
+            {
+                <li><a class="dropdown-item" href="@Url.Action("Download", new { q.Status, q.ImageId, identity, format })">@label</a></li>
+            }
+        </ul>
+    </div>
+    <a class="btn btn-sm btn-outline-secondary" asp-controller="Export" asp-action="Masks" asp-route-identity="Pseudonymous"><i class="bi bi-bounding-box"></i> Download pixel masks</a>
+}
+
+<section class="admin-card">
+    <form class="filter-bar" method="get">
+        <div>
+            <label class="form-label" for="status">Status</label>
+            <select class="form-select form-select-sm" id="status" name="status" data-autosubmit>
+                <option value="">All cases with data</option>
+                <option value="@FullDataQuery.Complete" selected="@(q.Status == FullDataQuery.Complete)">Annotated (completed)</option>
+                <option value="@FullDataQuery.InProgress" selected="@(q.Status == FullDataQuery.InProgress)">In progress or skipped</option>
+            </select>
+        </div>
+        <div>
+            <label class="form-label" for="imageId">Image ID</label>
+            <input class="form-control form-control-sm" type="number" min="1" id="imageId" name="imageId" value="@q.ImageId" />
+        </div>
+        <div class="filter-actions">
+            <button class="btn btn-sm btn-primary" type="submit"><i class="bi bi-funnel"></i> Apply</button>
+            <a class="btn btn-sm btn-outline-secondary" asp-action="Index">Clear</a>
+        </div>
+    </form>
+
+    @if (Model.Cases.Total == 0)
+    {
+        <div class="empty-state"><i class="bi bi-table"></i>No cases match these filters.</div>
+    }
+    else
+    {
+        <div class="admin-table-wrap">
+            <table class="table admin-table full-data-table">
+                <thead>
+                    <tr>
+                        <th>Case</th>
+                        <th>Status</th>
+                        <th>Description</th>
+                        <th>Terms</th>
+                        <th>Patient and case</th>
+                        <th>Source</th>
+                        @foreach (var field in fields)
+                        {
+                            <th>@AdminUi.MetadataFieldLabel(field)</th>
+                        }
+                        <th>Specialist</th>
+                        <th>Term answers</th>
+                        <th>Custom annotations</th>
+                        <th>Student groups</th>
+                        <th>Timing</th>
+                        <th>Problems</th>
+                        <th>Skips</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model.Cases.Items)
+                    {
+                        var image = item.Image;
+                        <tr>
+                            <td class="text-nowrap"><a class="fw-semibold" asp-controller="Images" asp-action="Details" asp-route-id="@image.Id">#@image.Id</a></td>
+                            <td class="text-nowrap">
+                                <div><span class="series-dot specialist me-1"></span>Specialist: @(image.IsAnnotated ? "completed" : item.Answers.Count > 0 ? "in progress" : "not done")</div>
+                                <div><span class="series-dot student me-1"></span>Student: @(image.IsAnnotatedByStudent ? "completed" : "not done")</div>
+                                @if (image.ExcludedAt != null) { <div class="state state-stale">Removed</div> }
+                            </td>
+                            <td class="full-cell"><div class="full-scroll">@image.ImageDescription</div></td>
+                            <td class="full-cell-narrow">@string.Join("; ", item.Terms)</td>
+                            <td class="full-cell-narrow">
+                                <dl class="full-list">
+                                    <dt>Sex</dt><dd>@image.Sex</dd>
+                                    <dt>Age</dt><dd>@image.Age</dd>
+                                    <dt>Skin tone</dt><dd>@image.SkinTone</dd>
+                                    <dt>Diagnosis</dt><dd>@image.Diagnosis</dd>
+                                    <dt>Treatment</dt><dd>@image.TreatmentName</dd>
+                                </dl>
+                            </td>
+                            <td class="full-cell-narrow">
+                                <dl class="full-list">
+                                    <dt>PMCID</dt><dd>@image.Pmcid</dd>
+                                    <dt>Image</dt><dd><a href="@image.ImageUrl" target="_blank" rel="noopener">Open</a></dd>
+                                    <dt>Source</dt><dd>@if (!string.IsNullOrWhiteSpace(image.SourceUrl)) { <a href="@image.SourceUrl" target="_blank" rel="noopener">Open</a> }</dd>
+                                    <dt>Licence</dt><dd>@image.SourceLicense</dd>
+                                </dl>
+                                <div class="muted small">@image.Attribution</div>
+                            </td>
+                            @foreach (var field in fields)
+                            {
+                                var check = item.Check(field);
+                                <td class="full-cell-narrow">
+                                    <div class="muted small">Original</div>
+                                    <div>@MetadataCheck.LabelOf(image, field)</div>
+                                    @if (check != null)
+                                    {
+                                        <div class="muted small mt-1">@AdminUi.MetadataVerdictLabel(check.Verdict)</div>
+                                        <div class="fw-semibold">@(check.Submitted ?? "—")@(check.IsNewValue ? " (new value)" : "")</div>
+                                    }
+                                    else { <div class="muted small mt-1">No answer</div> }
+                                </td>
+                            }
+                            <td class="full-cell-narrow">
+                                @if (item.Specialist != null)
+                                {
+                                    <a asp-controller="Participants" asp-action="Details" asp-route-id="@item.Specialist.Id">@item.Specialist.DisplayName</a>
+                                    <div class="muted small">@item.Specialist.Code · @item.Specialist.Email</div>
+                                    <div class="muted small">@item.Specialist.Position @item.Specialist.University</div>
+                                    <div class="muted small">@item.Specialist.ClinicalExperience years @item.Specialist.OrcidId</div>
+                                }
+                            </td>
+                            <td class="full-cell-wide">
+                                @foreach (var answer in item.Answers)
+                                {
+                                    <div class="full-entry">
+                                        <span class="fw-semibold">@answer.Term</span>
+                                        <span class="answer @AdminUi.ButtonClass(answer.Response)"><i class="bi @AdminUi.ButtonIcon(answer.Response)" aria-hidden="true"></i>@AdminUi.ButtonLabel(answer.Response)</span>
+                                        @if (answer.MaskPixels != null) { <a class="small" asp-action="Mask" asp-route-kind="@ResultsExportService.TermMask" asp-route-id="@answer.Id" target="_blank">mask, @answer.MaskPixels?.ToString("N0") px</a> }
+                                        @if (!answer.SetComplete) { <span class="state state-idle">incomplete set</span> }
+                                        <div class="muted small">First draw @AdminUi.Seconds(answer.FirstDrawMs) · drawing @AdminUi.Seconds(answer.DrawingMs) · saved <time datetime="@AdminUi.Iso(answer.SavedAt)" data-local="datetime"></time>@(answer.Annotator?.Id != item.Specialist?.Id ? " · by " + Who(answer.Annotator) : "")</div>
+                                        @if (!string.IsNullOrWhiteSpace(answer.Comment)) { <div class="small">Comment: @answer.Comment</div> }
+                                        @if (!string.IsNullOrWhiteSpace(answer.TechnicalProblem)) { <div class="technical-problem"><i class="bi bi-exclamation-triangle" aria-hidden="true"></i> @answer.TechnicalProblem</div> }
+                                        @if (!string.IsNullOrWhiteSpace(answer.Coordinates)) { <details><summary class="small">Coordinates</summary><code class="full-code">@answer.Coordinates</code></details> }
+                                    </div>
+                                }
+                            </td>
+                            <td class="full-cell">
+                                @foreach (var custom in item.Customs)
+                                {
+                                    <div class="full-entry">
+                                        <span class="fw-semibold">@custom.Term</span>
+                                        @if (custom.MaskPixels != null) { <a class="small" asp-action="Mask" asp-route-kind="@ResultsExportService.CustomMask" asp-route-id="@custom.Id" target="_blank">mask, @custom.MaskPixels?.ToString("N0") px</a> }
+                                        <div class="muted small">Saved <time datetime="@AdminUi.Iso(custom.SavedAt)" data-local="datetime"></time></div>
+                                        <details><summary class="small">Coordinates</summary><code class="full-code">@custom.Coordinates</code></details>
+                                    </div>
+                                }
+                            </td>
+                            <td class="full-cell">
+                                @if (item.Student != null) { <div class="mb-1"><a asp-controller="Participants" asp-action="Details" asp-route-id="@item.Student.Id">@item.Student.DisplayName</a> <span class="muted small">@item.Student.Code</span></div> }
+                                @foreach (var group in item.Groups)
+                                {
+                                    <div class="full-entry">
+                                        <span class="fw-semibold">@group.Label</span>
+                                        @if (group.MaskPixels != null) { <a class="small" asp-action="Mask" asp-route-kind="@ResultsExportService.StudentMask" asp-route-id="@group.Id" target="_blank">mask, @group.MaskPixels?.ToString("N0") px</a> }
+                                        <div class="muted small">Saved <time datetime="@AdminUi.Iso(group.SavedAt)" data-local="datetime"></time></div>
+                                        <details><summary class="small">Coordinates</summary><code class="full-code">@group.Coordinates</code></details>
+                                    </div>
+                                }
+                            </td>
+                            <td class="full-cell-narrow">
+                                <dl class="full-list">
+                                    <dt>First save</dt><dd><time datetime="@AdminUi.Iso(item.FirstSavedAt)" data-local="datetime"></time></dd>
+                                    <dt>Last save</dt><dd><time datetime="@AdminUi.Iso(item.LastSavedAt)" data-local="datetime"></time></dd>
+                                    <dt>Until first draw</dt><dd>@AdminUi.Seconds(item.TotalMsUntilFirstDraw)</dd>
+                                    <dt>Drawing</dt><dd>@AdminUi.Seconds(item.TotalMsDrawing)</dd>
+                                </dl>
+                            </td>
+                            <td class="full-cell-narrow">
+                                @foreach (var problem in item.Problems)
+                                {
+                                    <div class="full-entry small">@problem.Kind: @problem.Message</div>
+                                }
+                            </td>
+                            <td class="full-cell-narrow">
+                                @foreach (var skip in item.Skips)
+                                {
+                                    <div class="full-entry small">@Who(skip.Annotator), <time datetime="@AdminUi.Iso(skip.At)" data-local="datetime"></time>@(skip.HadSavedWork ? " (had saved work)" : "")</div>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+    <partial name="_Pager" model='(Model.Cases.Page, Model.Cases.Pages, Model.Cases.Total, Model.Cases.PageSize, "cases")' />
+</section>

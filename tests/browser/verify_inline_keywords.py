@@ -1,13 +1,11 @@
 """Check inline specialist terms on the existing synthetic local preview.
 
-Start the preview at port 5210 with medannotate_preview_20261022 first, then set
-MEDANNOTATE_SMOKE_GATE. Uses the existing preview account; creates no accounts,
-changes no filters, and submits no annotations. This checks rendered HTML only.
+Start the preview at port 5210 with medannotate_preview_20261022 first. Uses the existing preview account; creates no
+accounts, changes no filters, and submits no annotations. This checks rendered HTML only.
 """
 from html.parser import HTMLParser
 import http.cookiejar
 import json
-import os
 from pathlib import Path
 import urllib.parse
 import urllib.request
@@ -89,12 +87,8 @@ class Client:
 
 
 def main():
-    gate = os.environ.get("MEDANNOTATE_SMOKE_GATE")
-    assert gate, "Set MEDANNOTATE_SMOKE_GATE before running this local preview check"
     client = Client()
-    client.request("/Identity/AuthorizationAccess")
-    route, _ = client.request("/Identity/PostAuthorizationAccess", {"Password": gate})
-    assert route == "/Identity/Login", "Research gate did not reach sign-in"
+    client.request("/Identity/Login")
     route, document = client.request("/Identity/PostLogin", {"Email": EMAIL, "Password": PASSWORD})
     assert route == "/Home/Professional", "Existing preview account did not reach specialist view"
 

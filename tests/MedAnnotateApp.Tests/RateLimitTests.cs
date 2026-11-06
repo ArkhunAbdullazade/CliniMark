@@ -10,12 +10,12 @@ public class RateLimitTests
     [Fact]
     public void LargeGroupOnOneNetworkCanJoinTogetherAndOtherNetworksStayIndependent()
     {
-        using var limiter = Limiter(ResearchAccessRateLimit.DefaultPermitLimit);
+        using var limiter = Limiter(SignInRateLimit.DefaultPermitLimit);
         var hospital = Request("203.0.113.10");
 
         // A full group behind one address, each participant using every allowed attempt.
-        Assert.Equal(78, ResearchAccessRateLimit.DefaultPermitLimit);
-        for (var attempt = 0; attempt < ResearchAccessRateLimit.GroupSize * ResearchAccessRateLimit.AttemptsPerParticipant; attempt++)
+        Assert.Equal(78, SignInRateLimit.DefaultPermitLimit);
+        for (var attempt = 0; attempt < SignInRateLimit.GroupSize * SignInRateLimit.AttemptsPerParticipant; attempt++)
         {
             using var lease = limiter.AttemptAcquire(hospital);
             Assert.True(lease.IsAcquired, $"Attempt {attempt + 1} was rejected.");
@@ -39,7 +39,7 @@ public class RateLimitTests
     }
 
     private static PartitionedRateLimiter<HttpContext> Limiter(int permitLimit) =>
-        PartitionedRateLimiter.Create<HttpContext, string>(context => ResearchAccessRateLimit.Partition(context, permitLimit));
+        PartitionedRateLimiter.Create<HttpContext, string>(context => SignInRateLimit.Partition(context, permitLimit));
 
     private static DefaultHttpContext Request(string address)
     {
