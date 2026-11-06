@@ -3,7 +3,7 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const path=require('node:path');
 const vm=require('node:vm');
-const geometry=require('../../src/MedAnnotateApp.Presentation/wwwroot/js/annotationGeometry.js');
+const geometry=require('../../src/CliniMark.Presentation/wwwroot/js/annotationGeometry.js');
 
 const plain=value=>JSON.parse(JSON.stringify(value));
 const near=(actual,expected)=>assert.ok(Math.abs(actual-expected)<1e-6,`${actual} differs from ${expected}`);
@@ -36,7 +36,7 @@ function fixture(){
   const elements={mainCanvas:canvas,sourceImage,canvasContainer:container,'image-container':imageContainer};
   const document={getElementById:id=>elements[id],createElement:element,body:element('body'),addEventListener:()=>{},removeEventListener:()=>{}};
   const window={addEventListener:()=>{},innerWidth:1400,innerHeight:900,devicePixelRatio:1};
-  vm.runInNewContext(fs.readFileSync(path.resolve(__dirname,'../../src/MedAnnotateApp.Presentation/wwwroot/js/canvas.js'),'utf8'),
+  vm.runInNewContext(fs.readFileSync(path.resolve(__dirname,'../../src/CliniMark.Presentation/wwwroot/js/canvas.js'),'utf8'),
     {window,document,AnnotationGeometry:geometry,structuredClone,CustomEvent:function(){},console});
   const manager=new window.CanvasManager('mainCanvas','sourceImage','canvasContainer');
   manager.setAnnotations([{type:'rectangle',cx:300,cy:250,width:200,height:100,rotation:0}]);

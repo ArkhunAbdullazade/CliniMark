@@ -1,8 +1,12 @@
 # Changelog
 
-What changed in MedAnnotate and why, newest first. Git holds every line of every change; this file explains them in plain language, with the commit that delivered each one. The researcher's requests behind these changes, word for word, are in [docs/requests-log.md](docs/requests-log.md).
+What changed in CliniMark and why, newest first. Git holds every line of every change; this file explains them in plain language, with the commit that delivered each one. The researcher's requests behind these changes, word for word, are in [docs/requests-log.md](docs/requests-log.md).
 
-Database changes are in `src/MedAnnotateApp.Presentation/Migrations`, and each release that changes the database has a script in `deployment/`.
+Database changes are in `src/CliniMark.Presentation/Migrations`, and each release that changes the database has a script in `deployment/`.
+
+## 2026-11-07: the project is now called CliniMark
+
+The earlier name was already a trademark, so the project took a new name and logo. It changed everywhere in the app, its pages and exports, the code and the public addresses. Nothing about how the app works changed.
 
 ## 2026-11-06: ready for clinicians
 

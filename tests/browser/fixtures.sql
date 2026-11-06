@@ -1,4 +1,4 @@
--- Synthetic local browser-audit data. Run only against a new medannotate_audit_* database.
+-- Synthetic local browser-audit data. Run only against a new clinimark_audit_* database.
 INSERT INTO "MedDatas" ("Id", "ImageUrl", "ImageDescription", "Diagnosis", "Speciality", "BodyRegion", "Modality", "IsAnnotated", "IsAnnotatedByStudent") VALUES
 (1, 'http://127.0.0.1:5211/tests/browser/fixture.svg', 'Synthetic image: lesion and boundary. Not patient data.', 'Synthetic lesion', 'cardiology', 'Chest and Thorax', 'ct', false, false),
 (2, 'http://127.0.0.1:5211/tests/browser/fixture.svg', 'Synthetic second image: lesion. Not patient data.', 'Synthetic lesion', 'dermatology', 'head and neck', 'mri', false, false),

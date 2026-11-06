@@ -88,7 +88,7 @@ class ImageHostingTests(unittest.TestCase):
             writer.writerow(['Id', 'ImageUrl'])
             writer.writerows((index, self.base + path) for index, path in enumerate(paths, 1))
         command = [sys.executable, '-I', SCRIPT, source, report] + (['--host', self.folder] if host else [])
-        environment = dict(os.environ, MEDANNOTATE_IMAGE_SAS_URL=f'{self.base}/images?{SECRET}')
+        environment = dict(os.environ, CLINIMARK_IMAGE_SAS_URL=f'{self.base}/images?{SECRET}')
         done = subprocess.run(command, capture_output=True, text=True, env=environment)
         with open(report, newline='', encoding='utf-8') as handle:
             return done, list(csv.DictReader(handle))
@@ -169,11 +169,11 @@ class ImageHostingTests(unittest.TestCase):
         source = os.path.join(self.folder, 'urls.csv')
         with open(source, 'w', encoding='utf-8') as handle:
             handle.write('Id,ImageUrl\n1,http://127.0.0.1:9/a.jpg\n')
-        environment = {key: value for key, value in os.environ.items() if key != 'MEDANNOTATE_IMAGE_SAS_URL'}
+        environment = {key: value for key, value in os.environ.items() if key != 'CLINIMARK_IMAGE_SAS_URL'}
         done = subprocess.run([sys.executable, '-I', SCRIPT, source, os.path.join(self.folder, 'r.csv'), '--host', self.folder],
                               capture_output=True, text=True, env=environment)
         self.assertNotEqual(done.returncode, 0)
-        self.assertIn('MEDANNOTATE_IMAGE_SAS_URL', done.stderr)
+        self.assertIn('CLINIMARK_IMAGE_SAS_URL', done.stderr)
 
     def test_image_kinds(self):
         kind = load_script().image_kind

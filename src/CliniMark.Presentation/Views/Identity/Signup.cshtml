@@ -1,0 +1,92 @@
+@model CliniMark.Presentation.Dtos.SignupDto
+@{
+    ViewBag.Title = "Create research account";
+}
+
+<link rel="stylesheet" href="~/css/authForms.css" asp-append-version="true" />
+<link rel="stylesheet" href="~/lib/bootstrap-icons/font/bootstrap-icons.min.css" />
+
+<section class="auth-page auth-sheet auth-account account-page">
+    <div>
+        <a class="auth-logo" asp-controller="Home" asp-action="Index"><img src="~/images/clinimark-logo.png" asp-append-version="true" alt="CliniMark" width="184" height="40" /></a>
+        <h1>Create your research account</h1>
+        <p class="auth-lead">Use any valid email address. You can sign in immediately after registration.</p>
+        <p class="auth-lead">Your account password is personal. Don't share it with anyone.</p>
+        <form method="post" asp-action="PostSignup" asp-controller="Identity" data-image-filter-form data-signup-form>
+            <div asp-validation-summary="All" class="text-danger" role="alert"></div>
+            <div class="row g-3 mb-4">
+                <div class="col-md-6">
+                    <label asp-for="Email" class="form-label">Email address</label>
+                    <input asp-for="Email" type="email" class="form-control" autocomplete="email" required aria-describedby="email-warning" />
+                    <p id="email-warning" class="signup-warning"><i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i><span><strong>Check your email carefully.</strong> It is your sign-in name, and we can't send a confirmation message, so a typo locks you out until the study team fixes it.</span></p>
+                    <span asp-validation-for="Email" class="text-danger"></span>
+                </div>
+                <div class="col-md-6">
+                    <label asp-for="FullName" class="form-label">Full name</label>
+                    <input asp-for="FullName" class="form-control" autocomplete="name" required />
+                    <span asp-validation-for="FullName" class="text-danger"></span>
+                </div>
+                <div class="col-md-6">
+                    <label asp-for="Password" class="form-label">Account password</label>
+                    <div class="password-field">
+                        <input asp-for="Password" type="password" class="form-control" autocomplete="new-password" required aria-describedby="password-warning password-help" />
+                        <button type="button" class="password-toggle" data-password-toggle aria-label="Show password" aria-pressed="false"><i class="bi bi-eye" aria-hidden="true"></i></button>
+                    </div>
+                    <p id="password-warning" class="signup-warning"><i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i><span><strong>Write down your password.</strong> The app can't email you a reset link. Only the study team can give you a temporary one.</span></p>
+                    <small id="password-help" class="form-text">At least 8 characters, including uppercase and lowercase letters, a number, and a symbol.</small>
+                    <span asp-validation-for="Password" class="text-danger"></span>
+                </div>
+                <div class="col-md-6">
+                    <label asp-for="ConfirmPassword" class="form-label">Confirm account password</label>
+                    <div class="password-field">
+                        <input asp-for="ConfirmPassword" type="password" class="form-control" autocomplete="new-password" required />
+                        <button type="button" class="password-toggle" data-password-toggle aria-label="Show password" aria-pressed="false"><i class="bi bi-eye" aria-hidden="true"></i></button>
+                    </div>
+                    <span asp-validation-for="ConfirmPassword" class="text-danger"></span>
+                </div>
+                <div class="col-md-6">
+                    <label asp-for="Position" class="form-label">Position</label>
+                    <select asp-for="Position" class="form-select" required>
+                        <option value="">Choose your position</option>
+                        <option value="specialist">Specialist</option>
+                        <option value="general practitioner">General practitioner</option>
+                        <option value="resident/assistant">Resident/assistant</option>
+                        <option value="medical student">Medical student</option>
+                    </select>
+                    <span asp-validation-for="Position" class="text-danger"></span>
+                </div>
+                <div class="col-md-6">
+                    <label asp-for="University" class="form-label">University or institution</label>
+                    <input asp-for="University" class="form-control" autocomplete="organization" required />
+                    <span asp-validation-for="University" class="text-danger"></span>
+                </div>
+                <div class="col-md-6">
+                    <label asp-for="OrcidId" class="form-label">ORCID iD (optional)</label>
+                    <input asp-for="OrcidId" class="form-control" />
+                </div>
+            </div>
+
+            <partial name="_ImageFilters" model="Model" />
+            <div class="auth-actions">
+                <button type="submit" class="btn btn-danger">Create account</button>
+                <a asp-controller="Identity" asp-action="Login" class="btn btn-link">Already registered? Sign in</a>
+            </div>
+        </form>
+    </div>
+    <dialog id="signup-confirm" class="signup-confirm" aria-labelledby="signup-confirm-title">
+        <h2 class="h5" id="signup-confirm-title">Is this your correct email?</h2>
+        <p class="signup-confirm-email" data-signup-email></p>
+        <p>You will use it to sign in, and no confirmation message will be sent to check it.</p>
+        <div class="auth-actions">
+            <button type="button" class="btn btn-danger" data-signup-yes>Yes, create my account</button>
+            <button type="button" class="btn btn-link" data-signup-back>Go back and fix it</button>
+        </div>
+    </dialog>
+</section>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script src="~/js/imageFilters.js" asp-append-version="true"></script>
+    <script src="~/js/signupConfirm.js" asp-append-version="true"></script>
+    <script src="~/js/passwordToggle.js" asp-append-version="true"></script>
+}

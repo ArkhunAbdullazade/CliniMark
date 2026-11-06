@@ -1,8 +1,8 @@
-# MedAnnotateApp
+# CliniMark
 
 A web application for collecting structured annotations on medical publication images. Medical specialists mark regions associated with terms in the source text; medical students identify visible findings and supply their own labels. Both workflows preserve annotation data for research and future AI evaluation.
 
-MedAnnotateApp was used to collect structured medical image annotations for the evaluation of **OpenMedSeg**, an explainable AI research project for medical imaging involving researchers from **Stanford Medicine, Mount Sinai, the Hasso Plattner Institute, and Charité**.
+CliniMark was used to collect structured medical image annotations for the evaluation of **OpenMedSeg**, an explainable AI research project for medical imaging involving researchers from **Stanford Medicine, Mount Sinai, the Hasso Plattner Institute, and Charité**.
 
 Built with **ASP.NET Core MVC, .NET 10, and PostgreSQL**, with custom canvas tools for rectangle and freehand annotation.
 
@@ -50,7 +50,7 @@ Participants register or log in with their own account password through ASP.NET 
 
 Selecting `medical student` assigns the `Medical_Student` role; other positions receive `Professional`. Each role has its own annotation workspace.
 
-The filter options are the display labels of the MedAnnotate datasets (`MedAnnotateDatasets/app_labels/label_vocabulary.csv`, `app-labels-1.1.0`): 14 body regions, 21 specialities and 8 image modalities, listed in `ImageFilterOptions` (`src/MedAnnotateApp.Presentation/Dtos/ImageFiltersDto.cs`). Image rows store these exact texts. Matching ignores case and surrounding spaces.
+The filter options are the display labels of the CliniMark datasets (`app_labels/label_vocabulary.csv`, `app-labels-1.1.0`): 14 body regions, 21 specialities and 8 image modalities, listed in `ImageFilterOptions` (`src/CliniMark.Presentation/Dtos/ImageFiltersDto.cs`). Image rows store these exact texts. Matching ignores case and surrounding spaces.
 
 **Accounts created by the study team.** With `Registration:Enabled=false`, public signup is closed and the sign-in page says that the study team creates accounts. Create them from a CSV with the operator command below:
 - Columns: `Email, FullName, Position, University, ClinicalExperience, OrcidId, Speciality, BodyRegion, ImageModality`. Filter values are separated by `;` and may be empty, in which case the participant chooses them at first sign-in.
@@ -59,7 +59,7 @@ The filter options are the display labels of the MedAnnotate datasets (`MedAnnot
 - Generated passwords go only to the credentials file, which must not exist yet.
 
 ```bash
-dotnet MedAnnotateApp.Presentation.dll create-participants participants.csv credentials.csv
+dotnet CliniMark.Presentation.dll create-participants participants.csv credentials.csv
 ```
 
 **Image source.** Under every image, both workspaces show the source article and licence links from `SourceUrl` and `SourceLicense`, and the full credit line (`Attribution`). The line sits outside the image's sizing box, so it never changes drawing coordinates. The results export includes both columns.
@@ -111,9 +111,9 @@ Saved keyword states preserve progress when a specialist has not finished every 
 
 | Layer | Project | Contents |
 | --- | --- | --- |
-| Core | `src/MedAnnotateApp.Core` | Models, repositories, and core services |
-| Infrastructure | `src/MedAnnotateApp.Infrastructure` | Data access, repository implementations, services, and settings |
-| Presentation | `src/MedAnnotateApp.Presentation` | MVC controllers, Razor views, DTOs, migrations, and static assets |
+| Core | `src/CliniMark.Core` | Models, repositories, and core services |
+| Infrastructure | `src/CliniMark.Infrastructure` | Data access, repository implementations, services, and settings |
+| Presentation | `src/CliniMark.Presentation` | MVC controllers, Razor views, DTOs, migrations, and static assets |
 
 The application uses ASP.NET Core Identity for accounts, EF Core 10 with Npgsql for PostgreSQL access, and EPPlus for optional Excel seed data. The interface uses locally served Bootstrap 5.3.8, jQuery 3.7.1, and custom canvas tools. Docker Compose runs one web instance and PostgreSQL, with persistent database and data-protection-key volumes.
 
@@ -123,9 +123,9 @@ Configure the intended database, persistent keys, hostname, trusted HTTPS proxy 
 
 ```powershell
 # Create .env from .env.example only if it does not exist; configure real values.
-docker compose --project-name medannotateapp build --pull webapp
+docker compose --project-name clinimark build --pull webapp
 # Review/apply the schema and load approved image data before starting webapp.
-docker compose --project-name medannotateapp up -d
+docker compose --project-name clinimark up -d
 ```
 
 Use the public HTTPS hostname through the reverse proxy. Container HTTP is loopback-only on port 8080.
@@ -155,15 +155,15 @@ Environment variables use double underscores for nested settings, such as `Conne
 Requires the .NET 10 SDK and a running PostgreSQL instance. The commands below use PowerShell; replace the placeholders with your local values.
 
 ```powershell
-dotnet user-secrets init --project src/MedAnnotateApp.Presentation
-dotnet user-secrets set "ConnectionStrings:MedDataDb" "Host=localhost;Port=5432;Database=meddatadb;Username=postgres;Password=<password>" --project src/MedAnnotateApp.Presentation
+dotnet user-secrets init --project src/CliniMark.Presentation
+dotnet user-secrets set "ConnectionStrings:MedDataDb" "Host=localhost;Port=5432;Database=meddatadb;Username=postgres;Password=<password>" --project src/CliniMark.Presentation
 
-dotnet restore MedAnnotateApp.sln
-dotnet build MedAnnotateApp.sln
-dotnet run --project src/MedAnnotateApp.Presentation
+dotnet restore CliniMark.sln
+dotnet build CliniMark.sln
+dotnet run --project src/CliniMark.Presentation
 ```
 
-Alternatively, set the database connection in ignored `src/MedAnnotateApp.Presentation/appsettings.Local.json`. Development launch profiles use [https://localhost:7243](https://localhost:7243) or [http://localhost:5210](http://localhost:5210); use the URL printed at startup.
+Alternatively, set the database connection in ignored `src/CliniMark.Presentation/appsettings.Local.json`. Development launch profiles use [https://localhost:7243](https://localhost:7243) or [http://localhost:5210](http://localhost:5210); use the URL printed at startup.
 
 Entry route: `/Identity/Login`. After authentication, users are routed to `/Home/Professional` or `/Home/Student`.
 
@@ -176,16 +176,16 @@ Development can apply the existing migrations at startup. Production requires a 
 
 ```powershell
 dotnet tool restore
-dotnet ef migrations script --idempotent --project src/MedAnnotateApp.Presentation --startup-project src/MedAnnotateApp.Presentation --output reviewed-migrations.sql
+dotnet ef migrations script --idempotent --project src/CliniMark.Presentation --startup-project src/CliniMark.Presentation --output reviewed-migrations.sql
 ```
 
 </details>
 
 ## Testing
 
-- .NET tests: `dotnet test tests/MedAnnotateApp.Tests/MedAnnotateApp.Tests.csproj`.
+- .NET tests: `dotnet test tests/CliniMark.Tests/CliniMark.Tests.csproj`.
 - JavaScript tests: `node --test tests/js/*.test.cjs` (PowerShell: `node --test (Get-ChildItem tests/js/*.test.cjs).FullName`).
-- PostgreSQL concurrency test: set `MEDANNOTATE_TEST_POSTGRES_CONNECTION` to a disposable `medannotate_audit_*` database.
+- PostgreSQL concurrency test: set `CLINIMARK_TEST_POSTGRES_CONNECTION` to a disposable `clinimark_audit_*` database.
 
 Images need an image modality to be assigned, because that filter is required. The app targets .NET 10 (LTS).
 

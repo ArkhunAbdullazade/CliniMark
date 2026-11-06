@@ -5,7 +5,7 @@ const path = require('node:path');
 const vm = require('node:vm');
 
 const source = fs.readFileSync(path.join(__dirname,
-  '../../src/MedAnnotateApp.Presentation/wwwroot/js/signupConfirm.js'), 'utf8');
+  '../../src/CliniMark.Presentation/wwwroot/js/signupConfirm.js'), 'utf8');
 
 function fixture({valid = true, withJquery = true} = {}) {
   const listeners = {};

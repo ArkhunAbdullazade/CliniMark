@@ -1,6 +1,6 @@
 services:
   webapp:
-    image: medannotateapp:research
+    image: clinimark:research
     build:
       context: ..
       dockerfile: Dockerfile

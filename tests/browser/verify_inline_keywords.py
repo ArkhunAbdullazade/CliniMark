@@ -1,6 +1,6 @@
 """Check inline specialist terms on the existing synthetic local preview.
 
-Start the preview at port 5210 with medannotate_preview_20261022 first. Uses the existing preview account; creates no
+Start the preview at port 5210 with clinimark_preview_20261022 first. Uses the existing preview account; creates no
 accounts, changes no filters, and submits no annotations. This checks rendered HTML only.
 """
 from html.parser import HTMLParser

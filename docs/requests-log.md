@@ -2,7 +2,7 @@
 
 The researcher's requests for changes to the app, word for word, with the commits that delivered them. See the [changelog](../CHANGELOG.md) for what was done.
 
-This is the researcher's side of the conversations with Claude Code, limited to requests about the app. Spelling is as typed, and one email address has been removed. The replies aren't here because they contain passwords and other private details; the study team keeps the complete logs privately.
+This is the researcher's side of the conversations with Claude Code, limited to requests about the app. Spelling is as typed, one email address has been removed, and the project's earlier name is replaced by CliniMark. The replies aren't here because they contain passwords and other private details; the study team keeps the complete logs privately.
 
 ## 2026-10-31: first round of changes
 
@@ -10,13 +10,13 @@ Delivered in `516ad06` and `f46f78c`.
 
 **2026-10-31 16:10 UTC**
 
-> create a new directory MedAnnotate_app in projects. I am a contributor to the following github repo https://github.com/ArkhunAbdullazade/MedAnnotateApp.git , and I want to be able to push and pull all the changes made to this repo from here. I also want to run and analyze this repo in all details.
+> create a new directory CliniMark_app in projects. I am a contributor to the following github repo https://github.com/ArkhunAbdullazade/CliniMark.git , and I want to be able to push and pull all the changes made to this repo from here. I also want to run and analyze this repo in all details.
 
 **2026-10-31 19:32 UTC**
 
 > I want the following modifications to be made to the app:
 >
-> 1. replace the name with the new logo which I placed in the MedAnnotate_app directory. Display it in the same place where the title was. Arrange the size and position nicely, naturally. 
+> 1. replace the name with the new logo which I placed in the CliniMark_app directory. Display it in the same place where the title was. Arrange the size and position nicely, naturally. 
 >
 > 2. increase the vertical width of the text box, so that it can fully fit on average 44 words. 
 >
@@ -39,7 +39,7 @@ Delivered in `516ad06` and `f46f78c`.
 >
 > 1. when A+ and A- are presssed, the size of the text box is changing too. It should not, only the font of the text inside should change, the size of the text box should remain fixed. 
 >
-> 2. For all the available text descriptions we have right now within MedAnnotate_app, make sure there is no empty lines between, all text must be in a single paragraph, not several paragraphs like. 
+> 2. For all the available text descriptions we have right now within CliniMark_app, make sure there is no empty lines between, all text must be in a single paragraph, not several paragraphs like. 
 >
 > Apply these
 
@@ -198,7 +198,7 @@ Delivered in `af7e60a` and on Azure.
 
 **2026-11-02 20:57 UTC**
 
-> Here is the situation: we are pretty much done with MedAnnotate_app and with preparing MedAnnotateDatasets. Now we are left with the last stage, which is to deploy this application, load the dataset, and make everything ready for clinicians to start using the app and creating annotations. This is the big picture. Now we need to connect everything that needs to be connected and make everything work smoothly without any problems. I want to plan all of this. In particular, we have a Microsoft Azure account, and I have $200 in credits. Obviously, I want to host the application and the data, which are the medical images, the medical description, and the medical keywords. I want to understand now how to connect and link MedAnnotateDatasets (in particular, the polished main data in the combined release directory within the MedAnnotateDatasets directory) with the setup of the application we have at the moment.
+> Here is the situation: we are pretty much done with CliniMark_app and with preparing CliniMarkDatasets. Now we are left with the last stage, which is to deploy this application, load the dataset, and make everything ready for clinicians to start using the app and creating annotations. This is the big picture. Now we need to connect everything that needs to be connected and make everything work smoothly without any problems. I want to plan all of this. In particular, we have a Microsoft Azure account, and I have $200 in credits. Obviously, I want to host the application and the data, which are the medical images, the medical description, and the medical keywords. I want to understand now how to connect and link CliniMarkDatasets (in particular, the polished main data in the combined release directory within the CliniMarkDatasets directory) with the setup of the application we have at the moment.
 
 **2026-11-02 22:47 UTC**
 
@@ -256,7 +256,7 @@ Delivered in `e1a7a47` and on the test site.
 
 **2026-11-05 19:49 UTC**
 
-> I'm thinking about adding the following feature to the MedAnnotate app. I want to give clinicians a task of evaluating whether the body region, the image modality, and the specialty are chosen correctly. If not, let them correct this so that this particular metadata that we collect is very reliable and correct. We need to think about the easiest way of doing this so that it's fast and simple, pretty much like:
+> I'm thinking about adding the following feature to the CliniMark app. I want to give clinicians a task of evaluating whether the body region, the image modality, and the specialty are chosen correctly. If not, let them correct this so that this particular metadata that we collect is very reliable and correct. We need to think about the easiest way of doing this so that it's fast and simple, pretty much like:
 > - Is this body region correct?
 > - Is this specialty correct?
 > - Is this modality correct? If yes, something like just click and "yes". If not, then either they have to type or have to be given a choice. Also, the second topic is that I want to brainstorm with you on all possible metadata that would be good to have about this. What we have is medical images, text, medical keywords, and hopefully annotations. In addition to these four main units, what kind of data and metadata would be the most meaningful to have in this medical context? We have specialty, body region, and image modality, but I want a full, comprehensive list of any kind of metadata that would be of any use to the doctors in the future or in the research.
@@ -281,7 +281,7 @@ Delivered in `8cfb5bc`.
 >
 > 1. Filter values in the top right box must be in bold RED, not black. 
 > 2. currently when a user annotates all the medical keywords, but forgets to verify filter values, it's not clear why the next image is not clickable and what the problem is. We should maybe change the filling color of the filter box on top right, and also change to bold red "confirm the image modality, ...." part in the sentence under the text box, so that we kind of point the user to what is missing. 
-> 3. in the logic of how MedAnnotate operates, one image-text pair gets assigned to a clician at once, and several clinicians can annotate pairs in parallel, but never the same pair (we need one set of annotations per pair from a single clinician). 
+> 3. in the logic of how CliniMark operates, one image-text pair gets assigned to a clician at once, and several clinicians can annotate pairs in parallel, but never the same pair (we need one set of annotations per pair from a single clinician). 
 > 4. get rid of Research gate access page with it's password
 > 5. in bottom right corner, on the same level with other buttons, we should add a new button called "Skip entire image", with description "Skip to the next image if the case is out of your speciality". Upon clicking on this button, thie current case receives on open status so that some other user can annotate it, while the next image case in the list appears for the current user. We don't expect any input (annotations and filter values) from the user on the skipped image case, it starts fresh for some other user. 
 > 6. Needless to say, we must collect user inputs on whether assigned filter values for 3 filters are correct or not. We will use this later to compare with original values we had in the metadata and update accordingly if needed. 
@@ -289,7 +289,7 @@ Delivered in `8cfb5bc`.
 > 8. at the moment the logic for collecting annotations are via coordinates. Let's keep it this way, but I also wanna have an alternative way of saving these two: via pixel masks. Basically, as you know, the idea is that every pixel of the image gets assigned a 1 or 0 value depending whether it falls or not within and boundary of the annotation made by the clinician. The reason I need this is because later in the research I will use these anntoations to evaluate the performance of segmentation models on these images, and such evaluatiosn are typically done based on the masks and statistics such as Dice and IoU. Take this into account. 
 >
 > Let's work on these and I will need to test the performance on the test app again, once you're done. 
-> Also, answer me in the end to one quick question: do you save in any file all of the app changes I have suggested to make since we cloned the MedAnnotate app from the beginning? I mean, do all changes get registered somewhere, so that we can always trace back all the changes we made to the app along the entire way?
+> Also, answer me in the end to one quick question: do you save in any file all of the app changes I have suggested to make since we cloned the CliniMark app from the beginning? I mean, do all changes get registered somewhere, so that we can always trace back all the changes we made to the app along the entire way?
 
 ## 2026-11-06: going live
 

@@ -1,8 +1,8 @@
 const {test}=require('node:test');
 const assert=require('node:assert/strict');
-const geometry=require('../../src/MedAnnotateApp.Presentation/wwwroot/js/annotationGeometry.js');
-const charts=require('../../src/MedAnnotateApp.Presentation/wwwroot/js/admin/adminCharts.js');
-const overlay=require('../../src/MedAnnotateApp.Presentation/wwwroot/js/admin/adminOverlay.js');
+const geometry=require('../../src/CliniMark.Presentation/wwwroot/js/annotationGeometry.js');
+const charts=require('../../src/CliniMark.Presentation/wwwroot/js/admin/adminCharts.js');
+const overlay=require('../../src/CliniMark.Presentation/wwwroot/js/admin/adminOverlay.js');
 
 const local=(y,m,d,h=0)=>new Date(y,m-1,d,h);
 const bucket=(date,specialist,student)=>({hour:date.toISOString(),specialist,student});

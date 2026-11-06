@@ -1,7 +1,7 @@
 // requestRetry.js: saves survive an app restart (502/503/504 or no connection) and are never repeated otherwise.
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { fetchWithRetry, DELAYS_MS, UNREACHABLE } = require("../../src/MedAnnotateApp.Presentation/wwwroot/js/requestRetry.js");
+const { fetchWithRetry, DELAYS_MS, UNREACHABLE } = require("../../src/CliniMark.Presentation/wwwroot/js/requestRetry.js");
 
 const respond = status => ({ status, ok: status >= 200 && status < 300 });
 const noSleep = () => Promise.resolve();

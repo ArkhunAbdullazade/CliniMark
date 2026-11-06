@@ -1,5 +1,5 @@
 -- Release 2026-11-05: clinician label check (specialists confirm or correct modality, speciality and body region).
--- Adds one new table, "MetadataChecks", with its indexes, and lets the app login use it. Nothing is dropped or rewritten.
+-- Adds one new table, "MetadataChecks", with its indexes. Nothing is dropped or rewritten.
 -- Every step is skipped when already applied, so the script can be re-run safely.
 -- Apply AFTER deployment/release-2026-11-03-migrations.sql and BEFORE the new image runs (production refuses to start
 -- while migrations are pending):
@@ -8,8 +8,8 @@
 --   3. Start a new Azure Container Apps revision on the new image and check the site.
 -- A new, empty database instead gets the full script: dotnet ef migrations script --idempotent
 -- Generated with: dotnet ef migrations script 20261103001626_AddImageAttribution --idempotent
--- The grant at the end is added by hand: the app login only has rights on tables that existed when app-role.sql ran,
--- so without it every label check save would fail and no specialist could reach the next image.
+-- The app login needs rights on the new table: run the deployment's role script afterwards, because it only covers
+-- tables that existed when it last ran.
 
 START TRANSACTION;
 
@@ -54,13 +54,3 @@ BEGIN
     END IF;
 END $EF$;
 COMMIT;
-
-
-
-DO $GRANT$
-BEGIN
-    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'medannotate_app') THEN
-        GRANT SELECT, INSERT, UPDATE, DELETE ON "MetadataChecks" TO medannotate_app;
-        GRANT USAGE, SELECT, UPDATE ON SEQUENCE "MetadataChecks_Id_seq" TO medannotate_app;
-    END IF;
-END $GRANT$;

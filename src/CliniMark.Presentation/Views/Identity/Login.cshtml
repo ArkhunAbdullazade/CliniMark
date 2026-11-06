@@ -1,0 +1,51 @@
+@model CliniMark.Presentation.Dtos.LoginDto
+@inject Microsoft.Extensions.Configuration.IConfiguration Configuration
+
+@{
+    ViewBag.Title = "Sign in";
+}
+
+<link rel="stylesheet" href="~/css/authForms.css" asp-append-version="true" />
+<link rel="stylesheet" href="~/lib/bootstrap-icons/font/bootstrap-icons.min.css" />
+
+<section class="auth-page auth-focus">
+    <div class="auth-card">
+        <a class="auth-logo" asp-controller="Home" asp-action="Index"><img src="~/images/clinimark-logo.png" asp-append-version="true" alt="CliniMark" width="184" height="40" /></a>
+        <h1>Sign in</h1>
+        <p class="auth-lead">Use your personal account to continue annotating.</p>
+        <form method="post" asp-action="PostLogin" asp-controller="Identity" class="mb-0">
+            @if (TempData["Notice"] is string notice)
+            {
+                <div class="alert alert-success" role="status">@notice</div>
+            }
+            <div asp-validation-summary="All" class="validation-summary-errors"></div>
+            <div class="auth-field">
+                <label asp-for="Email" class="form-label">Email address</label>
+                <input type="email" asp-for="Email" class="form-control" autocomplete="email" required />
+            </div>
+            <div class="auth-field">
+                <label asp-for="Password" class="form-label">Account password</label>
+                <div class="password-field">
+                    <input type="password" asp-for="Password" class="form-control" autocomplete="current-password" required />
+                    <button type="button" class="password-toggle" data-password-toggle aria-label="Show password" aria-pressed="false"><i class="bi bi-eye" aria-hidden="true"></i></button>
+                </div>
+                <p class="auth-hint">Forgotten it? The study team can reset it.</p>
+            </div>
+            <button type="submit" class="btn-submit">Sign in</button>
+            @if (Configuration.GetValue(CliniMark.Presentation.Controllers.IdentityController.RegistrationSetting, true))
+            {
+                <p class="register-link">No account yet? <a href="/Identity/Signup">Create one</a></p>
+            }
+            else
+            {
+                <p class="register-link">Accounts are created by the study team.</p>
+            }
+        </form>
+    </div>
+</section>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script src="~/js/validationSummary.js" asp-append-version="true"></script>
+    <script src="~/js/passwordToggle.js" asp-append-version="true"></script>
+}

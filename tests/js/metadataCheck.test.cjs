@@ -5,7 +5,7 @@ const path = require('node:path');
 const vm = require('node:vm');
 
 const source = fs.readFileSync(path.join(__dirname,
-  '../../src/MedAnnotateApp.Presentation/wwwroot/js/metadataCheck.js'), 'utf8');
+  '../../src/CliniMark.Presentation/wwwroot/js/metadataCheck.js'), 'utf8');
 const context = {window: {}};
 vm.runInNewContext(source, context, {filename: 'metadataCheck.js'});
 const {searchLabels} = context.window.MetadataCheckSearch;

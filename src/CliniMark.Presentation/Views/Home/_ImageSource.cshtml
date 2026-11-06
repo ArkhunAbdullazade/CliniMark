@@ -1,0 +1,39 @@
+@model MedData
+@using CliniMark.Presentation.Models
+@*
+    Source and licence of the study image (Creative Commons attribution). Sits below .image-viewport, never inside it:
+    canvas.js sizes the image from that box. The full credit opens as an overlay, so opening it never resizes the image.
+*@
+@if (Model != null && (!string.IsNullOrWhiteSpace(Model.SourceLicense) || !string.IsNullOrWhiteSpace(Model.SourceUrl)))
+{
+    var licenceUrl = LicenceLinks.UrlFor(Model.SourceLicense);
+    <details class="image-source" data-image-source>
+        <summary>
+            Image source:
+            @if (!string.IsNullOrWhiteSpace(Model.SourceUrl))
+            {
+                <a href="@Model.SourceUrl" target="_blank" rel="noopener noreferrer">article</a>
+            }
+            @if (!string.IsNullOrWhiteSpace(Model.SourceLicense))
+            {
+                <span aria-hidden="true">·</span>
+                @if (licenceUrl != null)
+                {
+                    <a href="@licenceUrl" target="_blank" rel="license noopener noreferrer">@Model.SourceLicense</a>
+                }
+                else
+                {
+                    <span>@Model.SourceLicense</span>
+                }
+            }
+            @if (!string.IsNullOrWhiteSpace(Model.Attribution))
+            {
+                <span class="image-source-more">full credit</span>
+            }
+        </summary>
+        @if (!string.IsNullOrWhiteSpace(Model.Attribution))
+        {
+            <p class="image-source-text">@Model.Attribution</p>
+        }
+    </details>
+}

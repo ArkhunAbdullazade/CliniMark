@@ -4,9 +4,9 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 const source = fs.readFileSync(path.join(__dirname,
-  '../../src/MedAnnotateApp.Presentation/wwwroot/js/studentPage.js'), 'utf8');
+  '../../src/CliniMark.Presentation/wwwroot/js/studentPage.js'), 'utf8');
 const StudentCanvas = vm.runInNewContext(fs.readFileSync(path.join(__dirname,
-  '../../src/MedAnnotateApp.Presentation/wwwroot/js/studentCanvas.js'), 'utf8') + '\nStudentCanvasManager');
+  '../../src/CliniMark.Presentation/wwwroot/js/studentCanvas.js'), 'utf8') + '\nStudentCanvasManager');
 
 // Browser events the page sends: failed requests go to problemReport.js, inputs refresh the note dots.
 class FakeEvent { constructor(type, init = {}) { this.type = type; this.detail = init.detail; } }
@@ -212,7 +212,7 @@ test('real student canvas draws grouped outlines first and the selected outline 
     }
   }
   const ActualStudentCanvas = vm.runInNewContext(fs.readFileSync(path.join(__dirname,
-    '../../src/MedAnnotateApp.Presentation/wwwroot/js/studentCanvas.js'), 'utf8') + '\nStudentCanvasManager',
+    '../../src/CliniMark.Presentation/wwwroot/js/studentCanvas.js'), 'utf8') + '\nStudentCanvasManager',
     {CanvasManager, document: {addEventListener() {}}});
   ActualStudentCanvas.prototype.createFloatingTextBox = () => {};
   ActualStudentCanvas.prototype.setupEventListeners = () => {};

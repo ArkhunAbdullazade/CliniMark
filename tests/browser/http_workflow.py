@@ -1,7 +1,7 @@
 """Smoke test the synthetic isolated local audit app, never the research database.
 
 Requires the fixtures.sql dataset.
-Creates test accounts/annotations. Run only on a disposable medannotate_audit_* DB.
+Creates test accounts/annotations. Run only on a disposable clinimark_audit_* DB.
 """
 import html
 import http.cookiejar
@@ -15,7 +15,7 @@ import urllib.parse
 import urllib.request
 from uuid import uuid4
 
-BASE = os.environ.get('MEDANNOTATE_URL', 'http://127.0.0.1:5210')
+BASE = os.environ.get('CLINIMARK_URL', 'http://127.0.0.1:5210')
 PASSWORD = 'SyntheticOnly!2026'
 REPORT = []
 

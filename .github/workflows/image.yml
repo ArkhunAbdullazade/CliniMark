@@ -20,7 +20,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - run: dotnet test tests/MedAnnotateApp.Tests/MedAnnotateApp.Tests.csproj
+      - run: dotnet test tests/CliniMark.Tests/CliniMark.Tests.csproj
       - run: node --test tests/js/*.test.cjs
       - run: python3 -I tests/deployment/test_image_hosting.py
 
@@ -39,5 +39,6 @@ jobs:
           context: .
           push: true
           tags: |
+            ghcr.io/arkhunabdullazade/clinimark:${{ github.sha }}
             ghcr.io/arkhunabdullazade/medannotateapp:${{ github.sha }}
-            ${{ github.ref == 'refs/heads/master' && 'ghcr.io/arkhunabdullazade/medannotateapp:latest' || '' }}
+            ${{ github.ref == 'refs/heads/master' && 'ghcr.io/arkhunabdullazade/clinimark:latest' || '' }}

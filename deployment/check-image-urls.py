@@ -7,7 +7,7 @@ Usage:
 
 Without --host it is read-only: it only downloads the images.
 With --host each image is uploaded byte for byte to the blob container named by the environment variable
-MEDANNOTATE_IMAGE_SAS_URL (a container URL with a write SAS; the container must allow anonymous blob reads), then read
+CLINIMARK_IMAGE_SAS_URL (a container URL with a write SAS; the container must allow anonymous blob reads), then read
 back anonymously and compared. Unchanged bytes keep every image's size and EXIF data, so coordinates are unaffected.
 Blobs are named by their content hash, so a rerun is safe and can never change an image behind an existing link.
 The folder receives images/ (local copies) and image-map.csv (Id,SourceUrl,HostedUrl,Sha256,Bytes), which
@@ -42,7 +42,7 @@ HEADERS = {
 }
 ORIENTATION, X_RESOLUTION, EXIF_IFD, PIXEL_X = 0x0112, 0x011A, 0x8769, 0xA002
 ATTEMPTS, RETRY_DELAY = 3, 2
-SAS_VARIABLE = 'MEDANNOTATE_IMAGE_SAS_URL'
+SAS_VARIABLE = 'CLINIMARK_IMAGE_SAS_URL'
 
 
 def image_kind(body):

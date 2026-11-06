@@ -5,7 +5,7 @@ const path = require('node:path');
 const vm = require('node:vm');
 
 const source = fs.readFileSync(path.join(__dirname,
-  '../../src/MedAnnotateApp.Presentation/wwwroot/js/professionalPage.js'), 'utf8');
+  '../../src/CliniMark.Presentation/wwwroot/js/professionalPage.js'), 'utf8');
 
 // Browser events the page sends: failed requests go to problemReport.js, inputs refresh the note dots.
 class FakeEvent { constructor(type, init = {}) { this.type = type; this.detail = init.detail; } }

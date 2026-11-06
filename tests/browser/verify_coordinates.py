@@ -1,11 +1,11 @@
 """Proves in a real browser that saved coordinates match what the annotator pointed at.
 
 Draws through the real pages, saves through the real app, and reads the rows back from PostgreSQL. Creates accounts
-and annotations, so run it only against a disposable medannotate_audit_* database. Needs playwright and Pillow, the app
+and annotations, so run it only against a disposable clinimark_audit_* database. Needs playwright and Pillow, the app
 on http://127.0.0.1:5210 in Development, and:
-  MEDANNOTATE_AUDIT_PSQL      path to psql
-  MEDANNOTATE_AUDIT_DB        libpq connection string whose dbname starts with medannotate_audit_ (PGPASSWORD for its password)
-  MEDANNOTATE_ADMIN_EMAIL / MEDANNOTATE_ADMIN_PASSWORD   an account from create-admin
+  CLINIMARK_AUDIT_PSQL      path to psql
+  CLINIMARK_AUDIT_DB        libpq connection string whose dbname starts with clinimark_audit_ (PGPASSWORD for its password)
+  CLINIMARK_ADMIN_EMAIL / CLINIMARK_ADMIN_PASSWORD   an account from create-admin
 """
 import csv
 import http.server
@@ -27,10 +27,10 @@ from playwright.sync_api import sync_playwright
 
 BASE = 'http://127.0.0.1:5210'
 IMAGE_PORT = 5212
-PSQL = os.environ['MEDANNOTATE_AUDIT_PSQL']
-DATABASE = os.environ['MEDANNOTATE_AUDIT_DB']
+PSQL = os.environ['CLINIMARK_AUDIT_PSQL']
+DATABASE = os.environ['CLINIMARK_AUDIT_DB']
 PASSWORD = 'SyntheticOnly!2026'
-assert 'dbname=medannotate_audit_' in DATABASE, 'Run this only on a disposable medannotate_audit_* database.'
+assert 'dbname=clinimark_audit_' in DATABASE, 'Run this only on a disposable clinimark_audit_* database.'
 
 KINDS = {'wide': (1600, 1000), 'small': (300, 200), 'tall': (800, 3000)}
 WINDOWS = [(1920, 1080), (1366, 768), (1024, 768), (820, 1180)]
@@ -399,8 +399,8 @@ def admin_case(browser, image_id, saved):
     context = browser.new_context(viewport={'width': 1440, 'height': 900})
     page = context.new_page()
     page.goto(BASE + '/Identity/Login')
-    page.fill('input[name=Email]', os.environ['MEDANNOTATE_ADMIN_EMAIL'])
-    page.fill('input[name=Password]', os.environ['MEDANNOTATE_ADMIN_PASSWORD'])
+    page.fill('input[name=Email]', os.environ['CLINIMARK_ADMIN_EMAIL'])
+    page.fill('input[name=Password]', os.environ['CLINIMARK_ADMIN_PASSWORD'])
     page.click('button[type=submit]')
     page.wait_for_url('**/Admin**')
     page.goto(f'{BASE}/Admin/Images/Details/{image_id}')
@@ -438,7 +438,7 @@ def main():
         seed(names)
         specialist, student = f'coord-{uuid.uuid4().hex[:8]}@example.net', f'coord-student-{uuid.uuid4().hex[:8]}@example.net'
         with sync_playwright() as playwright:
-            browser = playwright.chromium.launch(channel=os.environ.get('MEDANNOTATE_BROWSER', 'msedge'))
+            browser = playwright.chromium.launch(channel=os.environ.get('CLINIMARK_BROWSER', 'msedge'))
             first = Session(browser, specialist, (1366, 768), 1)
             first.signup('specialist')
             first.context.close()

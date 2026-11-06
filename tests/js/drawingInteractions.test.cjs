@@ -3,7 +3,7 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const vm=require('node:vm');
 const path=require('node:path');
-const geometry=require('../../src/MedAnnotateApp.Presentation/wwwroot/js/annotationGeometry.js');
+const geometry=require('../../src/CliniMark.Presentation/wwwroot/js/annotationGeometry.js');
 
 function fixture(){
   const listeners={},lines=[];
@@ -18,7 +18,7 @@ function fixture(){
   const elements={mainCanvas:canvas,sourceImage,canvasContainer:container,'image-container':imageContainer};
   const window={addEventListener:()=>{},innerWidth:1200};
   const document={getElementById:id=>elements[id],addEventListener:()=>{}};
-  vm.runInNewContext(fs.readFileSync(path.resolve(__dirname,'../../src/MedAnnotateApp.Presentation/wwwroot/js/canvas.js'),'utf8'),
+  vm.runInNewContext(fs.readFileSync(path.resolve(__dirname,'../../src/CliniMark.Presentation/wwwroot/js/canvas.js'),'utf8'),
     {window,document,AnnotationGeometry:geometry,structuredClone,CustomEvent:function(){},console});
   const manager=new window.CanvasManager('mainCanvas','sourceImage','canvasContainer');
   const event=(x,y)=>({clientX:rect.left+x/2,clientY:rect.top+y/2});

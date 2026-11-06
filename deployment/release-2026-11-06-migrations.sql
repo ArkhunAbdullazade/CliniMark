@@ -1,16 +1,15 @@
 -- Release 2026-11-06: Skip entire image and pixel masks.
--- Adds one table, "ImageSkips", with its index, adds a "PixelMask" column to the three annotation tables, and lets the app
--- login use the new table. Nothing is dropped or rewritten. Every step is skipped when already applied, so it can be re-run.
+-- Adds one table, "ImageSkips", with its index, and adds a "PixelMask" column to the three annotation tables. Nothing is dropped or rewritten. Every step is skipped when already applied, so it can be re-run.
 -- Apply AFTER deployment/release-2026-11-05-migrations.sql and BEFORE the new image runs (production refuses to start while
 -- migrations are pending):
 --   1. Back up the database.
 --   2. psql "<production connection>" -v ON_ERROR_STOP=1 -f deployment/release-2026-11-06-migrations.sql
 --   3. Start a new Azure Container Apps revision on the new image and check the site.
---   4. If any annotations already exist, give them masks: dotnet MedAnnotateApp.Presentation.dll backfill-masks
+--   4. If any annotations already exist, give them masks: dotnet CliniMark.Presentation.dll backfill-masks
 -- A new, empty database instead gets the full script: dotnet ef migrations script --idempotent
 -- Generated with: dotnet ef migrations script 20261105203046_AddMetadataChecks --idempotent
--- The grant at the end is added by hand: the app login only has rights on tables that existed when app-role.sql ran,
--- so without it every Skip entire image would fail.
+-- The app login needs rights on the new table: run the deployment's role script afterwards, because it only covers
+-- tables that existed when it last ran.
 
 START TRANSACTION;
 
@@ -64,13 +63,3 @@ BEGIN
     END IF;
 END $EF$;
 COMMIT;
-
-
-
-DO $GRANT$
-BEGIN
-    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'medannotate_app') THEN
-        GRANT SELECT, INSERT, UPDATE, DELETE ON "ImageSkips" TO medannotate_app;
-        GRANT USAGE, SELECT, UPDATE ON SEQUENCE "ImageSkips_Id_seq" TO medannotate_app;
-    END IF;
-END $GRANT$;

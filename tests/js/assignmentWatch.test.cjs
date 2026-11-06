@@ -5,7 +5,7 @@ const path = require('node:path');
 const vm = require('node:vm');
 
 const source = fs.readFileSync(path.join(__dirname,
-  '../../src/MedAnnotateApp.Presentation/wwwroot/js/assignmentWatch.js'), 'utf8');
+  '../../src/CliniMark.Presentation/wwwroot/js/assignmentWatch.js'), 'utf8');
 const flush = () => new Promise(setImmediate);
 const answer = assigned => ({ok: true, json: async () => ({success: true, assigned})});
 

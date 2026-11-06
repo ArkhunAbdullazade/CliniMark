@@ -1,6 +1,6 @@
 services:
   webapp:
-    image: medannotateapp
+    image: clinimark
     depends_on:
       postgres:
         condition: service_healthy

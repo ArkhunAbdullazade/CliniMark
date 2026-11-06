@@ -4,11 +4,11 @@
 <p><button id="save">Serialize</button><button id="reload">Reload serialized shape</button><button id="clear">Clear</button><button id="narrow">Toggle display width</button></p>
 <div id="annotation-status" role="status"></div><div class="left-column"><div id="image-container"><img id="sourceImage" src="fixture.svg" hidden><div id="canvasContainer"><canvas id="mainCanvas"></canvas></div></div></div>
 <pre id="result"></pre><div style="height:800px"></div>
-<script src="../../src/MedAnnotateApp.Presentation/wwwroot/js/annotationGeometry.js"></script><script src="../../src/MedAnnotateApp.Presentation/wwwroot/js/canvas.js"></script>
+<script src="../../src/CliniMark.Presentation/wwwroot/js/annotationGeometry.js"></script><script src="../../src/CliniMark.Presentation/wwwroot/js/canvas.js"></script>
 <script>
 const manager=window.canvasManager=new CanvasManager('mainCanvas','sourceImage','canvasContainer');
 const tools=manager.createTools(document.getElementById('image-container'));
-document.querySelectorAll('.tool-button img').forEach(img=>img.src='../../src/MedAnnotateApp.Presentation/wwwroot/images/'+img.getAttribute('src').split('/').pop());
+document.querySelectorAll('.tool-button img').forEach(img=>img.src='../../src/CliniMark.Presentation/wwwroot/images/'+img.getAttribute('src').split('/').pop());
 tools.rectButton.onclick=()=>manager.switchMode('rectangle');
 tools.freehandButton.onclick=()=>manager.switchMode('freehand');
 tools.zoomButton.onclick=()=>manager.switchMode('zoom');

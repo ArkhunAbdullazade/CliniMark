@@ -5,7 +5,7 @@ const path = require('node:path');
 const vm = require('node:vm');
 
 const source = fs.readFileSync(path.join(__dirname,
-  '../../src/MedAnnotateApp.Presentation/wwwroot/js/canvas.js'), 'utf8');
+  '../../src/CliniMark.Presentation/wwwroot/js/canvas.js'), 'utf8');
 const drawingContext = new Proxy({}, {get: () => () => {}});
 
 class Element {

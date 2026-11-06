@@ -3,7 +3,7 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const vm=require('node:vm');
 const path=require('node:path');
-const geometry=require('../../src/MedAnnotateApp.Presentation/wwwroot/js/annotationGeometry.js');
+const geometry=require('../../src/CliniMark.Presentation/wwwroot/js/annotationGeometry.js');
 const close=(a,b,tolerance=1e-9)=>assert.ok(Math.abs(a-b)<=tolerance,`${a} differs from ${b}`);
 
 test('known 1200x800 image maps CSS, scroll offsets, browser zoom and DPR independently',()=>{
@@ -88,7 +88,7 @@ function managerFixture(){
   const document={getElementById:id=>elements[id],addEventListener:()=>{}};
   const window={addEventListener:()=>{},innerWidth:1200};
   const context={window,document,AnnotationGeometry:geometry,structuredClone,CustomEvent:function(){},console};
-  vm.runInNewContext(fs.readFileSync(path.resolve(__dirname,'../../src/MedAnnotateApp.Presentation/wwwroot/js/canvas.js'),'utf8'),context);
+  vm.runInNewContext(fs.readFileSync(path.resolve(__dirname,'../../src/CliniMark.Presentation/wwwroot/js/canvas.js'),'utf8'),context);
   const manager=new window.CanvasManager('mainCanvas','sourceImage','canvasContainer');
   const event=(x,y)=>({clientX:rect.left+x*rect.width/1200,clientY:rect.top+y*rect.height/800});
   return{manager,canvas,event,setRect:value=>{rect=value;},setViewport:value=>{viewport=value;},column,listeners,sourceImage};

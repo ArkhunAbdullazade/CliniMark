@@ -2,10 +2,10 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
-const geometry = require('../../src/MedAnnotateApp.Presentation/wwwroot/js/annotationGeometry.js');
+const geometry = require('../../src/CliniMark.Presentation/wwwroot/js/annotationGeometry.js');
 
 const window = {};
-vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../../src/MedAnnotateApp.Presentation/wwwroot/js/canvas.js'), 'utf8'), {window, document: {}, console});
+vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../../src/CliniMark.Presentation/wwwroot/js/canvas.js'), 'utf8'), {window, document: {}, console});
 const proto = window.CanvasManager.prototype;
 
 // A fixed seed, so a failure can be reproduced.
