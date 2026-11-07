@@ -206,14 +206,12 @@ Annotation data is only useful if it can be trusted, and most of these choices f
 
 ## Architecture
 
-```mermaid
-flowchart LR
-    A["Browser"] -- "pixel coordinates" --> B["ASP.NET Core"]
-    B -- "answer + mask" --> C[("PostgreSQL")]
-    C -- "export" --> D["Results archive"]
-    classDef box fill:#f6f8fa,stroke:#8c959f,color:#1f2328
-    class A,B,C,D box
-```
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="media/architecture-dark.png">
+    <img src="media/architecture-light.png" width="100%" alt="Browser sends pixel coordinates to ASP.NET Core, which saves the answer and its mask in PostgreSQL; the export turns them into the results archive">
+  </picture>
+</p>
 
 | Project | Holds |
 | --- | --- |
