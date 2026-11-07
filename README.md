@@ -1,95 +1,139 @@
-# CliniMark
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="media/logo-dark.png">
+    <img alt="CliniMark" src="media/logo-light.png" width="300">
+  </picture>
+</p>
 
-CliniMark collects expert annotations on medical images from published case reports. A clinician reads the case text with its medical terms highlighted and outlines where each term shows up in the image. Medical students annotate the same images with labels of their own. Every outline is stored twice: as coordinates in the image's own pixels, and as a pixel mask that a segmentation model can be scored against.
+<p align="center"><b>Expert annotation of medical images, one highlighted term at a time.</b></p>
 
-It was built to gather ground truth for **OpenMedSeg**, an explainable AI research project for medical imaging with researchers from **Stanford Medicine, Mount Sinai, the Hasso Plattner Institute and Charité**.
+<p align="center">
+  Built to collect ground truth for <b>OpenMedSeg</b>, an explainable AI project for medical imaging<br>
+  with researchers from Stanford Medicine, Mount Sinai, the Hasso Plattner Institute and Charité.
+</p>
 
-<img width="960" height="540" alt="A 30-second tour on a synthetic chest CT: a boundary box drawn and rotated, a freehand contour, Zoom to Area, a custom annotation and the label check" src="media/clinimark-overview.gif" />
+<p align="center">
+  <a href="https://github.com/ArkhunAbdullazade/CliniMark/actions/workflows/image.yml"><img alt="Tests and image build" src="https://github.com/ArkhunAbdullazade/CliniMark/actions/workflows/image.yml/badge.svg"></a>
+  <img alt=".NET 10" src="https://img.shields.io/badge/.NET-10-512BD4?logo=dotnet&logoColor=white">
+  <img alt="PostgreSQL" src="https://img.shields.io/badge/PostgreSQL-4169E1?logo=postgresql&logoColor=white">
+  <a href="LICENSE"><img alt="Apache 2.0 licence" src="https://img.shields.io/badge/licence-Apache_2.0-informational"></a>
+</p>
 
-[![The CliniMark tutorial: how to use CliniMark, a complete tutorial for clinicians. 3 minutes, with narration](media/tutorial-thumbnail.png)](src/CliniMark.Presentation/wwwroot/videos/clinimark-tutorial.mp4)
+<p align="center">
+  <a href="#how-it-works">How it works</a> ·
+  <a href="#for-specialists">Specialists</a> ·
+  <a href="#for-students">Students</a> ·
+  <a href="#the-admin-panel">Admin panel</a> ·
+  <a href="#the-data">The data</a> ·
+  <a href="#design-decisions">Design decisions</a> ·
+  <a href="#running-it">Running it</a>
+</p>
 
-The tutorial above is the same video participants watch on their first visit (3 min, 21 MB download). The tour and the tutorial use synthetic images. The screenshots further down come from the test deployment, signed in with test accounts, so none of the outlines in them is a clinical judgement.
+<br>
 
-## How a session goes
+<p align="center">
+  <img src="media/clinimark-overview.gif" width="100%" alt="A 30-second tour on a synthetic chest CT: a boundary box drawn and rotated, a freehand contour, Zoom to Area, a custom annotation and the label check">
+</p>
+<p align="center"><sub>A 30-second tour, recorded on synthetic images.</sub></p>
 
-1. A participant signs up and picks the images they want: at least one image modality, plus any specialities and body regions.
-2. On their first visit the tutorial plays, and it has to be watched to the end once.
-3. A specialist gets one case at a time and works through its highlighted terms. Each term is either outlined, marked not visible or abstract, or skipped as uncertain. A case outside their field can be handed back.
+<br>
+
+## How it works
+
+Clinical case reports pair an image with a written description of what it shows. CliniMark turns that pairing into training and evaluation data. A specialist reads the description with its medical terms highlighted and outlines where each term appears in the image. Medical students annotate the same images with labels of their own. Every outline is stored as coordinates in the image's own pixels and as a pixel mask that a segmentation model can be scored against.
+
+1. A participant signs up and chooses the images they're qualified for: at least one image modality, plus any specialities and body regions.
+2. On their first visit, a 3-minute narrated tutorial plays once, all the way through.
+3. A specialist receives one case at a time and works through its highlighted terms.
 4. Before the next case, they confirm or correct the image's modality, speciality and body region.
-5. A medical student gets their own queue of the same kind of images, outlines whatever they can identify and names it.
-6. The study team follows progress in the admin panel and exports the results, masks included, whenever they need them.
+5. Medical students get their own queue, outline what they can identify and name it.
+6. The study team follows progress in the admin panel and exports results and masks whenever they need them.
 
-## The specialist workspace
+## For specialists
 
-<img width="1866" height="902" alt="Specialist workspace: a chest CT with one term saved, a contour drawn for the current term and a comment open" src="media/specialist-workspace.png" />
+<p align="center">
+  <img src="media/specialist-workspace.png" width="100%" alt="Specialist workspace: a chest CT with one term saved, a contour drawn for the current term and a comment open">
+</p>
+<p align="center"><sub>The specialist workspace on the test deployment. One term is saved in green, the current term is red, and a comment is open.</sub></p>
 
-The case text sits above the image. Saved terms turn green, and the term being worked on is red. Comments are stored with the term they were written on, and the time from opening a term to the first stroke and on to saving is recorded for every answer.
+For every highlighted term, the specialist chooses one of three answers:
 
-**Report a technical problem** sends a note to the study team straight away, so it works even when the image or the drawing tools don't.
+- **Outline it** with a boundary box or a freehand contour, using as many shapes as the term needs.
+- **Not Visible/Abstract** when the term can't be drawn, like a symptom or a diagnosis.
+- **Uncertain/Skip** when they aren't sure.
 
-<img align="right" width="260" alt="Label check: No on speciality opens a search, which offers Infectious diseases" src="media/label-check.png" />
+Comments are saved with the term they belong to. The time from opening a term to the first stroke, and from there to saving, is recorded for every answer.
 
-**The label check.** Next Image stays locked until the specialist has answered three questions about the image: is its modality, speciality and body region right? Each answer is Yes, No or Can't tell. Answering No opens a search over the study's own labels, and a missing value can be added.
+<p align="center">
+  <img src="media/drawing-and-label-check.png" width="100%" alt="Left: a freehand contour and a selected boundary box on a chest CT, with the tool bar. Right: the label check, where No on speciality opens a search offering Infectious diseases">
+</p>
+<p align="center"><sub>Left: the drawing tools. Right: correcting a label that doesn't fit the case.</sub></p>
 
-The dataset's labels are never overwritten. `MetadataChecks` keeps what was shown next to what the specialist said, so the two can be compared later.
+**Drawing.** A selected box can be moved, resized from its corners, rotated from the round handle and deleted with X. Zoom to Area enlarges a region for close work. The dashed tool, **Custom annotation**, outlines a finding the text doesn't mention; the specialist names it and it's saved at once.
 
-In the example on the right, the speciality says Pulmonology, but the case is about mucormycosis, so the specialist corrects it to Infectious diseases.
+**The label check.** Next Image stays locked until the specialist answers three questions about the image's modality, speciality and body region: Yes, No or Can't tell. Answering No opens a search over the study's labels, and a missing value can be added. In the example above, a mucormycosis case labelled Pulmonology is corrected to Infectious diseases. The original label is kept, and the correction is stored beside it in `MetadataChecks`.
 
-<br clear="right" />
+**When something goes wrong.** **Report a technical problem** reaches the study team straight away, even if the image or the tools fail to load. **Skip the case** hands a case outside the specialist's field back to the pool. It's never offered to them again, and anything they saved on it is copied to `ImageSkips.DiscardedWork` first.
 
-<img width="1866" height="902" alt="A finished echocardiogram: every term answered, one custom annotation listed, Next Image enabled" src="media/image-complete.png" />
+## For students
 
-The dashed tool is **Custom annotation**. It outlines a finding the text doesn't mention. The specialist names it, it's saved at once, and it's listed beside the image, as with the depth-scale marker above.
+<p align="center">
+  <img src="media/student-workspace.png" width="100%" alt="Student workspace: two labelled groups listed and a third shape being named Trachea">
+</p>
+<p align="center"><sub>Two groups are saved, and a third shape is being named.</sub></p>
 
-**Skip the case** returns a case outside the specialist's field to the pool. The next person starts it fresh, and it's never offered to the same specialist again. Anything already saved on it is first copied into `ImageSkips.DiscardedWork`, so no annotation is lost.
-
-## The student workspace
-
-<img width="1866" height="902" alt="Student workspace: two labelled groups listed and a third shape being named Trachea" src="media/student-workspace.png" />
-
-Students outline what they can see and type their own label. Several shapes can share one label, as with the two cavities grouped above. Groups can be edited or deleted until the student submits the image.
-
-## Drawing tools
-
-<img width="620" height="455" alt="A freehand contour and a selected boundary box on a chest CT, with the tool bar" src="media/drawing-tools.png" />
-
-Both workspaces offer a boundary box and a freehand contour, and Zoom to Area enlarges a region for close inspection. A selected box can be moved, resized from its corners, rotated from the round handle and deleted with X. Every coordinate is saved in the original image's pixels, whatever the screen size or zoom level.
+Students outline whatever they can identify and type their own label. Several shapes can share one label, like the two cavities grouped above. Groups stay editable until the student submits the image. Their answers are a second, independent set for the study to compare with the specialists'.
 
 ## Signing up and choosing images
 
-Participants create an account with their own password; there's no shared study password. Choosing **medical student** as the position gives the student workspace, and any other position gives the specialist one.
+Each participant has their own account and password; there's no shared study password. Choosing **medical student** as the position opens the student workspace, and any other position opens the specialist one.
 
-Image modality is required. Speciality and body region are optional, and leaving one empty includes all of its options. An image matches when it fits any option within each list and every list that has a selection. The options are the display labels of the CliniMark datasets (`app_labels/label_vocabulary.csv`, version `app-labels-1.1.0`): 8 image modalities, 21 specialities and 14 body regions, listed in `ImageFilterOptions`. Participants can change their choices later at `/Identity/Filters`.
+Image modality is required. Speciality and body region are optional, and leaving one empty means all of its options. An image is offered when it matches one of the chosen options in every list that has a choice. The options are the display labels of the CliniMark datasets (`app_labels/label_vocabulary.csv`, version `app-labels-1.1.0`): 8 modalities, 21 specialities and 14 body regions. Participants can change their choices at any time from the Filters button.
+
+Below every image, both workspaces link the source article and its licence and show the full credit line. The credit sits outside the image's sizing box, so it can't shift the drawing coordinates.
 
 <details>
-<summary>View the sign-up form</summary>
+<summary><b>The sign-up form and the first-visit tutorial</b></summary>
+<br>
+<p align="center">
+  <img src="media/registration.png" width="560" alt="The sign-up form: email, name, password, position, institution, ORCID iD and the three image filters">
+</p>
+<p align="center">
+  <img src="media/tutorial.png" width="100%" alt="The tutorial video open over the student workspace on a first visit">
+</p>
 
-<img width="620" height="778" alt="The sign-up form: email, name, password, position, institution, ORCID iD and the three image filters" src="media/registration.png" />
-
+The tutorial opens by itself on the first visit and can't be skipped ahead. `AspNetUsers.TutorialWatchedAt` records that it was watched. If the video can't load, the participant carries on, and it opens again next time. The Tutorial button in the header replays it whenever they like.
 </details>
 
-**Accounts made by the study team.** With `Registration:Enabled=false`, public sign-up closes and the sign-in page says that the study team creates accounts. The team then creates them from a CSV:
+<details>
+<summary><b>Accounts created by the study team</b></summary>
+<br>
+
+With `Registration:Enabled=false`, public sign-up closes and the sign-in page says that the study team creates accounts. The team then creates them from a CSV:
 
 ```bash
 dotnet CliniMark.Presentation.dll create-participants participants.csv credentials.csv
 ```
 
 - Columns: `Email, FullName, Position, University, ClinicalExperience, OrcidId, Speciality, BodyRegion, ImageModality`. Separate several filter values with `;`, or leave them empty for the participant to choose at first sign-in.
-- The whole file is checked before anything is written, so nothing is created if any row is invalid.
+- The whole file is checked first, so nothing is created if any row is invalid.
 - Existing accounts are skipped and never changed.
 - Generated passwords go only to the credentials file, which must not exist yet.
-
-**Image source.** Under every image, both workspaces link the source article and its licence (`SourceUrl`, `SourceLicense`) and show the full credit line (`Attribution`). The credit sits outside the image's sizing box, so it can't shift the drawing coordinates.
+</details>
 
 ## The admin panel
 
-<img width="1866" height="902" alt="Admin overview: progress for both roles, participants, locks to review, technical problems, an activity chart and things to check" src="media/admin-overview.png" />
+<p align="center">
+  <img src="media/admin-overview.png" width="100%" alt="Admin overview: progress for both roles, participants, locks to review, technical problems, an activity chart and things to check">
+</p>
+<p align="center"><sub>The overview, with live progress for both roles and a list of gaps to fix.</sub></p>
 
-Admin accounts sign in on the same page and land in `/Admin`, a separate area that annotators can't open. Admins can't annotate. The overview shows live progress for both roles and an activity chart. It also lists gaps that would leave images or people without work: images that match nobody's choices, and participants who have run out of images. Further down are progress by category, drawing times, sign-ups and the results of the label check. Create an admin with the operator command `create-admin`.
+Admins sign in on the same page and land in `/Admin`, which annotators can't open. The overview shows progress, activity and drawing times, and it flags problems before they stall the study. Two examples are images that match nobody's choices and participants who have run out of work.
 
-<img width="1866" height="902" alt="Image page: specialist and student annotations drawn over a chest CT with a layer per term, the assignment and the image details" src="media/admin-image.png" />
-
-Each image has a page that draws every saved annotation over the image, one layer per term or group, coloured by term or by annotator. It also shows who holds the image and lets an admin release the lock or remove the image from the study.
+<p align="center">
+  <img src="media/admin-image.png" width="100%" alt="Image page: specialist and student annotations drawn over a chest CT with a layer per term, the assignment and the image details">
+</p>
+<p align="center"><sub>One image with every specialist and student annotation layered over it.</sub></p>
 
 | Page | What it's for |
 | --- | --- |
@@ -99,38 +143,39 @@ Each image has a page that draws every saved annotation over the image, one laye
 | Responses | Every saved answer or student group, filtered and downloaded as exactly those rows |
 | Full data | One row per image-text pair, with everything anyone saved about it |
 | Problems | Problems participants reported, and errors their pages logged on their own |
-| Export | The full results archive, with or without the image files, and the pixel masks |
+| Export | The results archive, with or without the image files, and the pixel masks |
 | Admin log | Every change made from the panel, and every automatic release |
 
+Create an admin with the operator command `create-admin`.
+
 <details>
-<summary>View more admin pages</summary>
-
-<img width="1866" height="902" alt="Responses: specialist answers with term, response, comment, drawing times and save time" src="media/admin-responses.png" />
-
-<img width="1866" height="902" alt="Participants: each participant's role, choices, completed images, answers, images left and current lock" src="media/admin-participants.png" />
-
-<img width="1866" height="902" alt="Locks: counts of active, stale and partial locks, and the specialist locks with release buttons" src="media/admin-locks.png" />
-
-<img width="1866" height="902" alt="Export: options for the results archive, annotator identity, current counts and pixel-mask download" src="media/admin-export.png" />
-
+<summary><b>More admin pages</b></summary>
+<br>
+<p align="center"><img src="media/admin-responses.png" width="100%" alt="Responses: specialist answers with term, response, comment, drawing times and save time"></p>
+<p align="center"><img src="media/admin-participants.png" width="100%" alt="Participants: each participant's role, choices, completed images, answers, images left and current lock"></p>
+<p align="center"><img src="media/admin-locks.png" width="100%" alt="Locks: counts of active, stale and partial locks, and the specialist locks with release buttons"></p>
+<p align="center"><img src="media/admin-export.png" width="100%" alt="Export: options for the results archive, annotator identity, current counts and pixel-mask download"></p>
 </details>
 
-## What the study gets out of it
+## The data
 
-<img width="1370" height="1148" alt="A chest CT, the specialist's and the student's ground-glass masks, and their overlap with Dice 0.68 and IoU 0.52" src="media/pixel-masks.png" />
+<p align="center">
+  <img src="media/pixel-masks.png" width="720" alt="A chest CT, the specialist's and the student's ground-glass masks, and their overlap with Dice 0.68 and IoU 0.52">
+</p>
+<p align="center"><sub>Two masks from the Export download, a specialist's and a student's, for the same finding on the same CT.<br>They're scored with the Dice and IoU code that ships in every archive.</sub></p>
 
-These masks come straight from the Export download. One is a specialist's answer for "ground glass opacities", the other a student's group on the same CT, scored with the Dice and IoU code that ships in the archive's README.
+- **Pixel masks.** Each annotation becomes a black-and-white PNG the size of its image. The server builds it from the saved coordinates under one rule: a pixel is inside when its centre is. Shapes drawn for one term are merged, and a contour that crosses itself is filled throughout. Masks are also stored in the database as COCO run-length encoding. `backfill-masks` creates them for annotations saved before masks existed.
+- **Full data.** One row per image-text pair that anyone has touched. It includes every dataset value, every label verdict and correction, and every answer with its coordinates, mask and timing. Custom annotations, student groups, problem reports and skips are in it too. It downloads as CSV or JSON.
+- **The results archive.** A ZIP of the image list, answers, student groups, participants, label checks, skips, masks and the Full data table, with a README that explains every column. Annotators appear as pseudonymous codes (`SPEC-001`, `STU-001`) unless the full identity is deliberately chosen.
 
-**Pixel masks.** Each mask is a black-and-white PNG the size of its image, with 1 inside what was drawn and 0 outside. The server computes it from the saved coordinates under a single rule: a pixel counts as inside when its centre is. All shapes drawn for one term are merged, and a contour that crosses itself is filled throughout. Masks are also stored in the database as COCO run-length encoding (`PixelMask`). For annotations saved before masks existed, the operator command `backfill-masks` fills them in.
-
-**Full data.** One row per image-text pair that anyone has saved anything about. It holds every dataset value; each label's original value, verdict and submitted value; every answer with its coordinates, mask and timing; custom annotations, student groups, problem reports and skips. It downloads as CSV or JSON and goes into the results archive as `full_data`.
-
-<img width="1202" height="328" alt="Full data for one image: the specialist's four term answers with mask sizes and timing, and the student's three groups" src="media/admin-full-data.png" />
-
-**Exports.** The results archive is a ZIP of the image list, specialist answers, student groups, participants, label checks, skips, masks and the Full data table, with a README that explains every column. Annotators appear as pseudonymous codes by default (`SPEC-001`, `STU-001`), so a file can be shared with collaborators. Full identity is a separate, deliberate choice.
+<p align="center">
+  <img src="media/admin-full-data.png" width="100%" alt="Full data for one image: the specialist's four term answers with mask sizes and timing, and the student's three groups">
+</p>
+<p align="center"><sub>Full data for the image above: four specialist answers and three student groups, each with its mask size.</sub></p>
 
 <details>
-<summary>Main database tables</summary>
+<summary><b>Main database tables</b></summary>
+<br>
 
 | Table | Holds |
 | --- | --- |
@@ -142,42 +187,48 @@ These masks come straight from the Export download. One is a specialist's answer
 | `MetadataChecks` | Specialists' verdicts on each image's modality, speciality and body region |
 | `ImageSkips` | Cases a specialist handed back, with a copy of anything they had saved |
 | ASP.NET Core Identity tables | Accounts and roles |
-
 </details>
 
-## Why it's built this way
+## Design decisions
 
-Annotation data is only useful if it can be trusted. Most of the design follows from that.
+Annotation data is only useful if it can be trusted, and most of these choices follow from that.
 
-**One image, one specialist.** Handing out a case takes a PostgreSQL advisory lock (`pg_advisory_xact_lock`) for the whole assignment step. Two specialists who press Next Image in the same instant can't receive the same image, so each image ends up with one complete set of answers rather than several half-finished ones. Students have a separate queue with its own lock, so an image can collect one set from each group.
+**One image, one specialist.** Handing out a case takes a PostgreSQL advisory lock (`pg_advisory_xact_lock`). Two specialists who press Next Image in the same instant can't receive the same image, so each image ends up with one complete set of answers instead of several partial ones. Students have their own queue and their own lock.
 
-**Masks are made on the server.** The browser sends only coordinates. Turning them into pixels happens in one place with one rule, so a mask never depends on someone's screen, zoom level or canvas implementation.
+**Masks are made on the server.** The browser sends only coordinates. Turning them into pixels happens in one place, under one rule, so a mask never depends on someone's screen, zoom level or browser.
 
-**Original labels stay untouched.** When a specialist corrects an image's modality, speciality or body region, the correction is stored beside the original value, not over it. That disagreement is itself data the study wants.
+**Original labels stay untouched.** A specialist's correction is stored beside the dataset's label, not over it. Where experts disagree with the dataset is a finding in its own right.
 
-**Saves survive a restart.** If the server is restarting when an answer is sent (HTTP 502, 503 or 504, or no connection), the page retries for about 80 seconds (`wwwroot/js/requestRetry.js`). The server refuses a second save of the same term or image, so a retry can never store an answer twice.
+**Saves survive a restart.** If the server is restarting when an answer is sent (HTTP 502, 503 or 504, or no connection), the page retries for about 80 seconds. The server refuses a second save of the same term or image, so a retry can't store an answer twice.
 
-**Nothing is quietly lost.** A skipped case keeps a copy of whatever was saved on it. A lock an admin releases keeps its partial work as an incomplete set. Exports read a consistent snapshot (repeatable read), so they never pause annotators.
+**Nothing is quietly lost.** A skipped case keeps a copy of whatever was saved on it. A lock an admin releases keeps its partial work as an incomplete set. Exports read a consistent snapshot, so they never pause annotators.
 
-**Production starts only when it's set up properly.** It never migrates or seeds itself. Startup stops with a clear message if the database, its migrations or the data-protection key path are missing. Pages use a Content Security Policy with a per-request nonce, and sign-in and sign-up are rate-limited per client address. The limit is set high enough that a group joining from one hospital network, behind one shared address, still gets in.
+**Production only starts when it's set up properly.** It never migrates or seeds itself, and startup stops with a clear message if the database, its migrations or the data-protection key path are missing. Pages send a Content Security Policy with a per-request nonce. Sign-in and sign-up are rate-limited per client address, with enough headroom for a group joining from one hospital network.
 
 ## Architecture
+
+```mermaid
+flowchart LR
+    A["Browser<br/>canvas drawing tools"] -- "coordinates" --> B["ASP.NET Core MVC<br/>.NET 10"]
+    B -- "answers + masks<br/>built on save" --> C[("PostgreSQL")]
+    C --> D["Admin panel"]
+    D -- "ZIP: answers, masks,<br/>full data, README" --> E["Researchers"]
+    F["GitHub Actions<br/>xUnit + node:test"] --> G["Container image<br/>ghcr.io"] --> H["Azure Container Apps"]
+```
 
 | Project | Holds |
 | --- | --- |
 | `src/CliniMark.Core` | Models, repository and service interfaces, annotation geometry |
 | `src/CliniMark.Infrastructure` | EF Core data access, repositories, Identity, export and admin services |
 | `src/CliniMark.Presentation` | MVC controllers, Razor views, the admin area, migrations and the canvas scripts |
-| `tests/CliniMark.Tests` | xUnit tests on SQLite, with a PostgreSQL concurrency test |
+| `tests/CliniMark.Tests` | xUnit tests on SQLite, plus a PostgreSQL concurrency test |
 | `tests/js` | `node:test` tests for the browser scripts |
 
-ASP.NET Core MVC on .NET 10, with ASP.NET Core Identity for accounts and EF Core 10 with Npgsql for PostgreSQL. The drawing tools are plain JavaScript on an HTML canvas, served next to local copies of Bootstrap 5.3.8 and jQuery 3.7.1. EPPlus reads the optional Excel seed. A GitHub Actions workflow runs both test suites on every push to `master`, then publishes the image to `ghcr.io/arkhunabdullazade/clinimark`. The study deployment runs on Azure Container Apps.
+ASP.NET Core MVC on .NET 10, with ASP.NET Core Identity and EF Core 10 on Npgsql. The drawing tools are plain JavaScript on an HTML canvas, served beside local copies of Bootstrap 5.3.8 and jQuery 3.7.1. Every push to `master` runs both test suites before the image is published.
 
 ## Running it
 
-### With Docker
-
-Docker Compose runs one web instance and PostgreSQL, with volumes for the database and the data-protection keys. Before a public deployment, set up the database, persistent keys, hostname, trusted HTTPS proxy and backups.
+Docker Compose runs one web instance and PostgreSQL, with volumes for the database and the data-protection keys. Set up the database, persistent keys, hostname, trusted HTTPS proxy and backups before a public deployment.
 
 ```powershell
 # Create .env from .env.example only if it doesn't exist yet, then fill in real values.
@@ -186,10 +237,11 @@ docker compose --project-name clinimark build --pull webapp
 docker compose --project-name clinimark up -d
 ```
 
-Serve the app through the reverse proxy on its public HTTPS hostname. The container's own HTTP port, 8080, listens on loopback only. At startup the app creates its roles and stops with a clear error if PostgreSQL or its migrations aren't ready. Sample Excel seeding is off unless you turn it on.
+Serve the app through the reverse proxy on its public HTTPS hostname. The container's own HTTP port, 8080, listens on loopback only. At startup the app creates its roles and stops with a clear error if PostgreSQL or its migrations aren't ready.
 
 <details>
-<summary>Configuration</summary>
+<summary><b>Configuration</b></summary>
+<br>
 
 Keep private values in `.env`, environment variables or .NET user secrets.
 
@@ -199,17 +251,17 @@ Keep private values in `.env`, environment variables or .NET user secrets.
 | `DataProtection:KeysPath` | Persistent key path, required in production |
 | `AllowedHosts` | Public hostname |
 | `ReverseProxy:KnownProxies` | Trusted proxy addresses |
-| `RateLimiting:AccessAttemptsPerTenMinutes` | Sign-in and sign-up submissions allowed per client address every ten minutes. The default, 78, allows about 13 people joining together from one hospital or university network, with a few retries each |
+| `RateLimiting:AccessAttemptsPerTenMinutes` | Sign-in and sign-up submissions per client address every ten minutes. The default, 78, lets about 13 people join from one hospital or university network with a few retries each |
 | `Database:ApplyMigrations` | On in development only; off in production Compose |
 | `Database:SeedExcel` | Loads the sample Excel data; off by default |
 | `Registration:Enabled` | Public sign-up, on by default. Turn it off when the study team creates accounts with `create-participants` |
 
 Environment variables use double underscores for nested settings, such as `ConnectionStrings__MedDataDb`. Sign-up and sign-in don't need SMTP. The ignored `appsettings.Local.json` is left out of the image.
-
 </details>
 
 <details>
-<summary>Running locally with the .NET SDK</summary>
+<summary><b>Running locally with the .NET SDK</b></summary>
+<br>
 
 You need the .NET 10 SDK and a running PostgreSQL. The commands use PowerShell; replace the placeholders with your own values.
 
@@ -222,12 +274,12 @@ dotnet build CliniMark.sln
 dotnet run --project src/CliniMark.Presentation
 ```
 
-The connection string can also go in the ignored `src/CliniMark.Presentation/appsettings.Local.json`. The development profiles use [https://localhost:7243](https://localhost:7243) or [http://localhost:5210](http://localhost:5210); use the URL printed at startup. Everyone starts at `/Identity/Login` and is sent on to `/Home/Professional`, `/Home/Student` or `/Admin`, depending on their role.
-
+The connection string can also go in the ignored `src/CliniMark.Presentation/appsettings.Local.json`. The development profiles use [https://localhost:7243](https://localhost:7243) or [http://localhost:5210](http://localhost:5210). Everyone starts at `/Identity/Login` and is sent on to `/Home/Professional`, `/Home/Student` or `/Admin`, depending on their role.
 </details>
 
 <details>
-<summary>Database migrations</summary>
+<summary><b>Database migrations</b></summary>
+<br>
 
 Development can apply migrations at startup. Production needs a reviewed script and a backup first. To generate the SQL without applying it:
 
@@ -235,24 +287,24 @@ Development can apply migrations at startup. Production needs a reviewed script 
 dotnet tool restore
 dotnet ef migrations script --idempotent --project src/CliniMark.Presentation --startup-project src/CliniMark.Presentation --output reviewed-migrations.sql
 ```
-
 </details>
 
-## Tests
+### Tests
 
 ```powershell
 dotnet test tests/CliniMark.Tests/CliniMark.Tests.csproj
 node --test tests/js/*.test.cjs        # PowerShell: node --test (Get-ChildItem tests/js/*.test.cjs).FullName
 ```
 
-The PostgreSQL concurrency test, which checks that parallel assignment never hands one image to two people, runs only when `CLINIMARK_TEST_POSTGRES_CONNECTION` points to a disposable `clinimark_audit_*` database.
+The PostgreSQL concurrency test fires twenty overlapping claims at four images and checks that none goes to two people. It runs only when `CLINIMARK_TEST_POSTGRES_CONNECTION` points to a disposable `clinimark_audit_*` database.
 
 ## Earlier versions
 
 <details>
-<summary>Demo videos and walkthroughs from before the redesign</summary>
+<summary><b>Demo videos and walkthroughs from before the redesign</b></summary>
+<br>
 
-These show the app before it was renamed and redesigned, so some tools look different, and the magnifier has since been replaced by Zoom to Area.
+These show the app before it was renamed and redesigned. Some tools look different, and the magnifier has since been replaced by Zoom to Area.
 
 **Specialist demo, 56 seconds.** Drawing regions, using the magnifier, adding comments and moving between terms.
 
@@ -264,14 +316,17 @@ https://github.com/user-attachments/assets/b1e7f00c-6cef-4361-a3d1-9c89e0a28a19
 
 Longer walkthroughs: [the full application](https://drive.google.com/file/d/1WtMTApfPg1Q_AMeK0-lMWVt-EKZZpWtu/view?usp=sharing) and [registration](https://drive.google.com/file/d/10KE4MSIjdLQpE0J9nxgl21jFsLJl3jjM/view?usp=sharing).
 
-| Region coordinates | Annotation timing |
-| --- | --- |
-| <img width="757" height="216" alt="AnnotatedMedDatas rows with region coordinates" src="https://github.com/user-attachments/assets/737b242b-0302-4df0-9f25-926f202920da" /> | <img width="111" height="215" alt="AnnotatedMedDatas timing column" src="https://github.com/user-attachments/assets/369f6c14-270e-41ba-9f27-ed3f43a8f3a3" /> |
+Raw rows from the development database at the time: region coordinates and timing in `AnnotatedMedDatas`, and progress and lock columns in `MedDatas`.
 
-<img width="1095" height="132" alt="MedDatas rows with lock and progress columns" src="https://github.com/user-attachments/assets/df6f775c-26a4-4d47-b5eb-c78cd420e7b8" />
-
+<p align="center">
+  <img width="757" alt="AnnotatedMedDatas rows with region coordinates" src="https://github.com/user-attachments/assets/737b242b-0302-4df0-9f25-926f202920da">
+  <img width="111" alt="AnnotatedMedDatas timing column" src="https://github.com/user-attachments/assets/369f6c14-270e-41ba-9f27-ed3f43a8f3a3">
+</p>
+<p align="center">
+  <img width="100%" alt="MedDatas rows with lock and progress columns" src="https://github.com/user-attachments/assets/df6f775c-26a4-4d47-b5eb-c78cd420e7b8">
+</p>
 </details>
 
-## License
+## Licence
 
-[Apache License 2.0](LICENSE).
+CliniMark is released under the [Apache License 2.0](LICENSE).
