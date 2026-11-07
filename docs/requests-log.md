@@ -327,3 +327,10 @@ Delivered in the tutorial video and the first-visit tutorial.
 > Once the video is ready, add the following in the app itself:
 > - the first time any clinician opens a web app after signing up, this tutorial video should appear. Upon starting a video, a user must watch it and then he/she is ready to do annotations.
 > - between Progress N/M and Log Out buttons, we must place a new button called Tutorial, upon clicking on which this tutorial video starts, so that users can rewatch it if needed.
+
+**2026-11-07 UTC, after trying the tutorial on the test site**
+
+> 1. video is great, all good, only one correction: skip the part describing the user registration, hence after intro move directly to the app. Also, skip the last part for students. Keep the video length at 3 mins, but narrate a little bit slower such that even after skipping parts I mentioned above, we still have 3 mins but with slower more paced narration (currently it is too quick). Obviously update the video in the azure cloud and app. And push the app to master branch with all latest changes we had.
+> 2. tried, everything works fine, all good
+> 3. go live
+> 4. once you're done with 1, make a shorter 30 second video like assembled cuts from this original video, including main points with annotation tools. This will be like a GIF which will be added to the emails sent to all annotators, integrated such that when email is openned, GIF starts playing right away.

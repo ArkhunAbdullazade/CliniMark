@@ -6,7 +6,7 @@ Database changes are in `src/CliniMark.Presentation/Migrations`, and each releas
 
 ## 2026-11-07: tutorial video
 
-- A new tutorial of just under 3 minutes, with a British male voice, covers every step of the app. The file is `src/CliniMark.Presentation/wwwroot/videos/clinimark-tutorial.mp4`.
+- A new 3-minute tutorial, with a calm British male voice, covers the annotation workflow from the workspace onwards. It leaves out signing up and the student page. The file is `src/CliniMark.Presentation/wwwroot/videos/clinimark-tutorial.mp4`.
 - It opens by itself the first time a participant reaches their annotation page, and they watch it to the end before starting. If it can't load, they can carry on and it opens again next time.
 - A new Tutorial button, between Progress and Log Out, replays it at any time.
 
