@@ -208,12 +208,11 @@ Annotation data is only useful if it can be trusted, and most of these choices f
 ## Architecture
 
 ```mermaid
-flowchart LR
-    A["Browser<br/>canvas drawing tools"] -- "coordinates" --> B["ASP.NET Core MVC<br/>.NET 10"]
-    B -- "answers + masks<br/>built on save" --> C[("PostgreSQL")]
+flowchart TB
+    A["Annotator's browser<br/>canvas drawing tools"] -- "coordinates in image pixels" --> B["ASP.NET Core MVC, .NET 10"]
+    B -- "answer + pixel mask, built on save" --> C[("PostgreSQL")]
     C --> D["Admin panel"]
-    D -- "ZIP: answers, masks,<br/>full data, README" --> E["Researchers"]
-    F["GitHub Actions<br/>xUnit + node:test"] --> G["Container image<br/>ghcr.io"] --> H["Azure Container Apps"]
+    D -- "results archive: answers, masks, Full data, README" --> E["Research team"]
 ```
 
 | Project | Holds |
@@ -224,7 +223,7 @@ flowchart LR
 | `tests/CliniMark.Tests` | xUnit tests on SQLite, plus a PostgreSQL concurrency test |
 | `tests/js` | `node:test` tests for the browser scripts |
 
-ASP.NET Core MVC on .NET 10, with ASP.NET Core Identity and EF Core 10 on Npgsql. The drawing tools are plain JavaScript on an HTML canvas, served beside local copies of Bootstrap 5.3.8 and jQuery 3.7.1. Every push to `master` runs both test suites before the image is published.
+ASP.NET Core MVC on .NET 10, with ASP.NET Core Identity and EF Core 10 on Npgsql. The drawing tools are plain JavaScript on an HTML canvas, served beside local copies of Bootstrap 5.3.8 and jQuery 3.7.1. Every push to `master` runs both test suites in GitHub Actions, then publishes the container image to `ghcr.io`. The study runs it on Azure Container Apps.
 
 ## Running it
 
