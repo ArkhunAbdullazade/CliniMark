@@ -207,11 +207,12 @@ Annotation data is only useful if it can be trusted, and most of these choices f
 ## Architecture
 
 ```mermaid
-flowchart TB
-    A["Annotator's browser<br/>canvas drawing tools"] -- "coordinates in image pixels" --> B["ASP.NET Core MVC, .NET 10"]
-    B -- "answer + pixel mask, built on save" --> C[("PostgreSQL")]
-    C --> D["Admin panel"]
-    D -- "results archive: answers, masks, Full data, README" --> E["Research team"]
+flowchart LR
+    A["Browser"] -- "pixel coordinates" --> B["ASP.NET Core"]
+    B -- "answer + mask" --> C[("PostgreSQL")]
+    C -- "export" --> D["Results archive"]
+    classDef box fill:#f6f8fa,stroke:#8c959f,color:#1f2328
+    class A,B,C,D box
 ```
 
 | Project | Holds |
