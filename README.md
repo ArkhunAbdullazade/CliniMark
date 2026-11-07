@@ -123,17 +123,14 @@ dotnet CliniMark.Presentation.dll create-participants participants.csv credentia
 
 ## The admin panel
 
-<p align="center">
-  <img src="media/admin-overview.png" width="100%" alt="Admin overview: progress for both roles, participants, locks to review, technical problems, an activity chart and things to check">
-</p>
-<p align="center"><sub>The overview, with live progress for both roles and a list of gaps to fix.</sub></p>
-
-Admins sign in on the same page and land in `/Admin`, which annotators can't open. The overview shows progress, activity and drawing times, and it flags problems before they stall the study. Two examples are images that match nobody's choices and participants who have run out of work.
+Admins sign in on the same page and land in `/Admin`, a separate area that annotators can't open.
 
 <p align="center">
-  <img src="media/admin-image.png" width="100%" alt="Image page: specialist and student annotations drawn over a chest CT with a layer per term, the assignment and the image details">
+  <img src="media/admin-tour.gif" width="100%" alt="A 30-second tour of the admin panel: the overview with progress by category, one image with every annotation layered over it and its layers toggled, the Full data table for that image, and the Export page">
 </p>
-<p align="center"><sub>One image with every specialist and student annotation layered over it.</sub></p>
+<p align="center"><sub>A 30-second tour on the test deployment: the overview, one image with every annotation on it, its Full data row and the export.</sub></p>
+
+The overview shows live progress for both roles, activity and drawing times, and it flags problems before they stall the study. Two examples are images that match nobody's choices and participants who have run out of work. Each image has a page that draws every saved annotation over it, one layer per term or group, coloured by term or by annotator. Pointing at a shape highlights the answer it belongs to.
 
 | Page | What it's for |
 | --- | --- |
@@ -149,8 +146,10 @@ Admins sign in on the same page and land in `/Admin`, which annotators can't ope
 Create an admin with the operator command `create-admin`.
 
 <details>
-<summary><b>More admin pages</b></summary>
+<summary><b>Screenshots of the admin pages</b></summary>
 <br>
+<p align="center"><img src="media/admin-overview.png" width="100%" alt="Admin overview: progress for both roles, participants, locks to review, technical problems, an activity chart and things to check"></p>
+<p align="center"><img src="media/admin-image.png" width="100%" alt="Image page: specialist and student annotations drawn over a chest CT with a layer per term, the assignment and the image details"></p>
 <p align="center"><img src="media/admin-responses.png" width="100%" alt="Responses: specialist answers with term, response, comment, drawing times and save time"></p>
 <p align="center"><img src="media/admin-participants.png" width="100%" alt="Participants: each participant's role, choices, completed images, answers, images left and current lock"></p>
 <p align="center"><img src="media/admin-locks.png" width="100%" alt="Locks: counts of active, stale and partial locks, and the specialist locks with release buttons"></p>
