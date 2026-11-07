@@ -8,7 +8,7 @@ Built with **ASP.NET Core MVC, .NET 10, and PostgreSQL**, with custom canvas too
 
 [Full walkthrough](https://drive.google.com/file/d/1WtMTApfPg1Q_AMeK0-lMWVt-EKZZpWtu/view?usp=sharing)
 
-**The demos and screenshots show an earlier local development version.** Drawn regions and sample labels illustrate the interface, rather than validated medical annotations.
+**The screenshots come from the test deployment, signed in with test accounts; the demo videos show an earlier version.** Drawn regions and labels illustrate the interface, rather than validated medical annotations.
 
 ## Annotation workflows
 
@@ -16,13 +16,28 @@ Built with **ASP.NET Core MVC, .NET 10, and PostgreSQL**, with custom canvas too
 
 Specialists work through highlighted medical terms in the publication text and mark the corresponding image regions. They can add comments, flag a term as not visible or abstract, or skip it when uncertain. Saving advances to the next term and records annotation timing.
 
+<img width="1866" height="902" alt="Specialist workspace: a chest CT with one term saved, a contour drawn for the current term and a comment open" src="screenshots/specialist-workspace.png" />
+
+Saved terms turn green in the text, the current term is red, and the label check sits beside the image. **Report a technical problem** sends a note to the study team at once, even when the image or the tools fail to load.
+
 Before moving on, specialists confirm or correct the image's modality, speciality and body region (Yes, No, Can't tell). Next Image stays locked until all three are answered; the box turns yellow and the status line says so in bold red once every term is saved. The dataset's own labels are never overwritten: `MetadataChecks` records what was shown and what the specialist said, for comparison later.
+
+| Correcting a label | Every term answered |
+| --- | --- |
+| <img width="302" height="486" alt="Label check: No on speciality opens a search, which offers Infectious diseases" src="screenshots/label-check.png" /> | <img width="760" height="367" alt="A finished echocardiogram: all terms answered, one custom annotation listed, Next Image enabled" src="screenshots/image-complete.png" /> |
+
+**No** opens a search over the study's labels, and a value that isn't listed can be added. **Custom annotation** (the dashed tool) outlines any finding that isn't highlighted in the text; the specialist names it, it is saved at once, and it is listed beside the image.
 
 **Tutorial.** The first time a participant reaches their annotation page, the tutorial video opens by itself and has to be watched to the end, without skipping ahead. `AspNetUsers.TutorialWatchedAt` records that. If the video can't load, they can carry on and it opens again next time. The Tutorial button in the header replays it at any time.
 
-**Skip the case** sends a case outside the specialist's field back to the pool. It starts fresh for the next person, with nothing from the first specialist left in the results, and is never offered to that specialist again. Anything they had saved on it is copied into `ImageSkips.DiscardedWork` first, so no annotation is destroyed.
+<details>
+<summary>View the tutorial on first sign-in</summary>
 
-<img width="1865" height="902" alt="DEMOSS2" src="https://github.com/user-attachments/assets/0bb8cbea-b1e3-4299-8545-15a0b9eda3a2" />
+<img width="1866" height="902" alt="The tutorial video open over the student workspace" src="screenshots/tutorial.png" />
+
+</details>
+
+**Skip the case** sends a case outside the specialist's field back to the pool. It starts fresh for the next person, with nothing from the first specialist left in the results, and is never offered to that specialist again. Anything they had saved on it is copied into `ImageSkips.DiscardedWork` first, so no annotation is destroyed.
 
 **Specialist demo · 56 seconds.** Drawing regions, using the magnifier, adding comments, and moving between terms.
 
@@ -32,7 +47,7 @@ https://github.com/user-attachments/assets/94dad84d-b075-431b-9890-afe414f0dc13
 
 Students annotate what they can identify and assign free-text labels. Regions can be grouped under a shared label, edited, or deleted before submission. These annotations provide a separate source of data for supplementary evaluation.
 
-<img width="1866" height="902" alt="DEMOSS3" src="https://github.com/user-attachments/assets/24ac8b9f-e1f4-43b5-9394-5cb080c3b7c5" />
+<img width="1866" height="902" alt="Student workspace: two labelled groups listed and a third shape being named Trachea" src="screenshots/student-workspace.png" />
 
 **Student demo · 50 seconds.** Creating regions, assigning labels, and editing annotation groups.
 
@@ -40,11 +55,11 @@ https://github.com/user-attachments/assets/b1e7f00c-6cef-4361-a3d1-9c89e0a28a19
 
 ### Drawing tools
 
-Both workflows provide boundary box and freehand contour tools, with zoom to area for inspecting small details.
+Both workflows provide boundary box and freehand contour tools, with zoom to area for inspecting small details. A selected box can be moved, resized from its corners, rotated from the round handle and deleted with X.
 
 | Boundary box and freehand contour regions |
 | --- |
-| <img width="620" height="502" alt="DEMOSS4" src="https://github.com/user-attachments/assets/eb2d3831-7b87-492a-931c-1be9b61ce850" /> |
+| <img width="620" height="455" alt="A freehand contour and a selected boundary box on a chest CT, with the tool bar" src="screenshots/drawing-tools.png" /> |
 
 ### Participant access and image assignment
 
@@ -71,9 +86,9 @@ dotnet CliniMark.Presentation.dll create-participants participants.csv credentia
 <details>
 <summary>View participant registration</summary>
 
-<img width="1866" height="902" alt="DEMOSS1" src="https://github.com/user-attachments/assets/0bb96c7e-f2d6-4b18-ad69-87c65388a849" />
+<img width="620" height="778" alt="Participant registration" src="screenshots/registration.png" />
 
-The registration screen shows participant preferences and required-field validation. The [full walkthrough](https://drive.google.com/file/d/10KE4MSIjdLQpE0J9nxgl21jFsLJl3jjM/view?usp=sharing) provides the broader application demo.
+The registration screen asks for the participant's details and the images they want to annotate. The [full walkthrough](https://drive.google.com/file/d/10KE4MSIjdLQpE0J9nxgl21jFsLJl3jjM/view?usp=sharing) provides the broader application demo.
 
 </details>
 
@@ -81,17 +96,28 @@ The registration screen shows participant preferences and required-field validat
 
 PostgreSQL stores annotations alongside source-image and participant metadata. Professional records include region coordinates, term decisions, comments, and timing data; student records retain grouped regions and their labels.
 
-| Region coordinates | Annotation timing |
-| --- | --- |
-| <img width="757" height="216" alt="AnnotatedData1DB" src="https://github.com/user-attachments/assets/737b242b-0302-4df0-9f25-926f202920da" /> | <img width="111" height="215" alt="AnnotatedData2DB" src="https://github.com/user-attachments/assets/369f6c14-270e-41ba-9f27-ed3f43a8f3a3" /> |
-
 Saved keyword states preserve progress when a specialist has not finished every term on an image. Separate ownership fields—`LockedByUserId` for professionals and `LockedByStudentUserId` for students—hold one person per image in each workflow: every assignment takes a database-wide lock, so two specialists working in parallel can never receive the same image, and one specialist's set is the only one an image gets. The specialist and student workflows are independent, so an image can have one set from each. Completion is tracked through `IsAnnotated` and `IsAnnotatedByStudent`.
 
 **Pixel masks.** Every drawn annotation is stored twice: as coordinates, and as a binary mask of the whole image (1 inside the shape, 0 outside) for evaluating segmentation models with Dice and IoU. The server computes the mask from the coordinates when the annotation is saved (`AnnotationMask`), so it doesn't depend on the annotator's browser: a pixel is inside when its centre is, the shapes of one term are merged, and a contour that crosses itself is filled throughout. Masks are kept as COCO run-length encoding in `PixelMask`. The admin Export page downloads them as PNG files the size of each image, with an index table and a README. For annotations saved before masks existed, run the operator command `backfill-masks`.
 
+<img width="1370" height="1148" alt="A chest CT, the specialist's and the student's ground-glass masks, and their overlap with Dice 0.68 and IoU 0.52" src="screenshots/pixel-masks.png" />
+
+The masks above come straight from the Export download: a specialist's answer and a student's group on the same image, compared with the Dice and IoU code in the archive's README.
+
 **Full data.** The admin panel's Full data page shows one row per image-text pair anyone has saved anything about: every dataset value, each label's original value, verdict and submitted value, every answer with its coordinates, mask and timing, custom annotations, student groups, problem reports and skips. It downloads as CSV or JSON and is included in the results archive as `full_data`.
 
-<img width="1095" height="132" alt="MedDataDB" src="https://github.com/user-attachments/assets/df6f775c-26a4-4d47-b5eb-c78cd420e7b8" />
+<img width="1866" height="902" alt="Full data for one image: the specialist's four term answers with mask sizes and timing, and the student's three groups" src="screenshots/admin-full-data.png" />
+
+<details>
+<summary>Raw table rows</summary>
+
+| Region coordinates | Annotation timing |
+| --- | --- |
+| <img width="757" height="216" alt="AnnotatedMedDatas rows with region coordinates" src="https://github.com/user-attachments/assets/737b242b-0302-4df0-9f25-926f202920da" /> | <img width="111" height="215" alt="AnnotatedMedDatas timing column" src="https://github.com/user-attachments/assets/369f6c14-270e-41ba-9f27-ed3f43a8f3a3" /> |
+
+<img width="1095" height="132" alt="MedDatas rows with lock and progress columns" src="https://github.com/user-attachments/assets/df6f775c-26a4-4d47-b5eb-c78cd420e7b8" />
+
+</details>
 
 <details>
 <summary>Main database tables</summary>
@@ -106,6 +132,42 @@ Saved keyword states preserve progress when a specialist has not finished every 
 | `MetadataChecks` | Specialists' verdicts on each image's modality, speciality and body region |
 | `ImageSkips` | Images a specialist sent back, and a copy of anything they had saved on them |
 | ASP.NET Core Identity tables | User accounts and roles |
+
+</details>
+
+## Admin panel
+
+Admin accounts sign in at the same page and land on `/Admin`, a separate area that annotators can't open. Admins can't annotate. Create one with the operator command `create-admin`.
+
+<img width="1866" height="902" alt="Admin overview: progress for both roles, participants, locks to review, technical problems, an activity chart and things to check" src="screenshots/admin-overview.png" />
+
+The overview shows live progress for both roles, an activity chart, and gaps that would leave images or people without work. It also shows progress by category, drawing times, sign-ups, and how specialists answered the label check.
+
+<img width="1866" height="902" alt="Image page: specialist and student annotations drawn over a chest CT with a layer per term, the assignment and the image details" src="screenshots/admin-image.png" />
+
+Each image's page draws every saved annotation over the image, one layer per term or group, coloured by term or by annotator. It shows who holds the image and can release the lock or remove the image from the study.
+
+| Page | What it shows |
+| --- | --- |
+| Images | Every image with its labels, progress and lock, filterable |
+| Locks | Images reserved for one person, stale and partial work first; release one or many |
+| Participants | Everyone who signed up, their selections, progress and current lock |
+| Responses | Every saved answer or student group, filterable, downloadable as exactly those rows |
+| Full data | One row per image-text pair with everything saved about it |
+| Problems | Technical problems reported by participants and errors their pages logged |
+| Export | The full results archive, with or without image files, and the pixel masks |
+| Admin log | Every change made from the panel and every automatic release |
+
+<details>
+<summary>View more admin pages</summary>
+
+<img width="1866" height="902" alt="Responses: specialist answers with term, response, comment, drawing times and save time" src="screenshots/admin-responses.png" />
+
+<img width="1866" height="902" alt="Participants: each participant's role, selections, completed images, answers, images left and current lock" src="screenshots/admin-participants.png" />
+
+<img width="1866" height="902" alt="Locks: counts of active, stale and partial locks, and the specialist locks with release buttons" src="screenshots/admin-locks.png" />
+
+<img width="1866" height="902" alt="Export: options for the results archive, annotator identity, current counts and pixel-mask download" src="screenshots/admin-export.png" />
 
 </details>
 
