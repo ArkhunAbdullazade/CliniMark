@@ -18,6 +18,8 @@ Specialists work through highlighted medical terms in the publication text and m
 
 Before moving on, specialists confirm or correct the image's modality, speciality and body region (Yes, No, Can't tell). Next Image stays locked until all three are answered; the box turns yellow and the status line says so in bold red once every term is saved. The dataset's own labels are never overwritten: `MetadataChecks` records what was shown and what the specialist said, for comparison later.
 
+**Tutorial.** The first time a participant reaches their annotation page, the tutorial video opens by itself and has to be watched to the end, without skipping ahead. `AspNetUsers.TutorialWatchedAt` records that. If the video can't load, they can carry on and it opens again next time. The Tutorial button in the header replays it at any time.
+
 **Skip the case** sends a case outside the specialist's field back to the pool. It starts fresh for the next person, with nothing from the first specialist left in the results, and is never offered to that specialist again. Anything they had saved on it is copied into `ImageSkips.DiscardedWork` first, so no annotation is destroyed.
 
 <img width="1865" height="902" alt="DEMOSS2" src="https://github.com/user-attachments/assets/0bb8cbea-b1e3-4299-8545-15a0b9eda3a2" />

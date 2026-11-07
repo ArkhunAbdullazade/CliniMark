@@ -4,6 +4,14 @@ What changed in CliniMark and why, newest first. Git holds every line of every c
 
 Database changes are in `src/CliniMark.Presentation/Migrations`, and each release that changes the database has a script in `deployment/`.
 
+## 2026-11-07: tutorial video
+
+- A new tutorial of just under 3 minutes, with a British male voice, covers every step of the app. The file is `src/CliniMark.Presentation/wwwroot/videos/clinimark-tutorial.mp4`.
+- It opens by itself the first time a participant reaches their annotation page, and they watch it to the end before starting. If it can't load, they can carry on and it opens again next time.
+- A new Tutorial button, between Progress and Log Out, replays it at any time.
+
+Database script: `deployment/release-2026-11-07-migrations.sql` (adds one column; nothing is removed).
+
 ## 2026-11-07: the project is now called CliniMark
 
 The earlier name was already a trademark, so the project took a new name and logo. It changed everywhere in the app, its pages and exports, the code and the public addresses. Nothing about how the app works changed.

@@ -141,8 +141,11 @@ else
 }
 @section HeaderActions {
     <span class="header-progress">Progress: <span id="counter-value">@counter</span></span>
+    <button id="tutorial-button" type="button" class="header-logout"><i class="bi bi-play-circle" aria-hidden="true"></i> Tutorial</button>
     <button id="end-button" type="button" class="header-logout"><i class="bi bi-box-arrow-right" aria-hidden="true"></i> Log Out</button>
 }
+
+<partial name="_Tutorial" />
 
 <script nonce="@Context.Items[SecurityHeaders.NonceKey]">
     window.annotatedMedData = @Html.Raw(Json.Serialize(AnnotationImage.From(Model)));
@@ -159,3 +162,4 @@ else
 <script src="~/js/customAnnotations.js" asp-append-version="true" defer></script>
 <script src="~/js/metadataCheck.js" asp-append-version="true" defer></script>
 <script src="~/js/professionalPage.js" asp-append-version="true" defer></script>
+<script src="~/js/tutorial.js" asp-append-version="true" defer></script>

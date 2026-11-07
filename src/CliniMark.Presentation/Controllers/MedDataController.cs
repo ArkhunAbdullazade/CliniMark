@@ -161,6 +161,20 @@ public class MedDataController : Controller
         }
     }
 
+    // The tutorial was watched to the end, so it no longer opens by itself. Only the first time is recorded.
+    [HttpPost]
+    [Authorize(Roles = "Professional,Medical_Student")]
+    public async Task<IActionResult> TutorialWatched()
+    {
+        var user = await userManager.GetUserAsync(User);
+        if (user == null) return Unauthorized(new { success = false, message = "Your session has ended. Sign in again." });
+        if (user.TutorialWatchedAt != null) return Json(new { success = true });
+        user.TutorialWatchedAt = DateTime.UtcNow;
+        return (await userManager.UpdateAsync(user)).Succeeded
+            ? Json(new { success = true })
+            : StatusCode(503, new { success = false, message = "This could not be saved, so the tutorial may open again next time." });
+    }
+
     [HttpGet]
     [Authorize(Roles = "Professional,Medical_Student")]
     public async Task<IActionResult> AssignmentStatus([FromQuery] int medDataId)

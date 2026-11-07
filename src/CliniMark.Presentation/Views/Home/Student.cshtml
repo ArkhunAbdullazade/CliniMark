@@ -113,8 +113,11 @@ else
 
 @section HeaderActions {
     <span class="header-progress">Progress: @counter</span>
+    <button id="tutorial-button" type="button" class="header-logout"><i class="bi bi-play-circle" aria-hidden="true"></i> Tutorial</button>
     <button type="button" id="end-button" class="header-logout"><i class="bi bi-box-arrow-right" aria-hidden="true"></i> Log Out</button>
 }
+
+<partial name="_Tutorial" />
 
 <script nonce="@Context.Items[SecurityHeaders.NonceKey]">
     // Flag to identify student page for canvas.js processing
@@ -134,3 +137,4 @@ else
 <script src="~/js/assignmentWatch.js" asp-append-version="true"></script>
 <script src="~/js/studentPage.js" asp-append-version="true"></script>
 <script src="~/js/notePanels.js" asp-append-version="true" defer></script>
+<script src="~/js/tutorial.js" asp-append-version="true" defer></script>

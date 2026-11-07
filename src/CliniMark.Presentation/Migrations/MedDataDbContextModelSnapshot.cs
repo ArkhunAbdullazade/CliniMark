@@ -563,6 +563,9 @@ namespace CliniMark.Presentation.Migrations
                     b.Property<string>("Speciality")
                         .HasColumnType("text");
 
+                    b.Property<DateTime?>("TutorialWatchedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<bool>("TwoFactorEnabled")
                         .HasColumnType("boolean");
 

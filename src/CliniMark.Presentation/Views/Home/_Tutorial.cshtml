@@ -1,0 +1,19 @@
+@*
+    The tutorial video (tutorial.js). It opens by itself until the participant has watched it to the end, and the Tutorial
+    button in the header replays it at any time.
+*@
+<dialog id="tutorial-dialog" class="annotation-dialog tutorial-dialog" aria-labelledby="tutorial-title"
+        data-required="@(ViewBag.TutorialRequired as bool? == true ? "true" : "false")">
+    <div class="annotation-dialog-header">
+        <div>
+            <h2 class="annotation-dialog-title" id="tutorial-title">How to use CliniMark</h2>
+            <p class="annotation-dialog-note" data-tutorial-note></p>
+        </div>
+        <button type="button" class="btn-close" aria-label="Close" data-tutorial-close></button>
+    </div>
+    <video class="tutorial-video" controls playsinline preload="none" disablepictureinpicture controlslist="nodownload noplaybackrate"
+           poster="~/videos/clinimark-tutorial-poster.jpg" src="~/videos/clinimark-tutorial.mp4"></video>
+    <div class="tutorial-actions">
+        <button type="button" class="button btn" data-tutorial-done hidden>Start annotating</button>
+    </div>
+</dialog>

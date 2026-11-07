@@ -308,3 +308,22 @@ Delivered in the release described at the top of the [changelog](../CHANGELOG.md
 > make these changes, push to master branch, and we are ready to fully deploy the app. Deploy it, and again share all the credentials for me and Arhun. I will contact clinicians and share the link you provided, so that they can begin the annotation process. Obviously zero out / refresh tests I have done so far, we should start clean. 
 >
 > One last thing: we need two videos, one a short GIF-like one which we will share within emails, to make it look cool about our app. The second must be a full tutorial video, based on the best standards, which goes step by step over all the parts of the app, zooms in and out when needed, shows all functionality, and if possible of course, with naration with a nice voice in british english (if that's not possible, we can go without any voice, with only a demo video itself).
+
+## 2026-11-07: tutorial video in the app
+
+Delivered in the tutorial video and the first-visit tutorial.
+
+**2026-11-07 UTC**
+
+> Remarks: I like the longer 6-min video you prepared, can we change the following in it:
+>  1. voice from female to male british access, with natural human voice (not robotic AI voice),
+> 2. no captions needed, only audio voice
+>  3. make the video a bit faster, so that it lasts 2-3 mins. Currently it is too slow and lengthy, too long pauses.
+> 4. obviously, now that we have a new name for the app and project, replace it accordingly.
+> Everything else in the video is really good, all functionality is illustrated clearly and pretty much I don't want anything to be changed, the entire workflow is exactly what I need. Only changes mentioned above are needed.
+>
+> Once you're finished, store the video both locally inside the app folder (you can push it to masters too as tutorial video), but also on my Azure cloud.
+>
+> Once the video is ready, add the following in the app itself:
+> - the first time any clinician opens a web app after signing up, this tutorial video should appear. Upon starting a video, a user must watch it and then he/she is ready to do annotations.
+> - between Progress N/M and Log Out buttons, we must place a new button called Tutorial, upon clicking on which this tutorial video starts, so that users can rewatch it if needed.

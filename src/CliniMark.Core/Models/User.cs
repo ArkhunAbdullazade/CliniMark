@@ -12,4 +12,6 @@ public class User : IdentityUser
     public int ClinicalExperience { get; set; }
     public string? OrcidId { get; set; }
     public DateTime? CreatedAt { get; set; }
+    // When they first watched the tutorial to the end. Empty means it opens by itself on their next annotation page.
+    public DateTime? TutorialWatchedAt { get; set; }
 }
