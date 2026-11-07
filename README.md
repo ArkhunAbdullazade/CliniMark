@@ -297,35 +297,6 @@ node --test tests/js/*.test.cjs        # PowerShell: node --test (Get-ChildItem 
 
 The PostgreSQL concurrency test fires twenty overlapping claims at four images and checks that none goes to two people. It runs only when `CLINIMARK_TEST_POSTGRES_CONNECTION` points to a disposable `clinimark_audit_*` database.
 
-## Earlier versions
-
-<details>
-<summary><b>Demo videos and walkthroughs from before the redesign</b></summary>
-<br>
-
-These show the app before it was renamed and redesigned. Some tools look different, and the magnifier has since been replaced by Zoom to Area.
-
-**Specialist demo, 56 seconds.** Drawing regions, using the magnifier, adding comments and moving between terms.
-
-https://github.com/user-attachments/assets/94dad84d-b075-431b-9890-afe414f0dc13
-
-**Student demo, 50 seconds.** Creating regions, assigning labels and editing annotation groups.
-
-https://github.com/user-attachments/assets/b1e7f00c-6cef-4361-a3d1-9c89e0a28a19
-
-Longer walkthroughs: [the full application](https://drive.google.com/file/d/1WtMTApfPg1Q_AMeK0-lMWVt-EKZZpWtu/view?usp=sharing) and [registration](https://drive.google.com/file/d/10KE4MSIjdLQpE0J9nxgl21jFsLJl3jjM/view?usp=sharing).
-
-Raw rows from the development database at the time: region coordinates and timing in `AnnotatedMedDatas`, and progress and lock columns in `MedDatas`.
-
-<p align="center">
-  <img width="757" alt="AnnotatedMedDatas rows with region coordinates" src="https://github.com/user-attachments/assets/737b242b-0302-4df0-9f25-926f202920da">
-  <img width="111" alt="AnnotatedMedDatas timing column" src="https://github.com/user-attachments/assets/369f6c14-270e-41ba-9f27-ed3f43a8f3a3">
-</p>
-<p align="center">
-  <img width="100%" alt="MedDatas rows with lock and progress columns" src="https://github.com/user-attachments/assets/df6f775c-26a4-4d47-b5eb-c78cd420e7b8">
-</p>
-</details>
-
 ## Licence
 
 CliniMark is released under the [Apache License 2.0](LICENSE).
