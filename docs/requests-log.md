@@ -334,3 +334,11 @@ Delivered in the tutorial video and the first-visit tutorial.
 > 2. tried, everything works fine, all good
 > 3. go live
 > 4. once you're done with 1, make a shorter 30 second video like assembled cuts from this original video, including main points with annotation tools. This will be like a GIF which will be added to the emails sent to all annotators, integrated such that when email is openned, GIF starts playing right away.
+
+## 2026-11-09: email notifications
+
+**2026-11-09 UTC**
+
+> can we add the following notification features to our CliniMark: I wanna receive email notifications on [email address removed] when 1. anyone registers (with full details), 2. any time 100- 1000- 2500 - 5000- 7500 - 10000 annotate images target is reached, 3. weekly progress report on how many and what was annotated already, including which clinicians and how often they entered the system and annotated images, 4. immideately whenever any technical problems or comments were registered
+
+Decisions: emails are sent through Azure Communication Services; the targets count images finished by specialists.

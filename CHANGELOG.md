@@ -4,6 +4,17 @@ What changed in CliniMark and why, newest first. Git holds every line of every c
 
 Database changes are in `src/CliniMark.Presentation/Migrations`, and each release that changes the database has a script in `deployment/`.
 
+## 2026-11-09: email notifications
+
+- The study team gets an email for every new registration, with everything the person entered at sign-up.
+- Every technical problem and every comment is emailed within about a minute: problems reported by participants, errors their pages logged automatically, and comments or technical notes saved with a term.
+- An email when specialists have finished 100, 1,000, 2,500, 5,000, 7,500 and 10,000 images. Skipped cases and student work don't count toward these targets.
+- A weekly report every Monday at 08:00 Berlin time. It covers overall progress, each clinician's sign-ins, active days, answers and finished images, progress by image modality, and the images finished that week.
+- Sign-ins are now recorded (account id and time only), so the weekly report can say how often each clinician came in. They are counted from the day notifications are switched on.
+- Emails go out through Azure Communication Services. Nothing is announced twice, and anything waiting is merged into the next email when the hourly sending limit is reached. A failed email is tried again until it goes through.
+
+Database script: `deployment/release-2026-11-09-migrations.sql` (adds two tables; nothing is removed).
+
 ## 2026-11-07: tutorial video
 
 - A new 3-minute tutorial, with a calm British male voice, covers the annotation workflow from the workspace onwards. It leaves out signing up and the student page. The file is `src/CliniMark.Presentation/wwwroot/videos/clinimark-tutorial.mp4`.

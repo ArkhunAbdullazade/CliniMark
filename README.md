@@ -145,6 +145,8 @@ The overview shows live progress for both roles, activity and drawing times, and
 
 Create an admin with the operator command `create-admin`.
 
+**Email notifications.** When they're switched on, the study team gets an email for every new registration (with all the details given at sign-up), for every technical problem or comment within about a minute, when specialists have finished 100, 1,000, 2,500, 5,000, 7,500 and 10,000 images, and every Monday at 08:00 Berlin time a weekly report: progress, every clinician's sign-ins, active days, answers and finished images, and the images finished that week. A background job finds what's new every minute. It only reads the study tables, so a slow or failing email service can't affect annotating. Each item is announced once, and when several wait at the same time they go out in one email, which keeps within the sender's hourly limit.
+
 <details>
 <summary><b>Screenshots of the admin pages</b></summary>
 <br>
@@ -252,6 +254,9 @@ Keep private values in `.env`, environment variables or .NET user secrets.
 | `Database:ApplyMigrations` | On in development only; off in production Compose |
 | `Database:SeedExcel` | Loads the sample Excel data; off by default |
 | `Registration:Enabled` | Public sign-up, on by default. Turn it off when the study team creates accounts with `create-participants` |
+| `Notifications:Enabled`, `Notifications:Recipients` | Email notifications to the study team, off by default. Recipients are separated by commas |
+| `Notifications:SiteUrl`, `Notifications:SubjectPrefix` | The site's address for links in the emails, and a subject prefix such as `[Test site] ` |
+| `Email:AcsConnectionString`, `Email:Sender` | The Azure Communication Services account that sends them, and its sender address |
 
 Environment variables use double underscores for nested settings, such as `ConnectionStrings__MedDataDb`. Sign-up and sign-in don't need SMTP. The ignored `appsettings.Local.json` is left out of the image.
 </details>

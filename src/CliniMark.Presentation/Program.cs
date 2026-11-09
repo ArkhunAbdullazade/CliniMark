@@ -1,5 +1,6 @@
 using System.Reflection;
 using System.Net;
+using System.Security.Claims;
 using System.Security.Cryptography;
 using CliniMark.Core.Models;
 using CliniMark.Core.Repositories;
@@ -8,6 +9,7 @@ using CliniMark.Infrastructure.Data;
 using CliniMark.Infrastructure.Repositories;
 using CliniMark.Infrastructure.Services;
 using CliniMark.Infrastructure.Services.Admin;
+using CliniMark.Infrastructure.Services.Notifications;
 using CliniMark.Infrastructure.Settings;
 using CliniMark.Presentation.Models;
 using Microsoft.AspNetCore.DataProtection;
@@ -165,6 +167,9 @@ builder.Services.ConfigureApplicationCookie(options =>
         context.Response.Redirect(context.RedirectUri);
         return Task.CompletedTask;
     };
+    // Counted for the weekly report; recording never stops the sign-in.
+    options.Events.OnSignedIn = context => context.HttpContext.RequestServices.GetRequiredService<SignInLog>()
+        .RecordAsync(context.Principal?.FindFirstValue(ClaimTypes.NameIdentifier), DateTime.UtcNow);
     options.Events.OnRedirectToAccessDenied = context =>
     {
         if (context.Request.Path.StartsWithSegments("/MedData"))
@@ -192,9 +197,17 @@ builder.Services.AddScoped<AssignmentAdminService>();
 builder.Services.AddScoped<ProblemAdminService>();
 builder.Services.AddScoped<ParticipantAdminService>();
 builder.Services.AddScoped<ResultsExportService>();
+builder.Services.Configure<NotificationOptions>(builder.Configuration.GetSection(NotificationOptions.Section));
+builder.Services.Configure<AzureEmailSettings>(builder.Configuration.GetSection(AzureEmailSettings.Section));
+builder.Services.AddSingleton<INotificationMailer, AcsNotificationMailer>();
+builder.Services.AddScoped<NotificationScanner>();
+builder.Services.AddScoped<NotificationSender>();
+builder.Services.AddScoped<SignInLog>();
 // No overall timeout: the service limits each attempt itself.
 builder.Services.AddHttpClient<ImageArchiveService>(client => client.Timeout = Timeout.InfiniteTimeSpan);
 if (!isOperatorCommand) builder.Services.AddHostedService<LockSweeper>();
+// Emails the study team about registrations, problems, comments, targets and the weekly report (off unless configured).
+if (!isOperatorCommand) builder.Services.AddHostedService<NotificationWorker>();
 // Only CSS and JavaScript: HTML holds antiforgery tokens, which must never be compressed over HTTPS (BREACH).
 builder.Services.AddResponseCompression(options =>
 {
