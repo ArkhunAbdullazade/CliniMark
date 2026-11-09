@@ -9,7 +9,7 @@
 --   3. Start a new Azure Container Apps revision on the new image and check the site.
 -- Generated with: dotnet ef migrations script 20261107003418_AddTutorialWatchedAt --idempotent
 
-﻿START TRANSACTION;
+START TRANSACTION;
 
 DO $EF$
 BEGIN
