@@ -7,6 +7,7 @@ using CliniMark.Core.Models;
 using CliniMark.Core.Services;
 using CliniMark.Infrastructure.Data;
 using CliniMark.Infrastructure.Repositories;
+using CliniMark.Infrastructure.Services;
 using CliniMark.Infrastructure.Services.Admin;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Data.Sqlite;
@@ -594,6 +595,109 @@ public sealed class AdminServicesTests
     public void TimingsParseTheBrowserFormat(string? value, long? first, long? drawing) =>
         Assert.Equal((first, drawing), ResponseTimings.Parse(value));
 
+    [Fact]
+    public async Task TimeCountsOnlyOnTheAssignedImageAndRepeatedReportsCountOnce()
+    {
+        await using var db = await AdminDatabase.CreateAsync();
+        await db.AssignAsync(db.First);
+        var view = Guid.NewGuid();
+        var start = DateTime.UtcNow;
+        async Task<int?> Seconds(Guid id) => (await db.Context.ImageTimes.AsNoTracking().SingleOrDefaultAsync(item => item.ViewId == id))?.Seconds;
+
+        Assert.True(await db.Times.RecordAsync(db.First.Id, false, 1, view, 20, start));
+        Assert.True(await db.Times.RecordAsync(db.First.Id, false, 1, view, 20, start.AddSeconds(1)));
+        Assert.Equal(20, await Seconds(view));
+        Assert.True(await db.Times.RecordAsync(db.First.Id, false, 1, view, 50, start.AddSeconds(30)));
+        // A late report of an older total never lowers it.
+        Assert.True(await db.Times.RecordAsync(db.First.Id, false, 1, view, 40, start.AddSeconds(31)));
+        Assert.Equal(50, await Seconds(view));
+        // A total can't run faster than the clock: 20 s before the first report, 60 s since, and a minute of slack.
+        Assert.True(await db.Times.RecordAsync(db.First.Id, false, 1, view, 5000, start.AddSeconds(60)));
+        Assert.Equal(140, await Seconds(view));
+
+        // Nobody else can count time on it, or add to this page's row.
+        var other = Guid.NewGuid();
+        Assert.False(await db.Times.RecordAsync(db.Second.Id, false, 1, other, 30, start.AddSeconds(61)));
+        Assert.False(await db.Times.RecordAsync(db.Second.Id, false, 1, view, 300, start.AddSeconds(62)));
+        Assert.False(await db.Times.RecordAsync(db.First.Id, false, 2, view, 300, start.AddSeconds(62)));
+        Assert.Null(await Seconds(other));
+        Assert.Equal(140, await Seconds(view));
+
+        // Once the image is released, the page's last report still counts for a while, but nothing new starts.
+        Assert.True((await db.Assignments.ReleaseAsync(1, false, db.First.Id, db.Admin.Id)).Released);
+        Assert.True(await db.Times.RecordAsync(db.First.Id, false, 1, view, 150, start.AddMinutes(5)));
+        Assert.Equal(150, await Seconds(view));
+        Assert.False(await db.Times.RecordAsync(db.First.Id, false, 1, Guid.NewGuid(), 10, start.AddMinutes(5)));
+        Assert.False(await db.Times.RecordAsync(db.First.Id, false, 1, view, 200, start.AddMinutes(30)));
+        Assert.Equal(150, await Seconds(view));
+
+        // Students count time on the image they hold as students.
+        await db.AssignAsync(db.Student, student: true);
+        var studentImage = (await db.Context.MedDatas.AsNoTracking().SingleAsync(item => item.LockedByStudentUserId == db.Student.Id)).Id;
+        Assert.False(await db.Times.RecordAsync(db.Student.Id, false, studentImage, Guid.NewGuid(), 10, start));
+        Assert.True(await db.Times.RecordAsync(db.Student.Id, true, studentImage, Guid.NewGuid(), 10, start));
+    }
+
+    [Fact]
+    public async Task ParticipantTimeIsTheSumOfMeasuredAndEstimatedTimeOnEachImage()
+    {
+        await using var db = await AdminDatabase.CreateAsync();
+        var now = DateTime.UtcNow;
+        await db.AssignAsync(db.First);
+        // Image 1: two answers. The first was saved before the page began measuring, so its timing is the estimate
+        // (30 s to the first draw plus 90 s of drawing); the second is already inside the measured time.
+        var early = Answer("lesion");
+        early.Timestamps = "(30000,90000)";
+        var later = Answer("margin");
+        later.Timestamps = "(40000,50000)";
+        Assert.True((await db.Repository.SaveProfessionalAsync(db.First, early)).Success);
+        Assert.True((await db.Repository.SaveProfessionalAsync(db.First, later)).Success);
+        await db.Context.AnnotatedMedDatas.Where(item => item.ExtractedKeyword == "lesion")
+            .ExecuteUpdateAsync(set => set.SetProperty(item => item.CreatedAt, now.AddHours(-2)));
+        await db.Context.AnnotatedMedDatas.Where(item => item.ExtractedKeyword == "margin")
+            .ExecuteUpdateAsync(set => set.SetProperty(item => item.CreatedAt, now.AddHours(-1)));
+        Assert.True(await db.Times.RecordAsync(db.First.Id, false, 1, Guid.NewGuid(), 300, now.AddMinutes(-90)));
+        Assert.True(await db.Times.RecordAsync(db.First.Id, false, 1, Guid.NewGuid(), 200, now.AddMinutes(-10)));
+        // Image 2: finished before timing began; one term's estimate is capped at 10 minutes.
+        db.Context.AnnotatedMedDatas.Add(new AnnotatedMedData
+        {
+            MedDataId = 2, Email = db.First.Email, ExtractedKeyword = "lesion", PressedButton = "Save and Next Term",
+            BoxCoordinates = Coordinates, Timestamps = "(700000,0)", CreatedAt = now.AddDays(-1)
+        });
+        // Image 3: opened, timed and then skipped. A term answered without drawing has no timing to estimate.
+        db.Context.ImageTimes.Add(new ImageTime
+        {
+            ViewId = Guid.NewGuid(), UserId = db.First.Id, MedDataId = 3, Seconds = 45, StartedAt = now.AddHours(-3), LastAt = now.AddHours(-3)
+        });
+        db.Context.ImageSkips.Add(new ImageSkip { MedDataId = 3, UserId = db.First.Id, CreatedAt = now.AddHours(-3) });
+        db.Context.AnnotatedMedDatas.Add(new AnnotatedMedData
+        {
+            MedDataId = 3, Email = db.Second.Email, ExtractedKeyword = "lesion", PressedButton = "Not Visible/Abstract",
+            Timestamps = "(0,0)", CreatedAt = now.AddHours(-4)
+        });
+        await db.Context.SaveChangesAsync();
+
+        var time = await db.Queries.GetParticipantTimeAsync(db.First.Id);
+
+        Assert.NotNull(time);
+        var rows = time.Images.ToDictionary(row => row.ImageId);
+        Assert.Equal(new TimeSpent(500, 120), rows[1].Time);
+        Assert.Equal(2, rows[1].Openings);
+        Assert.Equal(ImageTimeState.InProgress, rows[1].State);
+        Assert.Equal(new TimeSpent(0, 600), rows[2].Time);
+        Assert.Equal(0, rows[2].Openings);
+        Assert.Equal(ImageTimeState.Complete, rows[2].State);
+        Assert.Equal(new TimeSpent(45, 0), rows[3].Time);
+        Assert.Equal(ImageTimeState.Skipped, rows[3].State);
+        Assert.Equal(new TimeSpent(545, 720), time.Total);
+        // The participants list shows the same total, and nothing for people without time.
+        var participants = (await db.Queries.GetParticipantsAsync()).ToDictionary(row => row.Person.Id);
+        Assert.Equal(time.Total, participants[db.First.Id].Time);
+        Assert.Equal(TimeSpent.None, participants[db.Second.Id].Time);
+        Assert.Equal(TimeSpent.None, participants[db.Student.Id].Time);
+        Assert.Equal(new[] { 1, 3, 2 }, time.Images.Select(row => row.ImageId));
+    }
+
     private static AnnotatedMedData Answer(string keyword, string? comment = null, int imageId = 1) => new()
     {
         MedDataId = imageId, ExtractedKeyword = keyword, PressedButton = "Save and Next Term", BoxCoordinates = Coordinates,
@@ -845,6 +949,7 @@ public sealed class AdminServicesTests
         public AdminQueryService Queries { get; }
         public AssignmentAdminService Assignments { get; }
         public ResultsExportService Export { get; }
+        public ImageTimeLog Times { get; }
         public User First { get; } = Person("first", "specialist", "cardiology");
         public User Second { get; } = Person("second", "specialist", "cardiology");
         public User Student { get; } = Person("student", "medical student", "cardiology");
@@ -858,6 +963,7 @@ public sealed class AdminServicesTests
             Queries = new AdminQueryService(Context, new MemoryCache(new MemoryCacheOptions()), Options.Create(new AdminOptions()));
             Assignments = new AssignmentAdminService(Context);
             Export = new ResultsExportService(Context);
+            Times = new ImageTimeLog(Context);
         }
 
         public static async Task<AdminDatabase> CreateAsync()

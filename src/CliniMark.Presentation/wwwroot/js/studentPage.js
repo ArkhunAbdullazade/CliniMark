@@ -30,6 +30,8 @@ document.addEventListener("DOMContentLoaded", () => {
   for (const id of ["end-button","end-button-center"]) document.getElementById(id)?.addEventListener("click", async () => {
     if (saving || (hasUnsavedWork() && !confirm("Discard all unsubmitted annotations and log out?"))) return;
     try {
+      // The time on the open image is sent while the session still exists (imageTimer.js).
+      await window.imageTimer?.flush();
       const response = await fetch("/Identity/Logout",{method:"POST",headers,body:JSON.stringify({isAnnotationStarted:false,medDataId:window.annotatedMedData?.id})});
       if (!response.ok) throw new Error("Logout failed. Your work is still on this page. Please try again.");
       dirty=false;navigating=true; location.href="/Identity/Login";
@@ -80,10 +82,13 @@ document.addEventListener("DOMContentLoaded", () => {
     updateList();
   });
   if(manager.baseManager.ready)showStatus("Image ready. Draw a shape, label it and save the group.");
+  // Active time on this image, for the study team (imageTimer.js).
+  const timer=window.trackImageTime?.({imageId,token:headers["X-CSRF-TOKEN"]});
   const watch=window.watchAssignment?.({imageId,busy:()=>saving || navigating,
     message:"It is no longer assigned to you, so the groups on this page can't be submitted.",
     onReleased:()=>{
       released=true;dirty=false;
+      timer?.stop();
       manager.baseManager.stopInteraction();manager.hideTextBox();updateList();
       showStatus("This image was released, so these groups can't be submitted. Reload to continue.","error");
     }});
@@ -100,6 +105,7 @@ document.addEventListener("DOMContentLoaded", () => {
     try {
       // Repeats the request while the app restarts (requestRetry.js); plain fetch where that script is absent.
       const send=window.CliniMarkRetry?.fetchWithRetry || ((u,o)=>fetch(u,o));
+      await timer?.flush();
       const response=await send("/MedData/SubmitStudentAnnotations",{method:"POST",headers,body:JSON.stringify(payload)},
         {onRetry:()=>showStatus("The connection to the server was lost. Retrying automatically; keep this page open.","saving")});
       let result;try{result=await response.json();}catch{throw new Error("Your session may have expired. Sign in in another tab and retry; keep this page open.");}

@@ -132,11 +132,13 @@ Admins sign in on the same page and land in `/Admin`, a separate area that annot
 
 The overview shows live progress for both roles, activity and drawing times, and it flags problems before they stall the study. Two examples are images that match nobody's choices and participants who have run out of work. Each image has a page that draws every saved annotation over it, one layer per term or group, coloured by term or by annotator. Pointing at a shape highlights the answer it belongs to.
 
+Time spent is measured on the annotation page. It counts while the page is the visible browser tab and the participant has used the mouse, keyboard or touch screen in the last 3 minutes, and pauses while the tutorial plays. The page reports its running total every half minute and before moving on. Work saved before measuring began has an estimate, marked ≈, built from the per-term timings saved with each answer.
+
 | Page | What it's for |
 | --- | --- |
 | Images | Every image with its labels, progress and lock |
 | Locks | Images reserved for one person, stale and partial work first, released one at a time or together |
-| Participants | Each person's choices, progress and current lock |
+| Participants | Each person's choices, progress, current lock and time spent, with the time on each image one click away |
 | Responses | Every saved answer or student group, filtered and downloaded as exactly those rows |
 | Full data | One row per image-text pair, with everything anyone saved about it |
 | Problems | Problems participants reported, and errors their pages logged on their own |

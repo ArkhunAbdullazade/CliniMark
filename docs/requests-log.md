@@ -342,3 +342,11 @@ Delivered in the tutorial video and the first-visit tutorial.
 > can we add the following notification features to our CliniMark: I wanna receive email notifications on [email address removed] when 1. anyone registers (with full details), 2. any time 100- 1000- 2500 - 5000- 7500 - 10000 annotate images target is reached, 3. weekly progress report on how many and what was annotated already, including which clinicians and how often they entered the system and annotated images, 4. immideately whenever any technical problems or comments were registered
 
 Decisions: emails are sent through Azure Communication Services; the targets count images finished by specialists.
+
+## 2026-11-23: time spent by each participant
+
+**2026-11-23 UTC**
+
+> I wanna add one more important detail to the admin page: I wanna track how much time in total each annotator spent, in the Participants page when I click on the name of a annotator. Upon clicking on the amount indicated, I wanna see how much time they spent of each image case (obviously the total being the sum of these times per image). I want this to be tracked and every time I enter my admin page, I will be checking how much time each participant spent so far.
+
+Decisions: only active time counts (the page is the visible tab and was used in the last 3 minutes); work saved before measuring began is shown as a marked estimate.

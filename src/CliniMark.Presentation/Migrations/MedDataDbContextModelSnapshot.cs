@@ -297,6 +297,43 @@ namespace CliniMark.Presentation.Migrations
                     b.ToTable("ImageSkips");
                 });
 
+            modelBuilder.Entity("CliniMark.Core.Models.ImageTime", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTime>("LastAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("MedDataId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Seconds")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("StartedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("ViewId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ViewId")
+                        .IsUnique();
+
+                    b.HasIndex("UserId", "MedDataId");
+
+                    b.ToTable("ImageTimes");
+                });
+
             modelBuilder.Entity("CliniMark.Core.Models.MedData", b =>
                 {
                     b.Property<int>("Id")

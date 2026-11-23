@@ -22,6 +22,7 @@ public class MedDataDbContext : IdentityDbContext<User, IdentityRole, string>
     public DbSet<ImageSkip> ImageSkips => Set<ImageSkip>();
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<SignIn> SignIns => Set<SignIn>();
+    public DbSet<ImageTime> ImageTimes => Set<ImageTime>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -62,5 +63,7 @@ public class MedDataDbContext : IdentityDbContext<User, IdentityRole, string>
         modelBuilder.Entity<Notification>().Property(notification => notification.Kind).HasMaxLength(20);
         modelBuilder.Entity<SignIn>().HasIndex(signIn => new { signIn.UserId, signIn.At });
         modelBuilder.Entity<SignIn>().HasIndex(signIn => signIn.At);
+        modelBuilder.Entity<ImageTime>().HasIndex(time => time.ViewId).IsUnique();
+        modelBuilder.Entity<ImageTime>().HasIndex(time => new { time.UserId, time.MedDataId });
     }
 }

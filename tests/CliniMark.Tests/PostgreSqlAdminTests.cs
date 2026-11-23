@@ -2,6 +2,7 @@ using System.IO.Compression;
 using CliniMark.Core.Models;
 using CliniMark.Infrastructure.Data;
 using CliniMark.Infrastructure.Repositories;
+using CliniMark.Infrastructure.Services;
 using CliniMark.Infrastructure.Services.Admin;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -70,6 +71,29 @@ public sealed class PostgreSqlAdminTests
             Assert.Single((await queries.GetImagesAsync(new ImageQuery { Search = "marg" })).Items);
             Assert.Equal(2, (await queries.GetParticipantsAsync()).Count);
             Assert.NotNull(await queries.GetParticipantAsync(specialist.Id));
+
+            // Time on images: repeated and racing reports from the same page count once, and only the image's holder counts.
+            var times = new ImageTimeLog(context);
+            var view = Guid.NewGuid();
+            var reported = DateTime.UtcNow.AddMinutes(1);
+            Assert.True(await times.RecordAsync(specialist.Id, false, 1, view, 30, reported));
+            Assert.True(await times.RecordAsync(specialist.Id, false, 1, view, 30, reported));
+            Assert.True(await times.RecordAsync(specialist.Id, false, 1, view, 60, reported.AddSeconds(30)));
+            Assert.False(await times.RecordAsync(student.Id, false, 1, Guid.NewGuid(), 60, reported));
+            var raced = Guid.NewGuid();
+            Assert.All(await Task.WhenAll(Enumerable.Range(0, 4).Select(async extra =>
+            {
+                await using var racing = new MedDataDbContext(options);
+                return await new ImageTimeLog(racing).RecordAsync(specialist.Id, false, 1, raced, 10 + extra, reported);
+            })), Assert.True);
+            Assert.Equal(13, (await context.ImageTimes.AsNoTracking().SingleAsync(item => item.ViewId == raced)).Seconds);
+            // The answer saved before the page began measuring adds its saved timing (0.9 s + 2.1 s) as an estimate.
+            var time = await queries.GetParticipantTimeAsync(specialist.Id);
+            var imageTime = Assert.Single(time!.Images);
+            Assert.Equal(new TimeSpent(73, 3), imageTime.Time);
+            Assert.Equal(2, imageTime.Openings);
+            Assert.Equal(ImageTimeState.InProgress, imageTime.State);
+            Assert.Equal(time.Total, (await queries.GetParticipantsAsync()).Single(row => row.Person.Id == specialist.Id).Time);
             Assert.NotNull(await queries.GetImageAsync(1));
             Assert.Single((await queries.GetResponsesAsync(new ResponseQuery
             {

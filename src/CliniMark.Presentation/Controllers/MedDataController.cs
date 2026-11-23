@@ -1,5 +1,6 @@
 using CliniMark.Core.Models;
 using CliniMark.Core.Repositories;
+using CliniMark.Infrastructure.Services;
 using CliniMark.Presentation.Dtos;
 using CliniMark.Presentation.Models;
 using Microsoft.AspNetCore.Authorization;
@@ -185,6 +186,30 @@ public class MedDataController : Controller
         if (userId == null) return Unauthorized(new { success = false });
         var assigned = await medDataRepository.RefreshAssignmentAsync(medDataId, userId, User.IsInRole("Medical_Student"));
         return Json(new { success = true, assigned });
+    }
+
+    // The open page's running total of active time on its image (imageTimer.js), shown to the study team in the admin
+    // panel. Each report repeats the whole total, so a repeated or lost one changes nothing. Claims only, like the
+    // assignment check, so these frequent small requests cost no user lookup.
+    [HttpPost]
+    [Authorize(Roles = "Professional,Medical_Student")]
+    [RequestSizeLimit(4_000)]
+    public async Task<IActionResult> RecordTime([FromBody] ImageTimeDto? dto, [FromServices] ImageTimeLog times)
+    {
+        if (!ModelState.IsValid || dto == null || dto.View == Guid.Empty)
+            return BadRequest(new { success = false, message = "Invalid time report." });
+        var userId = userManager.GetUserId(User);
+        if (userId == null) return Unauthorized(new { success = false });
+        try
+        {
+            var recorded = await times.RecordAsync(userId, User.IsInRole("Medical_Student"), dto.Id, dto.View, dto.Seconds, DateTime.UtcNow);
+            return Json(new { success = true, recorded });
+        }
+        catch (Exception exception)
+        {
+            logger.LogWarning(exception, "Time on image {MedDataId} could not be recorded for user {UserId}.", dto.Id, userId);
+            return StatusCode(503, new { success = false });
+        }
     }
 
     [HttpPost]

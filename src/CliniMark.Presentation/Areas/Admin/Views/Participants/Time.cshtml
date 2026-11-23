@@ -1,0 +1,146 @@
+@model ParticipantTimeViewModel
+@{
+    var row = Model.Data.Row;
+    var person = row.Person;
+    var total = Model.Data.Total;
+    var timed = Model.Data.Images.Where(image => image.Time.HasTime).ToList();
+    var completed = timed.Where(image => image.State == ImageTimeState.Complete).ToList();
+    var estimatedImages = timed.Count(image => image.Time.EstimatedSeconds > 0);
+    var openings = Model.Data.Images.Sum(image => image.Openings);
+    ViewData["Title"] = $"Time spent · {person.DisplayName}";
+    ViewData["Subtitle"] = $"{AdminUi.RoleLabel(person.Role)} · {person.Code} · the total is the sum of the time on each image";
+}
+@section Actions {
+    <a class="btn btn-sm btn-outline-secondary" asp-action="Details" asp-route-id="@person.Id"><i class="bi bi-arrow-left"></i> @person.DisplayName</a>
+}
+
+<div class="admin-grid admin-grid-tiles mb-3">
+    <div class="admin-card stat-tile">
+        <div class="stat-label"><i class="bi bi-stopwatch"></i>Total time</div>
+        <div class="stat-value">@AdminUi.Duration(total)</div>
+        <div class="stat-sub">
+            @if (total.EstimatedSeconds > 0)
+            {
+                @($"{AdminUi.Duration(total.MeasuredSeconds)} measured, {AdminUi.Duration(total.EstimatedSeconds)} estimated")
+            }
+            else
+            {
+                @($"On {timed.Count} {(timed.Count == 1 ? "image" : "images")}")
+            }
+        </div>
+    </div>
+    <div class="admin-card stat-tile">
+        <div class="stat-label"><i class="bi bi-check2-all"></i>Average per completed image</div>
+        <div class="stat-value">@(completed.Count == 0 ? "—" : AdminUi.Duration(TimeSpent.Sum(completed.Select(image => image.Time)).TotalSeconds / completed.Count))</div>
+        <div class="stat-sub">@completed.Count completed @(completed.Count == 1 ? "image" : "images") with time</div>
+    </div>
+    <div class="admin-card stat-tile">
+        <div class="stat-label"><i class="bi bi-images"></i>Images with time</div>
+        <div class="stat-value">@timed.Count</div>
+        <div class="stat-sub">Measured over @openings page @(openings == 1 ? "opening" : "openings")</div>
+    </div>
+    <div class="admin-card stat-tile">
+        <div class="stat-label"><i class="bi bi-clock-history"></i>Last worked</div>
+        <div class="stat-value fs-5 mt-2"><time datetime="@AdminUi.Iso(Model.Data.Images.Max(image => image.LastAt))" data-local="relative"></time></div>
+        <div class="stat-sub">Last active <time datetime="@AdminUi.Iso(row.LastActiveAt)" data-local="relative"></time></div>
+    </div>
+</div>
+
+<section class="admin-card">
+    <div class="admin-card-header">
+        <div>
+            <h2 class="admin-card-title">Time on each image</h2>
+            <p class="admin-card-note">@(Model.LongestFirst ? "Longest first" : "Most recent first")</p>
+        </div>
+        <div class="btn-group btn-group-sm" role="group" aria-label="Order">
+            <a class="btn @(Model.LongestFirst ? "btn-outline-secondary" : "btn-secondary")" asp-action="Time" asp-route-id="@person.Id" aria-current="@(Model.LongestFirst ? null : "true")">Most recent</a>
+            <a class="btn @(Model.LongestFirst ? "btn-secondary" : "btn-outline-secondary")" asp-action="Time" asp-route-id="@person.Id" asp-route-sort="time" aria-current="@(Model.LongestFirst ? "true" : null)">Longest</a>
+        </div>
+    </div>
+    @if (Model.Data.Images.Count == 0)
+    {
+        <div class="empty-state"><i class="bi bi-stopwatch"></i>No time recorded yet. It is counted from the moment they open an image.</div>
+    }
+    else
+    {
+        <div class="admin-table-wrap">
+            <table class="table table-hover admin-table align-middle">
+                <thead>
+                    <tr>
+                        <th>Image</th>
+                        <th>Status</th>
+                        <th class="num">Time spent</th>
+                        <th class="num d-none d-md-table-cell">Openings</th>
+                        <th class="d-none d-lg-table-cell">First opened</th>
+                        <th class="d-none d-sm-table-cell">Last worked</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var image in Model.Rows)
+                    {
+                        <tr>
+                            <td>
+                                <a class="fw-semibold" asp-controller="Images" asp-action="Details" asp-route-id="@image.ImageId">#@image.ImageId</a>
+                                <div class="muted small">@AdminUi.Title(image.Speciality ?? "") @(image.Modality is { } modality ? "· " + modality : "")</div>
+                            </td>
+                            <td>
+                                @switch (image.State)
+                                {
+                                    case ImageTimeState.InProgress:
+                                        <span class="state state-partial"><i class="bi bi-lock-fill"></i>Working on it</span>
+                                        break;
+                                    case ImageTimeState.Complete:
+                                        <span class="state state-done"><i class="bi bi-check-circle-fill"></i>Complete</span>
+                                        break;
+                                    case ImageTimeState.Incomplete:
+                                        <span class="state state-idle"><i class="bi bi-hourglass-split"></i>Incomplete set</span>
+                                        break;
+                                    case ImageTimeState.Skipped:
+                                        <span class="state state-open"><i class="bi bi-skip-forward"></i>Skipped the case</span>
+                                        break;
+                                    default:
+                                        <span class="state state-open"><i class="bi bi-eye"></i>Opened, nothing saved</span>
+                                        break;
+                                }
+                            </td>
+                            <td class="num text-nowrap">
+                                @if (!image.Time.HasTime)
+                                {
+                                    <span class="muted" title="No time was measured and no timing was saved with these answers.">—</span>
+                                }
+                                else
+                                {
+                                    <span title="@(image.Time.EstimatedSeconds > 0 ? $"{AdminUi.Duration(image.Time.MeasuredSeconds)} measured, {AdminUi.Duration(image.Time.EstimatedSeconds)} estimated" : "Measured")">@AdminUi.Duration(image.Time)</span>
+                                    @if (image.Time.EstimatedSeconds > 0)
+                                    {
+                                        <div class="muted small">@(image.Time.MeasuredSeconds > 0 ? $"incl. {AdminUi.Duration(image.Time.EstimatedSeconds)} estimated" : "estimated")</div>
+                                    }
+                                }
+                            </td>
+                            <td class="num d-none d-md-table-cell">@(image.Openings > 0 ? image.Openings.ToString() : "—")</td>
+                            <td class="text-nowrap d-none d-lg-table-cell"><time datetime="@AdminUi.Iso(image.FirstAt)" data-local="datetime"></time></td>
+                            <td class="text-nowrap d-none d-sm-table-cell"><time datetime="@AdminUi.Iso(image.LastAt)" data-local="datetime"></time></td>
+                        </tr>
+                    }
+                </tbody>
+                <tfoot>
+                    <tr class="fw-semibold">
+                        <td>Total</td>
+                        <td class="muted small fw-normal">@Model.Data.Images.Count @(Model.Data.Images.Count == 1 ? "image" : "images")</td>
+                        <td class="num text-nowrap">@AdminUi.Duration(total)</td>
+                        <td class="num d-none d-md-table-cell">@openings</td>
+                        <td class="d-none d-lg-table-cell"></td>
+                        <td class="d-none d-sm-table-cell"></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    }
+    <div class="admin-card-body border-top">
+        <p class="admin-card-note mb-1"><strong>How time is measured.</strong> Time counts while the image's annotation page is the visible browser tab and the participant has used the mouse, keyboard or touch screen in the last 3 minutes, so a page left open unattended stops counting. It pauses while the tutorial video is open, and includes time on images they later skipped.</p>
+        @if (estimatedImages > 0)
+        {
+            <p class="admin-card-note mb-0"><strong>Estimated time</strong> (marked ≈) is for answers saved before timing began on @estimatedImages @(estimatedImages == 1 ? "image" : "images"). It adds up, for each term, the time from the term appearing to its save (at most 10 minutes a term), as saved with the answer. Terms answered without drawing and the label check aren't included, and time in another tab is.</p>
+        }
+    </div>
+</section>

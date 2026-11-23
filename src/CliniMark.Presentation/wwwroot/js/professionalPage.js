@@ -61,6 +61,8 @@ document.addEventListener("DOMContentLoaded", () => {
       if (saving) return;
       if (dirty && !confirm("This term has unsaved annotations or comments. Discard them and log out?")) return;
       try {
+        // The time on the open image is sent while the session still exists (imageTimer.js).
+        await window.imageTimer?.flush();
         await request("/Identity/Logout", {method: "POST", body: JSON.stringify({isAnnotationStarted:window.hasAnnotatedCurrentImage === true,medDataId:window.annotatedMedData?.id})});
         dirty = false; navigating = true;
         location.href = "/Identity/Login";
@@ -192,10 +194,13 @@ document.addEventListener("DOMContentLoaded", () => {
     buttons();
   };
   comments.addEventListener("input", () => draftChanged(comments.value.trim() ? "Unsaved comment." : "Unsaved changes. Select Save and Next Term to save this term."));
+  // Active time on this image, for the study team (imageTimer.js).
+  const timer = window.trackImageTime?.({imageId: assignmentId, token});
   const watch = window.watchAssignment?.({imageId: assignmentId, busy: () => saving || navigating,
     message: "It is no longer assigned to you, so nothing more can be saved on this page. Answers you already saved are kept.",
     onReleased: () => {
       released = true; dirty = false;
+      timer?.stop();
       manager.stopInteraction();
       buttons();
       showStatus("This image was released, so nothing more can be saved on this page. Reload to continue.", "error");
@@ -245,6 +250,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (currentIndex !== -1) { await save("Save and Next Term"); return; }
     saving = true; buttons(); showStatus("Loading the next image…", "saving");
     try {
+      await timer?.flush();
       await request(`/MedData/NextImage?medDataId=${encodeURIComponent(assignmentId)}`,{method:"PUT"});
       saving = false; dirty = false; navigating = true; location.reload();
     } catch (error) { requestFailed("Moving to the next image", error); saving = false; buttons(); showStatus(error.message,"error"); lockLost(error); }
@@ -256,6 +262,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (hasWork() && !confirm("Skip this case? What you have entered on it will be removed, and another specialist will start it fresh.")) return;
     saving = true; buttons(); showStatus("Moving to the next image…", "saving");
     try {
+      await timer?.flush();
       await request(`/MedData/SkipImage?medDataId=${encodeURIComponent(assignmentId)}`, {method: "PUT"});
       saving = false; dirty = false; navigating = true; location.reload();
     } catch (error) { requestFailed("Skipping the image", error); saving = false; buttons(); showStatus(error.message, "error"); lockLost(error); }

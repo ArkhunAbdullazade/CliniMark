@@ -127,7 +127,7 @@ public sealed record LockRow(
 
 public sealed record ParticipantRow(
     Person Person, int ImagesCompleted, int PartialImages, int Responses, IReadOnlyList<int> LockedImages,
-    DateTime? LastActiveAt, int OpenImagesLeft);
+    DateTime? LastActiveAt, int OpenImagesLeft, TimeSpent Time);
 
 public sealed record ParticipantWork(int ImageId, string? Speciality, string? Modality, int Answered, int Total, bool Complete, bool Locked, DateTime? LastSaveAt);
 

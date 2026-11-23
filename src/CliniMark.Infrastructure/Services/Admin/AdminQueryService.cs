@@ -283,6 +283,8 @@ public sealed class AdminQueryService
             .Select(group => new { Email = group.Key, Responses = group.Count(), Images = group.Select(item => item.MedDataId).Distinct().Count(), Last = group.Max(item => item.CreatedAt) })
             .ToListAsync(cancellationToken);
         var completeByEmail = complete.GroupBy(set => set.Email).ToDictionary(group => group.Key, group => group.Count());
+        var times = (await ParticipantTimes.LoadAsync(context, people, null, cancellationToken)).GroupBy(entry => entry.UserId)
+            .ToDictionary(group => group.Key, group => (Time: TimeSpent.Sum(group.Select(entry => entry.Time)), Last: group.Max(entry => entry.LastAt)));
 
         return people.All.Where(person => person.Role is "Professional" or "Medical_Student").Select(person =>
         {
@@ -293,8 +295,11 @@ public sealed class AdminQueryService
             var locks = images.Where(image => (person.IsStudent ? image.StudentHolder : image.SpecialistHolder) == person.Id).ToList();
             var completed = person.IsStudent ? work?.Images ?? 0 : completeByEmail.GetValueOrDefault(email.ToLowerInvariant());
             var lastLock = locks.Max(image => person.IsStudent ? image.StudentLockedAt : image.LockedAt);
+            // Time on an image page counts as activity too, including images they skipped or opened without saving.
+            var timed = times.TryGetValue(person.Id, out var time) ? time : (Time: TimeSpent.None, Last: (DateTime?)null);
             return new ParticipantRow(person, completed, person.IsStudent ? 0 : (work?.Images ?? 0) - completed, work?.Responses ?? 0,
-                locks.Select(image => image.Id).ToList(), Latest(work?.Last, lastLock), OpenImagesFor(person, images));
+                locks.Select(image => image.Id).ToList(), Latest(Latest(work?.Last, lastLock), timed.Last), OpenImagesFor(person, images),
+                timed.Time);
         }).OrderByDescending(row => row.LastActiveAt ?? DateTime.MinValue).ThenBy(row => row.Person.DisplayName).ToList();
     }
 
@@ -335,6 +340,35 @@ public sealed class AdminQueryService
         foreach (var locked in row.LockedImages.Where(id => work.All(item => item.ImageId != id)))
             work.Add(new ParticipantWork(locked, null, null, 0, 0, false, true, null));
         return new ParticipantDetail(row, work.OrderByDescending(item => item.Locked).ThenByDescending(item => item.LastSaveAt ?? DateTime.MinValue).ToList());
+    }
+
+    /// <summary>The time a participant spent on each image they opened or saved work for, most recent first.</summary>
+    public async Task<ParticipantTime?> GetParticipantTimeAsync(string id, CancellationToken cancellationToken = default)
+    {
+        var detail = await GetParticipantAsync(id, cancellationToken);
+        if (detail == null) return null;
+        var people = await AdminData.LoadPeopleAsync(context, cancellationToken);
+        var entries = (await ParticipantTimes.LoadAsync(context, people, detail.Row.Person, cancellationToken)).ToDictionary(entry => entry.ImageId);
+        var work = detail.Work.ToDictionary(item => item.ImageId);
+        var skipped = (await context.ImageSkips.AsNoTracking().Where(skip => skip.UserId == id).Select(skip => skip.MedDataId)
+            .ToListAsync(cancellationToken)).ToHashSet();
+        var ids = entries.Keys.Union(work.Keys).ToList();
+        var labels = await context.MedDatas.AsNoTracking().Where(image => ids.Contains(image.Id))
+            .Select(image => new { image.Id, image.Speciality, image.Modality }).ToDictionaryAsync(image => image.Id, cancellationToken);
+        var rows = ids.Select(imageId =>
+        {
+            var entry = entries.GetValueOrDefault(imageId);
+            var item = work.GetValueOrDefault(imageId);
+            var label = labels.GetValueOrDefault(imageId);
+            var state = item?.Locked == true ? ImageTimeState.InProgress
+                : item?.Complete == true ? ImageTimeState.Complete
+                : skipped.Contains(imageId) ? ImageTimeState.Skipped
+                : item?.Answered > 0 ? ImageTimeState.Incomplete
+                : ImageTimeState.Opened;
+            return new ImageTimeRow(imageId, label?.Speciality ?? item?.Speciality, label?.Modality ?? item?.Modality, state,
+                entry?.Time ?? TimeSpent.None, entry?.Openings ?? 0, entry?.FirstAt, Latest(entry?.LastAt, item?.LastSaveAt));
+        }).OrderByDescending(row => row.LastAt ?? DateTime.MinValue).ThenByDescending(row => row.ImageId).ToList();
+        return new ParticipantTime(detail.Row, rows);
     }
 
     public async Task<Paged<ResponseRow>> GetResponsesAsync(ResponseQuery query, CancellationToken cancellationToken = default)

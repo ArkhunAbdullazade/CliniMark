@@ -28,6 +28,13 @@ public class ParticipantsController(AdminQueryService queries, AssignmentAdminSe
         return detail == null ? NotFound() : View(detail);
     }
 
+    // The time a participant spent on each image; their total is the sum of the rows.
+    public async Task<IActionResult> Time(string id, string? sort, CancellationToken cancellationToken)
+    {
+        var data = await queries.GetParticipantTimeAsync(id, cancellationToken);
+        return data == null ? NotFound() : View(new ParticipantTimeViewModel(data, sort == "time"));
+    }
+
     [HttpPost]
     public async Task<IActionResult> ReleaseLocks(string id)
     {

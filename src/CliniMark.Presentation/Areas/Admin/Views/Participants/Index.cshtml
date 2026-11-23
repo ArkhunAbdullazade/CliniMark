@@ -44,6 +44,7 @@
                         <th class="num">Completed</th>
                         <th class="num d-none d-md-table-cell">Partial</th>
                         <th class="num d-none d-md-table-cell">Answers</th>
+                        <th class="num">Time spent</th>
                         <th class="num d-none d-sm-table-cell">Left for them</th>
                         <th class="d-none d-md-table-cell">Current lock</th>
                         <th>Last active</th>
@@ -69,6 +70,14 @@
                             <td class="num">@row.ImagesCompleted</td>
                             <td class="num d-none d-md-table-cell">@(row.PartialImages > 0 ? row.PartialImages.ToString() : "—")</td>
                             <td class="num d-none d-md-table-cell">@row.Responses</td>
+                            <td class="num text-nowrap">
+                                @if (row.Time.HasTime)
+                                {
+                                    <a asp-action="Time" asp-route-id="@person.Id"
+                                       title="@(row.Time.EstimatedSeconds > 0 ? $"Includes {AdminUi.Duration(row.Time.EstimatedSeconds)} estimated for work saved before timing began. " : "")Select to see the time on each image.">@AdminUi.Duration(row.Time)</a>
+                                }
+                                else { <span class="muted">—</span> }
+                            </td>
                             <td class="num d-none d-sm-table-cell">
                                 @if (row.OpenImagesLeft == 0)
                                 {

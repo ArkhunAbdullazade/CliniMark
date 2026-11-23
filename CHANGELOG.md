@@ -4,6 +4,16 @@ What changed in CliniMark and why, newest first. Git holds every line of every c
 
 Database changes are in `src/CliniMark.Presentation/Migrations`, and each release that changes the database has a script in `deployment/`.
 
+## 2026-11-23: time spent by each participant
+
+- The Participants page has a new Time spent column, and each participant's page a Time spent tile. Selecting the time opens their time on each image: status, time, page openings, first opened and last worked, with a total that is the sum of the rows. It can be sorted by most recent or longest.
+- The annotation page measures active time only. It counts while the page is the visible browser tab and the person has used the mouse, keyboard or touch screen in the last 3 minutes, so a page left open unattended stops counting. It pauses while the tutorial plays. Specialist and student pages both measure.
+- The page reports its running total after the first second, every half minute, before Next Image, Skip the case, submitting or logging out, and when it is hidden or closed. Each report repeats the whole total, so a lost or repeated report never loses or doubles time. The server only starts counting on an image assigned to that person, and a total can never run faster than the clock.
+- Work saved before measuring began shows an estimate, marked ≈. For each term it is the time from the term appearing to its save, at most 10 minutes a term, as saved with the answer. Terms answered without drawing aren't included.
+- Last active now also counts time on image pages, including images that were skipped or opened without saving.
+
+Database script: `deployment/release-2026-11-23-migrations.sql` (adds one table; nothing is removed).
+
 ## 2026-11-09: email notifications
 
 - The study team gets an email for every new registration, with everything the person entered at sign-up.

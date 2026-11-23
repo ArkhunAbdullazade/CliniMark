@@ -203,6 +203,7 @@ builder.Services.AddSingleton<INotificationMailer, AcsNotificationMailer>();
 builder.Services.AddScoped<NotificationScanner>();
 builder.Services.AddScoped<NotificationSender>();
 builder.Services.AddScoped<SignInLog>();
+builder.Services.AddScoped<ImageTimeLog>();
 // No overall timeout: the service limits each attempt itself.
 builder.Services.AddHttpClient<ImageArchiveService>(client => client.Timeout = Timeout.InfiniteTimeSpan);
 if (!isOperatorCommand) builder.Services.AddHostedService<LockSweeper>();

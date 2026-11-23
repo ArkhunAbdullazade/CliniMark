@@ -24,6 +24,13 @@ public sealed record LocksViewModel(IReadOnlyList<LockRow> Locks, TimeSpan Stale
 
 public sealed record ParticipantsViewModel(IReadOnlyList<ParticipantRow> Rows, int Total, string? Role, string? Search);
 
+public sealed record ParticipantTimeViewModel(ParticipantTime Data, bool LongestFirst)
+{
+    public IReadOnlyList<ImageTimeRow> Rows => LongestFirst
+        ? Data.Images.OrderByDescending(row => row.Time.TotalSeconds).ThenByDescending(row => row.LastAt ?? DateTime.MinValue).ToList()
+        : Data.Images;
+}
+
 public sealed record FullDataViewModel(Paged<FullCase> Cases, FullDataQuery Query);
 
 public sealed record ResponsesViewModel(Paged<ResponseRow> Responses, ResponseQuery Query, CategoryOptions Categories, IReadOnlyList<Person> People);
@@ -95,6 +102,17 @@ public static class AdminUi
 
     public static string Iso(DateTime? value) =>
         value == null ? "" : DateTime.SpecifyKind(value.Value, DateTimeKind.Utc).ToString("o", CultureInfo.InvariantCulture);
+
+    // Time spent: "45 s", "6 min 05 s", "2 h 07 min".
+    public static string Duration(long seconds) => seconds switch
+    {
+        < 60 => $"{Math.Max(0, seconds)} s",
+        < 3600 => $"{seconds / 60} min {(seconds % 60).ToString("00", CultureInfo.InvariantCulture)} s",
+        _ => $"{seconds / 3600} h {(seconds % 3600 / 60).ToString("00", CultureInfo.InvariantCulture)} min"
+    };
+
+    // A total that includes estimated time is marked as approximate.
+    public static string Duration(TimeSpent time) => (time.EstimatedSeconds > 0 ? "≈ " : "") + Duration(time.TotalSeconds);
 
     public static string Hours(TimeSpan span) => span.TotalHours.ToString("0.#", CultureInfo.InvariantCulture) + " h";
 
