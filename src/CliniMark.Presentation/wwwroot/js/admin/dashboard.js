@@ -84,7 +84,9 @@
     data: { labels: [], datasets: [] },
     options: {
       indexAxis: "y",
-      interaction: { mode: "index", intersect: false },
+      // The rows run down the chart, so the tooltip follows the pointer's height. Chart.js measures along x by
+      // default, which picked whichever row's bar ended nearest the pointer horizontally.
+      interaction: { mode: "index", axis: "y", intersect: false },
       plugins: { legend: { display: false } },
       scales: { x: { ...integerAxis, stacked: true }, y: { ...plainAxis, stacked: true, ticks: { color: INK, autoSkip: false } } }
     }

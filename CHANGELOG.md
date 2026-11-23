@@ -4,6 +4,10 @@ What changed in CliniMark and why, newest first. Git holds every line of every c
 
 Database changes are in `src/CliniMark.Presentation/Migrations`, and each release that changes the database has a script in `deployment/`.
 
+## 2026-11-23: Progress by category tooltip shows the right row
+
+- On the admin Overview, hovering over a bar in Progress by category showed the figures of another category. The chart lists categories one under the other, but the chart library looked for the bar nearest the pointer from left to right, so it picked whichever row's bar ended closest sideways. It now follows the row under the pointer. Checked in a browser on every row of all three lists, for specialists and students.
+
 ## 2026-11-23: sign-up asks for a workplace email, and speciality is required
 
 - Sign-up accepts only institutional or workplace email addresses. Addresses at personal email services such as Gmail, Outlook, Hotmail, Yahoo, iCloud, GMX, web.de, ukr.net, mail.ru or Yandex are refused, both on the page before the confirmation and by the server. A list can't cover every service, so new registrations are still worth a glance. Existing accounts and accounts the study team creates are not affected.

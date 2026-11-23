@@ -363,3 +363,9 @@ Decisions: only active time counts (the page is the visible tab and was used in 
 > 4. We must make the choice of Speciality in filters required too, not optional. Only Body Region can remain optional.
 
 Decisions: both yellow warnings on the sign-up page were removed (the request quoted the password warning twice); personal email services are refused by a list of known providers; existing accounts keep working, and an account with no speciality still matches all specialities until its filters are next saved.
+
+## 2026-11-23: Progress by category hover
+
+**2026-11-23 UTC**
+
+> in Admin page, first section of Overview, Progress by category - hovering over the statistical vertical bars doesnt' work well. Upon hovering on one bar for some reason other bar info is displayed. Give it a look
