@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using CliniMark.Core.Services;
 using CliniMark.Presentation.Dtos;
 using Xunit;
 
@@ -7,10 +8,10 @@ namespace CliniMark.Tests;
 public class AuthAccessTests
 {
     [Theory]
-    [InlineData("specialist@gmail.com")]
-    [InlineData("researcher@outlook.com")]
+    [InlineData("specialist@uniklinik.example.de")]
+    [InlineData("researcher@hospital.example.org")]
     [InlineData("doctor@clinic.example")]
-    public void SignupAcceptsOrdinaryEmailAddresses(string email)
+    public void SignupAcceptsWorkplaceEmailAddresses(string email)
     {
         var signup = ValidSignup();
         signup.Email = email;
@@ -27,18 +28,29 @@ public class AuthAccessTests
         Assert.Contains(Validate(signup), error => error.MemberNames.Contains(nameof(SignupDto.Password)));
     }
 
-    [Theory]
-    [InlineData("Speciality")]
-    [InlineData("BodyRegion")]
-    public void SpecialityAndBodyRegionAreOptionalButRejectBlankOrUnlistedSelections(string property)
+    [Fact]
+    public void BodyRegionIsOptionalButSpecialityIsRequired()
     {
         foreach (var empty in new string[]?[] { null, [] })
         {
             var filters = ValidFilters();
-            typeof(ImageFiltersDto).GetProperty(property)!.SetValue(filters, empty);
+            filters.BodyRegion = empty;
             Assert.Empty(Validate(filters));
+            filters = ValidFilters();
+            filters.Speciality = empty;
+            Assert.Equal([ImageFiltersDto.SpecialityRequired], Validate(filters).Select(error => error.ErrorMessage));
         }
-        foreach (var selection in new string[][] { [""], ["   "], ["invented option"], ["ct", ""] })
+        var blank = ValidFilters();
+        blank.Speciality = ["  "];
+        Assert.Equal([ImageFiltersDto.SpecialityRequired], Validate(blank).Select(error => error.ErrorMessage));
+    }
+
+    [Theory]
+    [InlineData("Speciality")]
+    [InlineData("BodyRegion")]
+    public void SelectionsRejectBlankOrUnlistedOptions(string property)
+    {
+        foreach (var selection in new string[][] { ["invented option"], ["ct", ""], ["cardiology", "   "] })
         {
             var filters = ValidFilters();
             typeof(ImageFiltersDto).GetProperty(property)!.SetValue(filters, selection);
@@ -52,22 +64,66 @@ public class AuthAccessTests
         foreach (var empty in new string[]?[] { null, [], ["  "] })
         {
             var nothing = new ImageFiltersDto { Speciality = null, BodyRegion = null, ImageModality = empty };
-            Assert.Equal([ImageFiltersDto.ModalityRequired], Validate(nothing).Select(error => error.ErrorMessage));
+            Assert.Equal([ImageFiltersDto.ModalityRequired, ImageFiltersDto.SpecialityRequired], Validate(nothing).Select(error => error.ErrorMessage));
             var others = new ImageFiltersDto { Speciality = ["cardiology"], BodyRegion = ["chest and thorax"], ImageModality = empty };
             Assert.Equal([ImageFiltersDto.ModalityRequired], Validate(others).Select(error => error.ErrorMessage));
         }
     }
 
     [Fact]
-    public void SignupNeedsAnImageModalityButSpecialityAndBodyRegionAreOptional()
+    public void SignupNeedsAnImageModalityAndASpecialityButBodyRegionIsOptional()
     {
         var signup = ValidSignup();
-        signup.Speciality = null;
         signup.BodyRegion = [];
         Assert.Empty(Validate(signup));
+        signup.Speciality = null;
+        Assert.Contains(Validate(signup), error => error.ErrorMessage == ImageFiltersDto.SpecialityRequired);
         signup.Speciality = ["cardiology"];
         signup.ImageModality = [];
         Assert.Contains(Validate(signup), error => error.ErrorMessage == ImageFiltersDto.ModalityRequired);
+    }
+
+    [Theory]
+    [InlineData("doctor@gmail.com")]
+    [InlineData("Doctor@GoogleMail.com")]
+    [InlineData("doctor@hotmail.co.uk")]
+    [InlineData("doctor@outlook.com")]
+    [InlineData("doctor@live.de")]
+    [InlineData("doctor@yahoo.com.br")]
+    [InlineData("doctor@icloud.com")]
+    [InlineData("doctor@proton.me")]
+    [InlineData("doctor@gmx.net")]
+    [InlineData("doctor@web.de")]
+    [InlineData("doctor@t-online.de")]
+    [InlineData("doctor@ukr.net")]
+    [InlineData("doctor@mail.ru")]
+    [InlineData("doctor@yandex.ru")]
+    [InlineData("doctor@mail.az")]
+    [InlineData("doctor@gmail.com.")]
+    public void SignupRefusesPersonalEmailServices(string email)
+    {
+        Assert.True(InstitutionalEmail.IsPersonal(email));
+        var signup = ValidSignup();
+        signup.Email = email.TrimEnd('.');
+        Assert.Contains(Validate(signup), error => error.ErrorMessage == InstitutionalEmail.Required
+            && error.MemberNames.Contains(nameof(SignupDto.Email)));
+    }
+
+    [Theory]
+    [InlineData("doctor@charite.de")]
+    [InlineData("doctor@hpi.uni-potsdam.de")]
+    [InlineData("doctor@nhs.net")]
+    [InlineData("doctor@live.nhs.uk")]
+    [InlineData("doctor@mail.hospital.org")]
+    [InlineData("doctor@outlook.university.edu")]
+    [InlineData("doctor@med.uni-x.de")]
+    [InlineData("doctor@amu.edu.az")]
+    public void SignupAcceptsInstitutionalAddresses(string email)
+    {
+        Assert.False(InstitutionalEmail.IsPersonal(email));
+        var signup = ValidSignup();
+        signup.Email = email;
+        Assert.Empty(Validate(signup));
     }
 
     [Fact]
@@ -101,7 +157,7 @@ public class AuthAccessTests
 
     private static SignupDto ValidSignup() => new()
     {
-        Email = "specialist@gmail.com", FullName = "Research Specialist",
+        Email = "specialist@clinic.example.org", FullName = "Research Specialist",
         Password = "Participant1!", ConfirmPassword = "Participant1!",
         Position = "specialist", University = "Community clinic",
         Speciality = ["cardiology"], BodyRegion = ["chest and thorax"], ImageModality = ["ct"]

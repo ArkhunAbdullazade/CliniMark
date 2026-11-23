@@ -350,3 +350,16 @@ Decisions: emails are sent through Azure Communication Services; the targets cou
 > I wanna add one more important detail to the admin page: I wanna track how much time in total each annotator spent, in the Participants page when I click on the name of a annotator. Upon clicking on the amount indicated, I wanna see how much time they spent of each image case (obviously the total being the sum of these times per image). I want this to be tracked and every time I enter my admin page, I will be checking how much time each participant spent so far.
 
 Decisions: only active time counts (the page is the visible tab and was used in the last 3 minutes); work saved before measuring began is shown as a marked estimate.
+
+## 2026-11-23: sign-up page changes
+
+**2026-11-23 UTC**
+
+> We also need the following changes in the registration/ sign up page:
+>
+> 1. replace University or Institution to Workplace.
+> 2. get rid of warnings "Write down your password. The app can't email you a reset link. Only the study team can give you a temporary one." and " Write down your password. The app can't email you a reset link. Only the study team can give you a temporary one."
+> 3. for Email address, have a requirement to type only the institutional email address, not a personal (no gmail, hotmail, yahoo, or any of this kind, only institutional/workplace related email).
+> 4. We must make the choice of Speciality in filters required too, not optional. Only Body Region can remain optional.
+
+Decisions: both yellow warnings on the sign-up page were removed (the request quoted the password warning twice); personal email services are refused by a list of known providers; existing accounts keep working, and an account with no speciality still matches all specialities until its filters are next saved.

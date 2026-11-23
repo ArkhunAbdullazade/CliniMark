@@ -20,11 +20,15 @@ function fixture({valid = true, withJquery = true} = {}) {
     close() { this.open = false; },
     querySelector: selector => selector === '[data-signup-email]' ? shown : buttons[selector]
   };
-  const email = {value: '  person@example.org ', focused: false, selected: false,
-    focus() { this.focused = true; }, select() { this.selected = true; }};
+  const email = {value: '  person@example.org ', focused: false, selected: false, attributes: {}, listeners: {},
+    dataset: {personalDomains: 'mail.ru ukr.net web.de', personalFamilies: 'gmail hotmail outlook yahoo'},
+    focus() { this.focused = true; }, select() { this.selected = true; },
+    setAttribute(name, value) { this.attributes[name] = value; },
+    addEventListener(name, callback) { this.listeners[name] = callback; }};
+  const personal = {textContent: ''};
   let submitted = 0;
   const form = {
-    querySelector: () => email,
+    querySelector: selector => selector === '[data-email-personal]' ? personal : email,
     addEventListener(name, callback) { listeners[name] = callback; },
     requestSubmit() { const event = submit(); listeners.submit(event); if (!event.defaultPrevented) submitted++; }
   };
@@ -35,7 +39,7 @@ function fixture({valid = true, withJquery = true} = {}) {
   };
   const window = withJquery ? {jQuery: Object.assign(() => ({valid: () => valid}), {fn: {valid() {}}})} : {};
   vm.runInNewContext(source, {window, document});
-  return {listeners, dialog, shown, email, buttons, submit, submitted: () => submitted};
+  return {listeners, dialog, shown, email, personal, buttons, submit, submitted: () => submitted};
 }
 
 test('a valid form shows the typed email and is held until the person confirms it', () => {
@@ -76,4 +80,34 @@ test('the check still works when validation scripts did not load', () => {
   const f = fixture({withJquery: false});
   f.listeners.submit(f.submit());
   assert.equal(f.dialog.open, true);
+});
+
+test('personal email services are refused before the confirmation, by the same rules as the server', () => {
+  for (const address of ['someone@gmail.com', 'Someone@Hotmail.co.uk', 'someone@yahoo.com.br', 'someone@ukr.net', 'someone@mail.ru']) {
+    const f = fixture();
+    f.email.value = address;
+    const event = f.submit();
+    f.listeners.submit(event);
+    assert.equal(event.defaultPrevented, true, address);
+    assert.equal(f.dialog.open, false, address);
+    assert.match(f.personal.textContent, /institutional or workplace email/);
+    assert.equal(f.email.attributes['aria-invalid'], 'true');
+    assert.equal(f.email.focused, true);
+  }
+});
+
+test('fixing a refused address clears the message, and workplace addresses go on to the confirmation', () => {
+  const f = fixture();
+  f.email.value = 'someone@outlook.com';
+  f.listeners.submit(f.submit());
+  f.email.value = 'someone@outlook.uni-klinik.de';
+  f.email.listeners.input();
+  assert.equal(f.personal.textContent, '');
+  assert.equal(f.email.attributes['aria-invalid'], 'false');
+  for (const address of ['someone@live.nhs.uk', 'someone@mail.hospital.org', 'someone@charite.de']) {
+    const g = fixture();
+    g.email.value = address;
+    g.listeners.submit(g.submit());
+    assert.equal(g.dialog.open, true, address);
+  }
 });

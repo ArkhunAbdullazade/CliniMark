@@ -86,9 +86,9 @@ Students outline whatever they can identify and type their own label. Several sh
 
 ## Signing up and choosing images
 
-Each participant has their own account and password; there's no shared study password. Choosing **medical student** as the position opens the student workspace, and any other position opens the specialist one.
+Each participant has their own account and password; there's no shared study password. Sign-up asks for an institutional or workplace email address: addresses at personal email services such as Gmail, Outlook, Hotmail, Yahoo or iCloud are refused (`InstitutionalEmail`). Accounts the study team creates are not checked. Choosing **medical student** as the position opens the student workspace, and any other position opens the specialist one.
 
-Image modality is required. Speciality and body region are optional, and leaving one empty means all of its options. An image is offered when it matches one of the chosen options in every list that has a choice. The options are the display labels of the CliniMark datasets (`app_labels/label_vocabulary.csv`, version `app-labels-1.1.0`): 8 modalities, 21 specialities and 14 body regions. Participants can change their choices at any time from the Filters button.
+Image modality and speciality are required. Body region is optional, and leaving it empty means all body regions. Accounts from before speciality became required (2026-11-23) may have none, which still means all specialities until they next save their filters. An image is offered when it matches one of the chosen options in every list that has a choice. The options are the display labels of the CliniMark datasets (`app_labels/label_vocabulary.csv`, version `app-labels-1.1.0`): 8 modalities, 21 specialities and 14 body regions. Participants can change their choices at any time from the Filters button.
 
 Below every image, both workspaces link the source article and its licence and show the full credit line. The credit sits outside the image's sizing box, so it can't shift the drawing coordinates.
 
@@ -96,7 +96,7 @@ Below every image, both workspaces link the source article and its licence and s
 <summary><b>The sign-up form and the first-visit tutorial</b></summary>
 <br>
 <p align="center">
-  <img src="media/registration.png" width="560" alt="The sign-up form: email, name, password, position, institution, ORCID iD and the three image filters">
+  <img src="media/registration.png" width="560" alt="The sign-up form: email, name, password, position, workplace, ORCID iD and the three image filters">
 </p>
 <p align="center">
   <img src="media/tutorial.png" width="100%" alt="The tutorial video open over the student workspace on a first visit">

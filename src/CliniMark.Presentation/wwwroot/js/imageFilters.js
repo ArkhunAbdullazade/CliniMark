@@ -3,14 +3,16 @@ document.querySelectorAll('[data-image-filter-form]').forEach(form => {
   const error = form.querySelector('[data-filter-error]');
   // The tool's own Select all box has no name, so it is never submitted or counted as a choice.
   const options = group => [...group.querySelectorAll('input[type="checkbox"][name]')];
-  // Image modality is required; the other lists are optional (an empty list includes all its options).
-  const required = groups.find(group => group.hasAttribute('data-filter-required'));
-  const hasRequired = () => options(required).some(option => option.checked);
+  // Image modality and speciality are required; body region is optional (an empty list includes all its options).
+  // Razor always renders data- attributes, so the value says whether a list is required.
+  const required = groups.filter(group => group.dataset.filterRequired === 'true');
+  const missing = () => required.filter(group => !options(group).some(option => option.checked));
+  const hasRequired = () => missing().length === 0;
   function validate() {
-    const selected = hasRequired();
-    if (error) error.textContent = selected ? '' : 'Select at least one image modality.';
-    required.setAttribute('aria-invalid', String(!selected));
-    return selected;
+    const empty = missing();
+    if (error) error.textContent = empty.map(group => `Select at least one ${(group.dataset.filterLabel || '').toLowerCase()}.`).join(' ');
+    required.forEach(group => group.setAttribute('aria-invalid', String(empty.includes(group))));
+    return empty.length === 0;
   }
   let tried = false;
   groups.forEach(group => group.addEventListener('change', () => { if (tried) validate(); }));
@@ -47,8 +49,9 @@ document.querySelectorAll('[data-image-filter-form]').forEach(form => {
     tried = true;
     if (validate()) return;
     event.preventDefault();
-    required.clearSearch?.();
-    options(required)[0].focus();
+    const first = missing()[0];
+    first.clearSearch?.();
+    options(first)[0].focus();
   });
 
   // Search and Select all for one list. Search only hides options: hidden choices stay selected and are still saved,

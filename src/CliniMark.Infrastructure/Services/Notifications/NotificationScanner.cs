@@ -62,7 +62,7 @@ public sealed class NotificationScanner(MedDataDbContext context, IOptions<Notif
                 Field.Text("Email", person.Email),
                 Field.Text("Role", role),
                 Field.Text("Position", person.Position),
-                Field.Text("Institution", person.University),
+                Field.Text("Workplace", person.University),
                 Field.Text("ORCID iD", person.OrcidId),
                 Field.Text("Clinical experience", person.ClinicalExperience > 0 ? StudyFigures.Plural(person.ClinicalExperience, "year", "years") : null),
                 Field.Text("Image modality", await LabelsAsync(person.ImageModality, cancellationToken)),

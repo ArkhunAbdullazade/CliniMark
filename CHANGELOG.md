@@ -4,6 +4,14 @@ What changed in CliniMark and why, newest first. Git holds every line of every c
 
 Database changes are in `src/CliniMark.Presentation/Migrations`, and each release that changes the database has a script in `deployment/`.
 
+## 2026-11-23: sign-up asks for a workplace email, and speciality is required
+
+- Sign-up accepts only institutional or workplace email addresses. Addresses at personal email services such as Gmail, Outlook, Hotmail, Yahoo, iCloud, GMX, web.de, ukr.net, mail.ru or Yandex are refused, both on the page before the confirmation and by the server. A list can't cover every service, so new registrations are still worth a glance. Existing accounts and accounts the study team creates are not affected.
+- The "University or institution" field is now called Workplace, on the sign-up page, in the admin panel and in the registration email. The data and the export column keep the name `University`.
+- The two yellow warnings on the sign-up page (write down your password; check your email carefully) are gone. The "Is this your correct email?" confirmation stays.
+- Speciality is now required, on the sign-up page and on the Filters page, like image modality. Body region stays optional. Accounts saved before this with no speciality still see every speciality until they next save their filters.
+- Fixed on the way: Razor always writes `data-` attributes, so the filter script now reads which lists are required from the attribute's value.
+
 ## 2026-11-23: time spent by each participant
 
 - The Participants page has a new Time spent column, and each participant's page a Time spent tile. Selecting the time opens their time on each image: status, time, page openings, first opened and last worked, with a total that is the sum of the rows. It can be sorted by most recent or longest.

@@ -2,10 +2,13 @@ using System.ComponentModel.DataAnnotations;
 
 namespace CliniMark.Presentation.Dtos;
 
-// Image modality is required. Speciality and body region are optional: an empty list includes all of its options.
+// Image modality and speciality are required (speciality since 2026-11-23). Body region is optional: an empty list
+// includes all of its options. Accounts saved before speciality was required may still have none, which matches every
+// speciality until they next save their filters.
 public class ImageFiltersDto : IValidatableObject
 {
     public const string ModalityRequired = "Select at least one image modality.";
+    public const string SpecialityRequired = "Select at least one speciality.";
 
     public string[]? Speciality { get; set; }
 
@@ -15,9 +18,12 @@ public class ImageFiltersDto : IValidatableObject
 
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
-        if (ImageModality is null || ImageModality.All(string.IsNullOrWhiteSpace))
+        var missing = new List<ValidationResult>();
+        if (ImageModality is null || ImageModality.All(string.IsNullOrWhiteSpace)) missing.Add(new ValidationResult(ModalityRequired));
+        if (Speciality is null || Speciality.All(string.IsNullOrWhiteSpace)) missing.Add(new ValidationResult(SpecialityRequired));
+        if (missing.Count > 0)
         {
-            yield return new ValidationResult(ModalityRequired);
+            foreach (var result in missing) yield return result;
             yield break;
         }
         foreach (var (values, allowed, member, label) in new[]
