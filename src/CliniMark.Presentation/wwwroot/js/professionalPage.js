@@ -124,6 +124,57 @@ document.addEventListener("DOMContentLoaded", () => {
   const termName = i => terms[i]?.dataset.keyword || terms[i]?.textContent.trim();
   const saved = i => history.find(row => row.extractedKeyword === termName(i));
   const pendingIndex = () => terms.findIndex((_, i) => !saved(i));
+  // Saved terms, listed under the note buttons in the order of the text. Each row opens its term again to change it,
+  // like selecting it in the text. Rows are made once and only shown, hidden and relabelled, so focus stays put.
+  const savedSection = document.getElementById("saved-terms");
+  const savedCount = document.getElementById("saved-count");
+  const savedItems = document.getElementById("saved-items");
+  const ANSWERS = {
+    "Save and Next Term": {kind: "drawn", label: "Outlined", icon: "bi-check-circle-fill"},
+    "Uncertain/Skip": {kind: "uncertain", label: "Uncertain", icon: "bi-question-circle-fill"},
+    "Not Visible/Abstract": {kind: "absent", label: "Not visible", icon: "bi-eye-slash-fill"}
+  };
+  const savedRows = !savedItems ? [] : terms.map((_, i) => {
+    const item = document.createElement("li");
+    const button = document.createElement("button");
+    const icon = document.createElement("i"), name = document.createElement("span"), state = document.createElement("span");
+    const edit = document.createElement("span"), pencil = document.createElement("i"), editLabel = document.createElement("span");
+    button.type = "button"; button.className = "saved-term";
+    icon.setAttribute("aria-hidden", "true");
+    name.className = "saved-term-name"; name.textContent = terms[i].textContent.trim() || termName(i);
+    state.className = "saved-term-state";
+    edit.className = "saved-term-edit"; pencil.className = "bi bi-pencil"; pencil.setAttribute("aria-hidden", "true");
+    edit.append(pencil, editLabel);
+    button.append(icon, name, state, edit);
+    button.addEventListener("click", () => selectTerm(i));
+    item.hidden = true;
+    item.append(button);
+    savedItems.append(item);
+    return {item, button, icon, state, editLabel};
+  });
+  function showSavedList() {
+    let count = 0;
+    savedRows.forEach((row, i) => {
+      const record = saved(i);
+      row.item.hidden = !record;
+      if (!record) return;
+      count++;
+      const answer = ANSWERS[record.pressedButton] || {kind: "uncertain", label: record.pressedButton, icon: "bi-circle"};
+      const open = i === reviewIndex;
+      row.button.dataset.kind = answer.kind;
+      row.button.classList.toggle("open", open);
+      row.button.setAttribute("aria-current", String(open));
+      row.button.disabled = released || saving || !initialized || !manager.ready;
+      row.button.dataset.description = open
+        ? "This term is open: change it, then select Save changes, or Cancel to leave it as it was."
+        : `Saved as ${answer.label}. Select to see your answer and change it if needed.`;
+      row.icon.className = `bi ${answer.icon}`;
+      row.state.textContent = answer.label;
+      row.editLabel.textContent = open ? "Editing" : "Edit";
+    });
+    if (savedSection) savedSection.hidden = count === 0;
+    if (savedCount) savedCount.textContent = `${count} of ${terms.length}`;
+  }
   // A saved term that is open has changes when its shapes were touched or its comment differs from the saved one.
   const changed = () => reviewIndex !== -1 && opened !== null && (shapesTouched || comments.value.trim() !== opened.comment);
   function buttons() {
@@ -149,11 +200,16 @@ document.addEventListener("DOMContentLoaded", () => {
       const row = saved(i);
       term.classList.add(row ? row.pressedButton === "Save and Next Term" ? "annotated_keyword" : "skipped_keyword" : i === currentIndex ? "current_keyword" : "not_annotated_keyword");
       term.classList.toggle("changing_keyword", i === reviewIndex);
+      // Lifts on hover only where selecting does something: a saved term not already open, or the current term while
+      // a saved one is open (it goes back).
+      term.classList.toggle("keyword-clickable", !released && initialized && manager.ready && !saving
+        && (row ? i !== reviewIndex : i === currentIndex && reviewIndex !== -1));
       term.setAttribute("aria-pressed", String(i === (reviewIndex === -1 ? currentIndex : reviewIndex)));
       // Saved terms open again to be changed (hoverDescriptions.js shows this after a pause).
       if (row) term.dataset.description = "Select to see your saved answer for this term and change it if needed.";
       else delete term.dataset.description;
     });
+    showSavedList();
   }
   const prompt = () => currentIndex === -1 ? (labels?.complete() === false ? `All terms saved. ${confirmLabels}, then select Next Image.` : "All terms saved. Select Next Image to continue. You can still select a saved term in the text to change it.") : `Annotate the current term: ${termName(currentIndex)}. Draw a rectangular boundary box or a free contour. Zoom, move, resize, rotate, and delete as needed.`;
   const reviewNext = () => "Select Save changes to keep your changes, or Cancel to leave it as it was.";
@@ -242,16 +298,20 @@ document.addEventListener("DOMContentLoaded", () => {
     term.addEventListener("keydown", event => {
       if (event.key === "Enter" || event.key === " ") { event.preventDefault(); term.click(); }
     });
-    term.addEventListener("click", () => {
+    term.addEventListener("click", () => selectTerm(i));
+  });
+  // Selecting a term, in the text or in the saved list: a saved term opens to be changed, and the current term closes
+  // an open one. Selecting the term already in hand does nothing, so it never offers to throw away a drawing.
+  function selectTerm(i) {
     if (released || saving || !initialized || !manager.ready) return;
     const record = saved(i);
     if (!record && i !== currentIndex) return;
-    if (i === reviewIndex) return;
+    if (i === reviewIndex || (!record && reviewIndex === -1)) return;
     if (dirty && !confirm(reviewIndex !== -1 ? `Discard your unsaved changes to ${termName(reviewIndex)}?` : "Discard unsaved changes to open another term?")) return;
     if (!record) { showCurrent(); return; }
     openSaved(i, record);
-    });
-  });
+  }
+
   // Opens a saved term to change it: its shapes and comment come back, editable, until Save changes or Cancel.
   function openSaved(i, record) {
     manager.resetAnnotation(); dirty = false; shapesTouched = false; opened = null;

@@ -118,6 +118,13 @@
                     </div>
                 </div>
             </div>
+            @* Terms already answered on this image, in the order of the text (professionalPage.js). Each opens again to be
+               changed until Next Image, like selecting it in the text. *@
+            <section class="saved-terms" id="saved-terms" aria-labelledby="saved-terms-title" hidden>
+                <h2 class="saved-terms-title" id="saved-terms-title"><i class="bi bi-check2-square" aria-hidden="true"></i> Saved terms <span class="saved-count" id="saved-count"></span></h2>
+                <p class="saved-terms-note">Select a term to see or change your answer, any time before Next Image.</p>
+                <ul class="saved-items" id="saved-items"></ul>
+            </section>
             @* Findings the specialist outlined and named with the Custom annotation tool (customAnnotations.js). *@
             <section class="custom-list" id="custom-list" aria-labelledby="custom-list-title" hidden>
                 <h2 class="custom-list-title" id="custom-list-title">Custom annotations <span class="custom-count" id="custom-count">0</span></h2>

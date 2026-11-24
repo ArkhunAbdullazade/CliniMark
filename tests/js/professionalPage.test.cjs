@@ -29,6 +29,7 @@ class Element {
     (this.listeners[name] ||= []).push(callback);
   }
   setAttribute(name, value) { this.attributes[name] = value; }
+  append(...nodes) { (this.children ||= []).push(...nodes); }
   replaceChildren(...nodes) {
     this.children = nodes;
     this.textContent = nodes.map(node => typeof node === 'string' ? node : node.textContent).join('');
@@ -46,7 +47,8 @@ async function page(occurrences, expectedCount, options = {}) {
   const skipImage = options.skipImage;
   const events = {};
   const elements = Object.fromEntries(['annotation-status', 'next-button', 'skip-button', 'skip-image-button',
-    'not-present-button', 'comments', 'technical-problem', 'image-container', 'cancel-change-button'].map(id => [id, new Element()]));
+    'not-present-button', 'comments', 'technical-problem', 'image-container', 'cancel-change-button',
+    'saved-terms', 'saved-count', 'saved-items'].map(id => [id, new Element()]));
   const header = new Element();
   header.dataset.keywordCount = String(expectedCount);
   let onReady;
@@ -675,4 +677,63 @@ test('after the last term, saved terms can still be changed before Next Image', 
   assert.equal(elements['next-button'].textContent, 'Next Image');
   assert.equal(manager.readOnly, true);
   assert.equal(calls.filter(call => call.url.includes('NextImage')).length, 0, 'Saving a change never moves to the next image');
+});
+
+// The saved-terms list: each row is li > button > [icon, name, state, edit > [pencil, label]].
+const savedList = elements => (elements['saved-items'].children || []).map(item => {
+  const [icon, name, state, edit] = item.children[0].children;
+  return {visible: !item.hidden, button: item.children[0], name: name.textContent, state: state.textContent, edit: edit.children[1].textContent,
+    open: item.children[0].attributes['aria-current'] === 'true', icon: icon.className};
+});
+
+test('saved terms are listed under the notes in the order of the text, and open again from the list', async () => {
+  const lesion = new Element('Lesion', 'lesion'), margin = new Element('margin', 'margin');
+  const {elements, manager} = await page([lesion, margin], 2);
+  assert.equal(elements['saved-terms'].hidden, true, 'Nothing to list before the first save');
+  assert.deepEqual(savedList(elements).map(row => row.name), ['Lesion', 'margin'], 'One row per term, as written in the text');
+
+  await finishTerm(elements, manager);
+  assert.equal(elements['saved-terms'].hidden, false);
+  assert.equal(elements['saved-count'].textContent, '1 of 2');
+  let rows = savedList(elements);
+  assert.deepEqual(rows.map(row => row.visible), [true, false], 'Only saved terms show');
+  assert.deepEqual([rows[0].state, rows[0].edit, rows[0].open, rows[0].icon], ['Outlined', 'Edit', false, 'bi bi-check-circle-fill']);
+  assert.match(rows[0].button.dataset.description, /Select to see your answer and change it/);
+
+  await rows[0].button.click();
+  assert.equal(elements['next-button'].textContent, 'Save changes', 'The row opens the term like the text does');
+  assert.equal(lesion.classList.contains('changing_keyword'), true);
+  rows = savedList(elements);
+  assert.deepEqual([rows[0].open, rows[0].edit], [true, 'Editing']);
+
+  manager.annotations = [];
+  manager.onAnnotationsChange();
+  await elements['skip-button'].click();
+  rows = savedList(elements);
+  assert.deepEqual([rows[0].state, rows[0].open, rows[0].icon], ['Uncertain', false, 'bi bi-question-circle-fill'], 'The row follows the changed answer');
+  assert.equal(elements['next-button'].textContent, 'Save and Next Term');
+});
+
+test('only terms that do something when selected lift on hover', async () => {
+  const lesion = new Element('lesion', 'lesion'), margin = new Element('margin', 'margin'), later = new Element('effusion', 'effusion');
+  const {elements, manager} = await page([lesion, margin, later], 3);
+  const clickable = () => [lesion, margin, later].map(term => term.classList.contains('keyword-clickable'));
+  assert.deepEqual(clickable(), [false, false, false], 'The current term is already in hand; later terms wait their turn');
+  await finishTerm(elements, manager);
+  assert.deepEqual(clickable(), [true, false, false], 'A saved term can be opened');
+  await lesion.click();
+  assert.deepEqual(clickable(), [false, true, false], 'While it is open, the current term leads back');
+  await margin.click();
+  assert.deepEqual(clickable(), [true, false, false]);
+});
+
+test('selecting the term already being drawn keeps the drawing and asks nothing', async () => {
+  const lesion = new Element('lesion', 'lesion');
+  const {elements, manager, confirms} = await page([lesion], 1);
+  manager.annotations = [{syntheticShape: true}];
+  manager.onAnnotationsChange();
+  await lesion.click();
+  assert.equal(confirms.length, 0);
+  assert.equal(manager.annotations.length, 1);
+  assert.equal(elements['next-button'].disabled, false);
 });

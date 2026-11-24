@@ -108,9 +108,18 @@ main[role="main"] { height: 100%; min-height: 0; padding-bottom: 0 !important; }
 .annotated_keyword:hover { color: #0f5238; }
 .not_annotated_keyword, .skipped_keyword { color: var(--amber); text-decoration: underline dashed; text-decoration-thickness: 1px; text-underline-offset: .2em; }
 .not_annotated_keyword:hover, .skipped_keyword:hover { color: #6e4800; }
+/* Terms that can be selected (saved terms, and the current term while another is open) lift and light up on hover. They
+   are inline blocks so they can grow without moving the text around them. */
+.header-text .keyword { display: inline-block; border-radius: 3px; transition: transform .12s ease, background-color .12s ease, box-shadow .12s ease; }
+.header-text .keyword:not(.keyword-clickable) { cursor: default; }
+.header-text .keyword-clickable:hover, .header-text .keyword-clickable:focus-visible { position: relative; z-index: 1; transform: scale(1.1); box-shadow: 0 1px 5px rgba(0, 0, 0, .18); }
+.header-text .annotated_keyword.keyword-clickable:hover, .header-text .annotated_keyword.keyword-clickable:focus-visible { background: var(--ok-tint); }
+.header-text .skipped_keyword.keyword-clickable:hover, .header-text .skipped_keyword.keyword-clickable:focus-visible { background: var(--amber-tint); }
+.header-text .current_keyword.keyword-clickable:hover, .header-text .current_keyword.keyword-clickable:focus-visible { background: #f6d6d9; }
 /* A saved term opened to change it; Cancel only shows then. */
 .buttons-section #cancel-change-button[hidden] { display: none; }
-.changing_keyword { outline: 2px solid var(--cardinal); outline-offset: 1px; border-radius: 2px; text-decoration: none; }
+/* Tint and a thick underline rather than an outline: an outline is drawn over the punctuation beside the term. */
+.header-text .changing_keyword { color: var(--cardinal); background: var(--cardinal-tint); box-shadow: 0 0 0 2px var(--cardinal-tint); text-decoration: underline 2px var(--cardinal); text-underline-offset: .18em; }
 
 .annotation-instructions { flex: 0 0 auto; width: 100%; color: var(--muted); font-size: .8rem; line-height: 1.3; }
 
@@ -243,7 +252,8 @@ main[role="main"] { height: 100%; min-height: 0; padding-bottom: 0 !important; }
 
 @media (prefers-reduced-motion: reduce) {
   .floating-textbox, .annotation-dialog[open] { animation: none; }
-  .annotation-item, .annotation-actions button, .tool-button, .tool-button::after, .hover-description, .note-panel, .note-toggle, .description-tool, .annotation-dialog-action, .button, .primary-button, .problem-send { transition: none; }
+  .annotation-item, .annotation-actions button, .tool-button, .tool-button::after, .hover-description, .note-panel, .note-toggle, .description-tool, .annotation-dialog-action, .button, .primary-button, .problem-send, .header-text .keyword, .saved-term { transition: none; }
+  .header-text .keyword-clickable:hover, .header-text .keyword-clickable:focus-visible, .saved-term:hover:not(:disabled), .saved-term:focus-visible { transform: none; }
 }
 @media (max-width: 850px) {
   body > .container { padding-inline: 8px; }
@@ -272,6 +282,27 @@ main[role="main"] { height: 100%; min-height: 0; padding-bottom: 0 !important; }
 .custom-annotation-box .custom-cancel { width: 30px; height: 30px; padding: 0; color: var(--ink-2); background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-control); font-size: 1.1rem; line-height: 1; cursor: pointer; }
 .custom-annotation-box .custom-error { flex: 1 0 100%; margin: 0; color: var(--cardinal); font-size: .78rem; }
 .custom-annotation-box.saving { opacity: .7; pointer-events: none; }
+
+/* Saved terms under the note buttons (professionalPage.js): each row opens its term again to change it. */
+.saved-terms { flex: 0 1 auto; min-height: 0; overflow: auto; padding: 8px 10px; background: var(--surface); border: 1px solid var(--line); border-left: 3px solid var(--ok); border-radius: var(--radius); }
+.saved-terms-title { display: flex; align-items: center; gap: 6px; margin: 0; color: var(--ok); font-size: .82rem; font-weight: 700; }
+.saved-count { margin-left: auto; padding: 1px 7px; color: var(--ok); background: var(--ok-tint); border-radius: 999px; font-size: .72rem; font-weight: 600; white-space: nowrap; }
+.saved-terms-note { margin: 2px 0 6px; color: var(--muted); font-size: .74rem; line-height: 1.3; }
+.saved-items { display: flex; flex-direction: column; gap: 3px; margin: 0; padding: 0; list-style: none; }
+.saved-term { display: flex; align-items: center; gap: 6px; width: 100%; padding: 5px 8px; color: var(--ink); background: var(--surface); border: 1px solid var(--line-soft); border-radius: var(--radius-control); font-size: .82rem; line-height: 1.25; text-align: left; cursor: pointer; transition: background-color .12s ease, border-color .12s ease, transform .12s ease; }
+.saved-term .bi { flex: 0 0 auto; }
+.saved-term[data-kind="drawn"] > .bi { color: var(--ok); }
+.saved-term[data-kind="uncertain"] > .bi, .saved-term[data-kind="absent"] > .bi { color: var(--amber); }
+.saved-term-name { flex: 1 1 auto; min-width: 0; font-weight: 600; overflow-wrap: anywhere; }
+.saved-term-state { flex: 0 0 auto; color: var(--muted); font-size: .72rem; }
+.saved-term-edit { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 3px; color: var(--cardinal); font-size: .72rem; font-weight: 600; opacity: .7; }
+.saved-term:hover:not(:disabled), .saved-term:focus-visible { transform: translateX(2px); }
+.saved-term[data-kind="drawn"]:hover:not(:disabled), .saved-term[data-kind="drawn"]:focus-visible { background: var(--ok-tint); border-color: #b9dccb; }
+.saved-term:is([data-kind="uncertain"], [data-kind="absent"]):hover:not(:disabled), .saved-term:is([data-kind="uncertain"], [data-kind="absent"]):focus-visible { background: var(--amber-tint); border-color: var(--amber-line); }
+.saved-term:hover .saved-term-edit, .saved-term:focus-visible .saved-term-edit, .saved-term.open .saved-term-edit { opacity: 1; }
+.saved-term.open { background: var(--cardinal-tint); border-color: var(--cardinal); box-shadow: inset 3px 0 0 var(--cardinal); }
+.saved-term:disabled { cursor: not-allowed; opacity: .6; }
+@media (max-width: 850px) { .saved-term-state { display: none; } }
 
 /* Saved custom annotations under the note buttons. */
 .custom-list { flex: 0 1 auto; min-height: 0; overflow: auto; margin-top: 8px; padding: 8px 10px; background: var(--surface); border: 1px solid #1a6fe0; border-radius: var(--radius); }

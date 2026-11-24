@@ -391,3 +391,12 @@ Decisions: the order is the participant page's Images worked on list; the bar is
 > several annotators asked for the following feature to be added to the main CliniMark annotation platform: clinicians want to have an option to return to any of the medical terms which needed to be annotated and correct them, after they have already annotated it. Currently once they are done with a term, they click on "Save and Next" and can't come back to any of the previous terms. I think we can resolve this by allowing to click on the medical terms that are selected for annotation in the text description, and upon clicking their earlier annotations should appear. What do you think ? Let's implement this on a testing site first
 
 Decisions: selecting a saved term opens it for changes until Next Image; changes are saved with Save changes or dropped with Cancel; the answer row holds the current version and every replaced version is kept (AnswerRevisions); test site first.
+
+**2026-11-24 UTC**, added to the same change:
+
+> let's add also the following:
+>
+> 1. upon hovering on any medical keyword which is selected for annotation, it becomes highlighted and slightly increased in size, hence signifying that it is clickable.
+> 2. in addition to 1, let's on the right side under the comments/technical reports buttons have also the annotated medical terms appearing one under another as they progress with annotation, with some way of signifying that an annotator can always click on them and come back to annotations they did before to edit them
+
+Decisions: only terms that can be selected react to the pointer (terms not reached yet can't be opened); the list follows the order of the text and shows each answer with an Edit mark; still on the test site first.
