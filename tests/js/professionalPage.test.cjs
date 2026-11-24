@@ -67,7 +67,7 @@ async function page(occurrences, expectedCount, options = {}) {
   }
   const requestErrors = [], confirms = [], reloads = [];
   const context = {
-    window: {annotatedMedData: {id: 1}, addEventListener(name, callback) { events[name] = callback; }, watchAssignment: options.watch,
+    window: {annotatedMedData: options.noImage ? undefined : {id: 1}, addEventListener(name, callback) { events[name] = callback; }, watchAssignment: options.watch,
       setupMetadataCheck: options.labels},
     CustomEvent: FakeEvent, Event: FakeEvent,
     document: {
@@ -98,6 +98,14 @@ async function page(occurrences, expectedCount, options = {}) {
   };
   return {elements, calls, manager: context.window.canvasManager, warnsBeforeLeaving, requestErrors, confirms, reloads};
 }
+
+test('leaving the page without an image (end of series, nothing free) neither fails nor asks to stay', async () => {
+  // Live problem reports 1-7 (2026-11-23): the leave-page check read the custom annotations before they existed.
+  const {warnsBeforeLeaving, manager} = await page([], 0, {noImage: true});
+  assert.equal(manager, undefined, 'No image, so no drawing tools are set up');
+  assert.doesNotThrow(warnsBeforeLeaving);
+  assert.equal(warnsBeforeLeaving(), false);
+});
 
 test('inline repeated phrases advance once per canonical term in description order', async () => {
   const firstBoundary = new Element('Boundary', 'boundary');

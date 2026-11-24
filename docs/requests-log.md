@@ -369,3 +369,9 @@ Decisions: both yellow warnings on the sign-up page were removed (the request qu
 **2026-11-23 UTC**
 
 > in Admin page, first section of Overview, Progress by category - hovering over the statistical vertical bars doesnt' work well. Upon hovering on one bar for some reason other bar info is displayed. Give it a look
+
+## 2026-11-24: technical problem reports
+
+**2026-11-24 UTC**
+
+> currently there are 7 technical problems reported, check them and explain and resolve

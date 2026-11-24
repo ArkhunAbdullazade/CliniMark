@@ -2,6 +2,9 @@
 
 document.addEventListener("DOMContentLoaded", () => {
   let dirty = false, saving = false, initialized = false, navigating = false, released = false;
+  // Custom annotations (customAnnotations.js), set up only once there is an image. Declared here because the
+  // leave-page check below runs on every page, including the end-of-series page that has no image.
+  let custom = null;
   const status = document.getElementById("annotation-status");
   let baseStatus = {message: status?.textContent || "", state: status?.dataset.state || "ready"};
   let inspecting = null;
@@ -97,7 +100,7 @@ document.addEventListener("DOMContentLoaded", () => {
   tools.customButton?.addEventListener("click", () => manager.switchMode("custom"));
   tools.zoomButton.addEventListener("click", () => manager.switchMode("zoom"));
   // Findings beyond the term list, saved on their own (customAnnotations.js); absent in some tests.
-  const custom = window.setupCustomAnnotations?.({manager, imageId: assignmentId, request, showStatus, requestFailed});
+  custom = window.setupCustomAnnotations?.({manager, imageId: assignmentId, request, showStatus, requestFailed});
   // The specialist confirms or corrects the image's labels (metadataCheck.js); required before Next Image.
   const labels = window.setupMetadataCheck?.({imageId: assignmentId, request, requestFailed,
     onConflict: error => lockLost(error),

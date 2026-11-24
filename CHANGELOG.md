@@ -4,6 +4,10 @@ What changed in CliniMark and why, newest first. Git holds every line of every c
 
 Database changes are in `src/CliniMark.Presentation/Migrations`, and each release that changes the database has a script in `deployment/`.
 
+## 2026-11-24: no false "Page error" reports from the end-of-series page
+
+- Leaving the specialist page while it had no image (the end-of-series page, or "No images are available in your filters right now") logged a "Page error": "Cannot access 'custom' before initialization". The check that warns about unsaved work read the custom annotations, which are only set up when there is an image. Participants saw nothing and lost nothing, because there was no image to save and the browser went on to the next page. But each exit added a problem report and a notification email. The first 7 reports came on 2026-11-23, from two specialists choosing new filters. The check now works on pages without an image. The fault had been there since custom annotations were added on 2026-11-02. It surfaced now because participants were reaching the end of their filters.
+
 ## 2026-11-23: Progress by category tooltip shows the right row
 
 - On the admin Overview, hovering over a bar in Progress by category showed the figures of another category. The chart lists categories one under the other, but the chart library looked for the bar nearest the pointer from left to right, so it picked whichever row's bar ended closest sideways. It now follows the row under the pointer. Checked in a browser on every row of all three lists, for specialists and students.
