@@ -59,6 +59,45 @@ public sealed class NotificationTests
     }
 
     [Fact]
+    public async Task ACommentAddedOrChangedWhenChangingASavedAnswerIsAnnouncedOnce()
+    {
+        await using var db = await Db.CreateAsync();
+        var person = db.AddUser("spec", "Professional", Start.AddHours(-2), "Dr Spec");
+        await db.SaveAsync();
+        await db.Scanner().EnqueueAsync(Start);
+        var answer = db.Answer(person, 1, "nodule", Start.AddMinutes(1));
+        db.Context.AnnotatedMedDatas.Add(answer);
+        await db.SaveAsync();
+        Assert.Equal(0, await db.Scanner().EnqueueAsync(Start.AddMinutes(2)));
+
+        // What CorrectProfessionalAsync writes: the replaced version as a revision, the new one on the answer.
+        async Task ChangeAsync(DateTime at, string? comment, string button = "Save and Next Term")
+        {
+            db.Context.AnswerRevisions.Add(new AnswerRevision { AnswerId = answer.Id, MedDataId = 1, UserId = person.Id, ExtractedKeyword = "nodule",
+                PressedButton = answer.PressedButton, Comment = answer.Comment, SavedAt = answer.CreatedAt, RevisedAt = at });
+            answer.Comment = comment;
+            answer.PressedButton = button;
+            await db.SaveAsync();
+        }
+
+        await ChangeAsync(Start.AddMinutes(3), "Actually a cyst");
+        Assert.Equal(1, await db.Scanner().EnqueueAsync(Start.AddMinutes(4)));
+        await ChangeAsync(Start.AddMinutes(5), "Actually a cyst", "Uncertain/Skip");
+        Assert.Equal(0, await db.Scanner().EnqueueAsync(Start.AddMinutes(6)));
+        await ChangeAsync(Start.AddMinutes(7), "Cyst, <i>small</i>", "Uncertain/Skip");
+        Assert.Equal(1, await db.Scanner().EnqueueAsync(Start.AddMinutes(8)));
+        Assert.Equal(0, await db.Scanner().EnqueueAsync(Start.AddMinutes(9)));
+
+        var rows = await db.Context.Notifications.Where(item => item.Kind == Notification.Problem).OrderBy(item => item.Id).ToListAsync();
+        Assert.Equal(["Comment from Dr Spec on image 1", "Changed comment from Dr Spec on image 1"], rows.Select(item => item.Title));
+        Assert.Contains("Comment added when changing a saved answer", rows[0].Body);
+        Assert.Contains("Actually a cyst", rows[0].Body);
+        Assert.Contains("Cyst, &lt;i&gt;small&lt;/i&gt;", rows[1].Body);
+        Assert.Contains("Earlier comment", rows[1].Body);
+        Assert.Contains("Uncertain/Skip", rows[1].Body);
+    }
+
+    [Fact]
     public async Task EachTargetIsAnnouncedOnceWhenSpecialistsReachIt()
     {
         await using var db = await Db.CreateAsync();

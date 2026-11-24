@@ -184,7 +184,25 @@
                     {
                         <tr data-shape="a@(answer.Id)">
                             <td class="fw-semibold">@answer.Keyword</td>
-                            <td><span class="answer @AdminUi.ButtonClass(answer.Button)"><i class="bi @AdminUi.ButtonIcon(answer.Button)" aria-hidden="true"></i>@AdminUi.ButtonLabel(answer.Button)</span></td>
+                            <td>
+                                <span class="answer @AdminUi.ButtonClass(answer.Button)"><i class="bi @AdminUi.ButtonIcon(answer.Button)" aria-hidden="true"></i>@AdminUi.ButtonLabel(answer.Button)</span>
+                                @if (answer.Earlier.Count > 0)
+                                {
+                                    <details class="answer-history">
+                                        <summary>Changed @(answer.Earlier.Count == 1 ? "once" : $"{answer.Earlier.Count} times") by the specialist</summary>
+                                        <ol>
+                                            @foreach (var before in answer.Earlier)
+                                            {
+                                                <li>
+                                                    <span class="muted">Until <time datetime="@AdminUi.Iso(before.ReplacedAt)" data-local="datetime"></time>:</span>
+                                                    @(before.HadShapes ? "Saved with shapes" : AdminUi.ButtonLabel(before.Button))
+                                                    @if (!string.IsNullOrWhiteSpace(before.Comment)) { <span class="muted">· comment: “@before.Comment”</span> }
+                                                </li>
+                                            }
+                                        </ol>
+                                    </details>
+                                }
+                            </td>
                             <td>
                                 @if (answer.AnnotatorId != null)
                                 {

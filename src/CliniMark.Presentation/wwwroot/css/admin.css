@@ -78,6 +78,11 @@ html { font-size: 14px; }
 .admin-grid-tiles { grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); }
 .admin-grid-2 { grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); }
 
+/* Image page: earlier versions of an answer the specialist changed. */
+.answer-history { margin-top: .3rem; font-size: .82rem; }
+.answer-history summary { color: var(--muted); cursor: pointer; }
+.answer-history ol { margin: .25rem 0 0; padding-left: 1.1rem; }
+
 /* Image page: Previous and Next through one participant's images (_ParticipantSteps.cshtml). */
 .participant-steps { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .5rem 1rem; padding: .6rem 1rem; background: var(--surface); border: 1px solid var(--line); border-left: 3px solid var(--series-specialist); border-radius: var(--radius); }
 .participant-steps-who { display: flex; flex-wrap: wrap; align-items: center; gap: .25rem .6rem; min-width: 0; color: var(--ink); }

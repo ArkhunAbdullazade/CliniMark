@@ -242,7 +242,7 @@ public sealed class AdminServicesTests
 
         var files = await ReadArchiveAsync(await db.Export.CreateArchiveAsync(new ExportOptions { Identity = identity }));
 
-        var expected = new List<string> { "README.txt", "custom_annotations.csv", "full_data.csv", "image_skips.csv", "images.csv", "metadata_checks.csv", "pixel_masks.csv", "problem_reports.csv", "progress.csv", "specialist_responses.csv", "student_annotations.csv" };
+        var expected = new List<string> { "README.txt", "answer_revisions.csv", "custom_annotations.csv", "full_data.csv", "image_skips.csv", "images.csv", "metadata_checks.csv", "pixel_masks.csv", "problem_reports.csv", "progress.csv", "specialist_responses.csv", "student_annotations.csv" };
         if (identity != IdentityMode.None) expected.Add("participants.csv");
         Assert.Equal(expected.Order(), files.Keys.Order());
         Assert.Equal(identity == IdentityMode.Full, files.Values.Any(text => text.Contains("first@example.test")));
@@ -306,7 +306,7 @@ public sealed class AdminServicesTests
         var archive = await WriteImageArchiveAsync(db, new ImageServer(request => files[IdOf(request)]), new ExportOptions { Format = format, IncludeImages = true });
 
         using var zip = new ZipArchive(new MemoryStream(archive), ZipArchiveMode.Read);
-        Assert.Equal(["README.txt", "custom_annotations" + extension, "full_data" + extension, "image_skips" + extension, "images" + extension, "images/1.jpg", "images/2.png", "images/3.jpg", "images_manifest" + extension,
+        Assert.Equal(["README.txt", "answer_revisions" + extension, "custom_annotations" + extension, "full_data" + extension, "image_skips" + extension, "images" + extension, "images/1.jpg", "images/2.png", "images/3.jpg", "images_manifest" + extension,
             "metadata_checks" + extension, "participants" + extension, "pixel_masks" + extension, "problem_reports" + extension, "progress" + extension, "specialist_responses" + extension, "student_annotations" + extension],
             zip.Entries.Select(entry => entry.FullName).Order(StringComparer.Ordinal));
         Assert.Equal(files[1], EntryBytes(zip, "images/1.jpg"));
@@ -825,10 +825,42 @@ public sealed class AdminServicesTests
         Assert.Contains("my comment", skip.DiscardedWork);
         Assert.Contains("my finding", skip.DiscardedWork);
         Assert.DoesNotContain(db.First.Email!, skip.DiscardedWork);
+        Assert.DoesNotContain("\"revisions\"", skip.DiscardedWork);
 
         Assert.Equal(1, (await db.AssignAsync(db.Second)).MedData!.Id);
         await FinishImageAsync(db, db.Second, 1, "lesion", "margin");
         Assert.Equal([db.Second.Email], await db.Context.AnnotatedMedDatas.Select(item => item.Email).Distinct().ToListAsync());
+    }
+
+    [Fact]
+    public async Task AChangedAnswerShowsItsEarlierVersionOnTheImagePageInTheExportAndInASkipCopy()
+    {
+        await using var db = await AdminDatabase.CreateAsync();
+        await db.AssignAsync(db.First);
+        Assert.True((await db.Repository.SaveProfessionalAsync(db.First, Answer("lesion", "first note"))).Success);
+        Assert.True((await db.Repository.CorrectProfessionalAsync(db.First, new AnnotatedMedData
+            { MedDataId = 1, ExtractedKeyword = "lesion", PressedButton = "Not Visible/Abstract", BoxCoordinates = "", Comment = "not there" })).Success);
+
+        var answer = Assert.Single((await db.Queries.GetImageAsync(1))!.Answers);
+        Assert.Equal(("Not Visible/Abstract", "not there"), (answer.Button, answer.Comment));
+        var earlier = Assert.Single(answer.Earlier);
+        Assert.Equal(("Save and Next Term", true, "first note"), (earlier.Button, earlier.HadShapes, earlier.Comment));
+
+        var files = await ReadArchiveAsync(await db.Export.CreateArchiveAsync(new ExportOptions()));
+        var rows = files["answer_revisions.csv"].Split("\r\n", StringSplitOptions.RemoveEmptyEntries);
+        Assert.Equal(2, rows.Length);
+        Assert.StartsWith("RevisionId,ResponseId,ImageId,Term,Response,Coordinates,Comment,SavedAtUtc,ReplacedAtUtc,AnnotatorCode", rows[0]);
+        Assert.Contains("lesion,Save and Next Term,", rows[1]);
+        Assert.Contains("first note", rows[1]);
+        Assert.Contains("SPEC-001", rows[1]);
+        Assert.Contains("answer_revisions", files["README.txt"]);
+
+        Assert.True((await db.Repository.SkipImageAsync(1, db.First)).Success);
+        Assert.Empty(db.Context.AnswerRevisions);
+        var skip = await db.Context.ImageSkips.AsNoTracking().SingleAsync();
+        using var copy = JsonDocument.Parse(skip.DiscardedWork!);
+        Assert.Equal("not there", copy.RootElement.GetProperty("answers")[0].GetProperty("Comment").GetString());
+        Assert.Equal("first note", copy.RootElement.GetProperty("revisions")[0].GetProperty("Comment").GetString());
     }
 
     [Fact]

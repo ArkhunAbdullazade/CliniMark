@@ -88,6 +88,29 @@ public sealed class PostgreSqlWorkflowTests
                 Assert.False((await new MedDataRepository(verify).SaveProfessionalAsync(Researcher(999), Response(imageId))).Success);
             }
 
+            // Changing the saved term: racing copies of one change (retries) keep exactly one earlier version.
+            AnnotatedMedData Change(string comment) => new()
+                { MedDataId = imageId, ExtractedKeyword = "lesion", PressedButton = "Uncertain/Skip", BoxCoordinates = "", Comment = comment };
+            var changes = await Task.WhenAll(Enumerable.Range(0, 4).Select(async _ =>
+            {
+                await using var context = new MedDataDbContext(options);
+                return await new MedDataRepository(context).CorrectProfessionalAsync(owner, Change("not sure"));
+            }));
+            Assert.All(changes, result => Assert.True(result.Success, result.Message));
+            await using (var change = new MedDataDbContext(options))
+                Assert.True((await new MedDataRepository(change).CorrectProfessionalAsync(owner, Change("still not sure"))).Success);
+            await using (var verify = new MedDataDbContext(options))
+            {
+                var revisions = await verify.AnswerRevisions.OrderBy(item => item.Id).ToListAsync();
+                Assert.Equal(2, revisions.Count);
+                Assert.Equal(("Save and Next Term", Coordinates, "Uncertain/Skip", "not sure"),
+                    (revisions[0].PressedButton, revisions[0].BoxCoordinates, revisions[1].PressedButton, revisions[1].Comment));
+                Assert.Equal(revisions[0].RevisedAt, revisions[1].SavedAt);
+                var answer = await verify.AnnotatedMedDatas.SingleAsync();
+                Assert.Equal(("Uncertain/Skip", "still not sure", (string?)null), (answer.PressedButton, answer.Comment, answer.PixelMask));
+                Assert.Equal("[4]", (await verify.MedDatas.FindAsync(imageId))!.KeywordStates);
+            }
+
             // Deliberately fail the second database write to prove the annotation insert also rolls back.
             var unsaved = successful.First(item => item.ImageId != imageId);
             var nextOwner = Researcher(int.Parse(unsaved.Id["researcher-".Length..]));

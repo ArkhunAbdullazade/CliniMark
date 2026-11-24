@@ -41,6 +41,7 @@ public sealed class NotificationScanner(MedDataDbContext context, IOptions<Notif
         var added = await AddAsync(await RegistrationsAsync(started.Value, now, cancellationToken), cancellationToken);
         added += await AddAsync(await ProblemsAsync(started.Value, now, cancellationToken), cancellationToken);
         added += await AddAsync(await CommentsAsync(started.Value, now, cancellationToken), cancellationToken);
+        added += await AddAsync(await CommentChangesAsync(started.Value, now, cancellationToken), cancellationToken);
         added += await AddAsync(await MilestonesAsync(now, cancellationToken), cancellationToken);
         added += await AddAsync(await WeeklyAsync(started.Value, now, cancellationToken), cancellationToken);
         return added;
@@ -123,6 +124,13 @@ public sealed class NotificationScanner(MedDataDbContext context, IOptions<Notif
         if (missing.Count == 0) return [];
         var wanted = ids.Where(id => missing.Contains("note:" + id)).ToList();
         var answers = await context.AnnotatedMedDatas.AsNoTracking().Where(answer => wanted.Contains(answer.Id)).OrderBy(answer => answer.Id).ToListAsync(cancellationToken);
+        // A changed answer's own comment is the one it was first saved with (its oldest earlier version); comments added or
+        // changed later are announced by CommentChangesAsync, so the same comment never comes twice.
+        var firstSaved = (await context.AnswerRevisions.AsNoTracking().Where(revision => wanted.Contains(revision.AnswerId))
+                .OrderBy(revision => revision.Id).Select(revision => new { revision.AnswerId, revision.Comment }).ToListAsync(cancellationToken))
+            .GroupBy(revision => revision.AnswerId).ToDictionary(group => group.Key, group => group.First().Comment);
+        foreach (var answer in answers.Where(answer => firstSaved.ContainsKey(answer.Id)))
+            answer.Comment = firstSaved[answer.Id];
         var everyone = await PeopleAsync(cancellationToken);
         var result = new List<Notification>();
         foreach (var answer in answers.Where(answer => !string.IsNullOrWhiteSpace(answer.Comment) || !string.IsNullOrWhiteSpace(answer.TechnicalProblem)))
@@ -142,6 +150,53 @@ public sealed class NotificationScanner(MedDataDbContext context, IOptions<Notif
                 Field.Text("Comment", answer.Comment),
                 Field.Text("Technical note", answer.TechnicalProblem)));
             result.Add(Row("note:" + answer.Id, Notification.Problem, title, body, now));
+        }
+        return result;
+    }
+
+    // A comment added or changed when a specialist changed a saved answer (AnswerRevisions). Each change that leaves a new,
+    // non-empty comment is announced once, like a comment saved with a new answer.
+    private async Task<List<Notification>> CommentChangesAsync(DateTime since, DateTime now, CancellationToken cancellationToken)
+    {
+        var changes = await context.AnswerRevisions.AsNoTracking().Where(revision => revision.RevisedAt >= since)
+            .Select(revision => new { revision.Id, revision.AnswerId }).ToListAsync(cancellationToken);
+        if (changes.Count == 0) return [];
+        var missing = await MissingAsync(changes.Select(change => "note-change:" + change.Id).ToList(), cancellationToken);
+        if (missing.Count == 0) return [];
+        var answerIds = changes.Where(change => missing.Contains("note-change:" + change.Id)).Select(change => change.AnswerId).Distinct().ToList();
+        var answers = await context.AnnotatedMedDatas.AsNoTracking().Where(answer => answerIds.Contains(answer.Id))
+            .ToDictionaryAsync(answer => answer.Id, cancellationToken);
+        // Every earlier version of these answers: the comment a change left is the next version's, or the answer's own.
+        var versions = await context.AnswerRevisions.AsNoTracking().Where(revision => answerIds.Contains(revision.AnswerId))
+            .OrderBy(revision => revision.Id).ToListAsync(cancellationToken);
+        var everyone = await PeopleAsync(cancellationToken);
+        var result = new List<Notification>();
+        foreach (var history in versions.GroupBy(revision => revision.AnswerId).Where(group => answers.ContainsKey(group.Key)))
+        {
+            var answer = answers[history.Key];
+            var list = history.ToList();
+            for (var i = 0; i < list.Count; i++)
+            {
+                var change = list[i];
+                if (!missing.Contains("note-change:" + change.Id)) continue;
+                var before = change.Comment?.Trim() ?? "";
+                var after = (i + 1 < list.Count ? list[i + 1].Comment : answer.Comment)?.Trim() ?? "";
+                var response = i + 1 < list.Count ? list[i + 1].PressedButton : answer.PressedButton;
+                if (after.Length == 0 || after == before) continue;
+                var person = everyone.ByEmail(answer.Email);
+                var name = person?.DisplayName ?? answer.FullName ?? "an unknown account";
+                var title = $"{(before.Length == 0 ? "Comment" : "Changed comment")} from {name} on image {answer.MedDataId}";
+                var body = Card(title, Fields(
+                    Field.Text("Type", before.Length == 0 ? "Comment added when changing a saved answer" : "Comment changed with a saved answer"),
+                    Field.Text("When", When(change.RevisedAt)),
+                    Field.Text("From", person != null ? Who(person) : $"{answer.FullName} · {answer.Email}"),
+                    await ImageFieldAsync(answer.MedDataId, cancellationToken),
+                    Field.Text("Term", answer.ExtractedKeyword),
+                    Field.Text("Answer", response),
+                    Field.Text("Comment", after),
+                    Field.Text("Earlier comment", before.Length == 0 ? null : before)));
+                result.Add(Row("note-change:" + change.Id, Notification.Problem, title, body, now));
+            }
         }
         return result;
     }

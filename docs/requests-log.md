@@ -383,3 +383,11 @@ Decisions: both yellow warnings on the sign-up page were removed (the request qu
 > one more feature we need to add to the admin page: when I click on a participant and any of the images he/she has annotated, in order to see another image and annotations, i need to return and click on another image. It would be nice to have smth like "Next Image" and "Previous Image" buttons available when I view any image annotated by a specific participant, in order to quicker check all the work done by a single annotator. Currently there is only "Source Article", Remove from study, and All images buttons. We should add next and previous image navigator somewhere on that same page. Implement and directly go live
 
 Decisions: the order is the participant page's Images worked on list; the bar is shown above and below the image page, and the arrow keys step too; released straight to the live site as asked, without a test-site round.
+
+## 2026-11-24: changing a term after saving it
+
+**2026-11-24 UTC**
+
+> several annotators asked for the following feature to be added to the main CliniMark annotation platform: clinicians want to have an option to return to any of the medical terms which needed to be annotated and correct them, after they have already annotated it. Currently once they are done with a term, they click on "Save and Next" and can't come back to any of the previous terms. I think we can resolve this by allowing to click on the medical terms that are selected for annotation in the text description, and upon clicking their earlier annotations should appear. What do you think ? Let's implement this on a testing site first
+
+Decisions: selecting a saved term opens it for changes until Next Image; changes are saved with Save changes or dropped with Cancel; the answer row holds the current version and every replaced version is kept (AnswerRevisions); test site first.

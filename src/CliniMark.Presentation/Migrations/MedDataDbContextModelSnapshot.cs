@@ -230,6 +230,53 @@ namespace CliniMark.Presentation.Migrations
                     b.ToTable("AnnotatedMedDatas");
                 });
 
+            modelBuilder.Entity("CliniMark.Core.Models.AnswerRevision", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<int>("AnswerId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("BoxCoordinates")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Comment")
+                        .HasColumnType("text");
+
+                    b.Property<string>("ExtractedKeyword")
+                        .HasColumnType("text");
+
+                    b.Property<int>("MedDataId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("PressedButton")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("RevisedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("SavedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AnswerId");
+
+                    b.HasIndex("MedDataId");
+
+                    b.HasIndex("RevisedAt");
+
+                    b.ToTable("AnswerRevisions");
+                });
+
             modelBuilder.Entity("CliniMark.Core.Models.CustomAnnotation", b =>
                 {
                     b.Property<int>("Id")
@@ -833,6 +880,15 @@ namespace CliniMark.Presentation.Migrations
                     b.HasKey("UserId", "LoginProvider", "Name");
 
                     b.ToTable("AspNetUserTokens", (string)null);
+                });
+
+            modelBuilder.Entity("CliniMark.Core.Models.AnswerRevision", b =>
+                {
+                    b.HasOne("CliniMark.Core.Models.AnnotatedMedData", null)
+                        .WithMany()
+                        .HasForeignKey("AnswerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("CliniMark.Core.Models.MedDataKeyword", b =>

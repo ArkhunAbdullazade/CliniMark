@@ -189,6 +189,11 @@ public sealed class AdminQueryService
             .OrderBy(custom => custom.Id).ToListAsync(cancellationToken);
         var checks = await context.MetadataChecks.AsNoTracking().Where(check => check.MedDataId == id)
             .OrderBy(check => check.Id).ToListAsync(cancellationToken);
+        var earlier = (await context.AnswerRevisions.AsNoTracking().Where(revision => revision.MedDataId == id)
+                .OrderBy(revision => revision.Id).ToListAsync(cancellationToken))
+            .GroupBy(revision => revision.AnswerId)
+            .ToDictionary(group => group.Key, group => (IReadOnlyList<EarlierAnswer>)group.Select(revision => new EarlierAnswer(revision.PressedButton,
+                !string.IsNullOrWhiteSpace(revision.BoxCoordinates), revision.Comment, revision.SavedAt, revision.RevisedAt)).ToList());
 
         var sets = answers.GroupBy(answer => answer.Email ?? "", StringComparer.OrdinalIgnoreCase).Select(set =>
         {
@@ -205,7 +210,8 @@ public sealed class AdminQueryService
                 var person = people.ByEmail(answer.Email);
                 var (first, drawing) = ResponseTimings.Parse(answer.Timestamps);
                 return new SpecialistAnswer(answer.Id, answer.ExtractedKeyword, answer.PressedButton, answer.BoxCoordinates, answer.Comment, answer.TechnicalProblem,
-                    first, drawing, answer.CreatedAt, person?.Id, person?.DisplayName ?? "Removed account", complete.Contains(person?.Id));
+                    first, drawing, answer.CreatedAt, person?.Id, person?.DisplayName ?? "Removed account", complete.Contains(person?.Id),
+                    earlier.GetValueOrDefault(answer.Id) ?? []);
             }).ToList(),
             sets,
             groups.Select(group =>

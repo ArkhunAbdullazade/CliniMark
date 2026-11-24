@@ -94,7 +94,10 @@ public sealed record LockHolder(string UserId, string Name, string? Email, DateT
 
 public sealed record SpecialistAnswer(
     int Id, string? Keyword, string? Button, string? Coordinates, string? Comment, string? TechnicalProblem, long? FirstDrawMs, long? DrawingMs,
-    DateTime? CreatedAt, string? AnnotatorId, string AnnotatorName, bool SetComplete);
+    DateTime? CreatedAt, string? AnnotatorId, string AnnotatorName, bool SetComplete, IReadOnlyList<EarlierAnswer> Earlier);
+
+/// <summary>A version of a term answer that the specialist later changed on the image page, oldest first.</summary>
+public sealed record EarlierAnswer(string? Button, bool HadShapes, string? Comment, DateTime? SavedAt, DateTime ReplacedAt);
 
 public sealed record AnnotatorSet(string? UserId, string Name, int Answered, int Total, bool Complete, DateTime? LastSaveAt);
 

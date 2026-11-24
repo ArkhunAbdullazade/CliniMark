@@ -64,6 +64,8 @@ For every highlighted term, the specialist chooses one of three answers:
 
 Comments are saved with the term they belong to. The time from opening a term to the first stroke, and from there to saving, is recorded for every answer.
 
+**Changing a saved term.** Until they select Next Image, the specialist can go back to any term they've answered by selecting it in the description. Its shapes and comment come back and can be edited, or the answer changed to another one (to make a drawn term Uncertain/Skip or Not Visible/Abstract, delete its shapes first). **Save changes** keeps the change and returns to where they were; **Cancel** leaves the term as it was. The answer row then holds the new version, and every version it replaced is kept in `AnswerRevisions`, so nothing a specialist saved is lost. The admin image page shows earlier versions under the answer, and the export has them in `answer_revisions`.
+
 <p align="center">
   <img src="media/drawing-and-label-check.png" width="100%" alt="Left: a freehand contour and a selected boundary box on a chest CT, with the tool bar. Right: the label check, where No on speciality opens a search offering Infectious diseases">
 </p>

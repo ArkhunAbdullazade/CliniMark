@@ -119,22 +119,7 @@ public class MedDataRepository : IMedDataRepository
 
     public async Task<AnnotationSaveResult> SaveProfessionalAsync(User user, AnnotatedMedData annotation)
     {
-        if (string.IsNullOrWhiteSpace(user.Email))
-            return Failure("Your account needs an email address.");
-        var keyword = annotation.ExtractedKeyword?.Trim();
-        if (string.IsNullOrEmpty(keyword) || (annotation.Comment?.Length ?? 0) > 4000 || (annotation.TechnicalProblem?.Length ?? 0) > 4000)
-            return Failure("Choose a valid term and keep comments and problem reports below 4,000 characters.");
-        if (annotation.PressedButton is not ("Save and Next Term" or "Uncertain/Skip" or "Not Visible/Abstract"))
-            return Failure("Choose a valid annotation response.");
-        if (annotation.PressedButton == "Save and Next Term")
-        {
-            if (!AnnotationCoordinates.TryValidate(annotation.BoxCoordinates, out var error))
-                return Failure(error);
-            // Computed before the workflow lock, so a large image never holds up other annotators.
-            annotation.PixelMask = AnnotationMask.FromCoordinates(annotation.BoxCoordinates!).ToJson();
-        }
-        else if (!string.IsNullOrWhiteSpace(annotation.BoxCoordinates))
-            return Failure("Skipped or non-visible terms must not include geometry.");
+        if (CheckAnswer(user, annotation, out var keyword) is { } invalid) return invalid;
 
         await using var transaction = await BeginWorkflowAsync();
         var source = await context.MedDatas.FindAsync(annotation.MedDataId);
@@ -173,6 +158,79 @@ public class MedDataRepository : IMedDataRepository
         await context.SaveChangesAsync();
         await transaction.CommitAsync();
         return new(true);
+    }
+
+    /// <summary>
+    /// Changes a term the specialist already answered on this image, while it is still theirs (before Next Image). The
+    /// answer row takes the new response, shapes and comment, so every count and export uses the corrected answer, and
+    /// the version it replaces is kept in AnswerRevisions. The term's timings, save time and technical note stay as
+    /// first saved. Sending the same change again (a retry) changes nothing.
+    /// </summary>
+    public async Task<AnnotationSaveResult> CorrectProfessionalAsync(User user, AnnotatedMedData annotation)
+    {
+        if (CheckAnswer(user, annotation, out var keyword) is { } invalid) return invalid;
+
+        await using var transaction = await BeginWorkflowAsync();
+        var source = await context.MedDatas.FindAsync(annotation.MedDataId);
+        if (source == null || !UserFilters(user).Matches(source))
+            return Failure("This image does not match your selected filters.", true);
+        var keywords = await KeywordListAsync(source.Id);
+        if (!keywords.Contains(keyword))
+            return Failure("This term does not belong to the selected image.");
+        var answer = await context.AnnotatedMedDatas.Where(item => item.MedDataId == source.Id
+                && item.Email == user.Email && item.ExtractedKeyword == keyword)
+            .OrderByDescending(item => item.Id).FirstOrDefaultAsync();
+        if (answer != null && SameCorrection(answer, annotation))
+            return new(true);
+        if (source.IsAnnotated || source.LockedByUserId != user.Id)
+            return Failure(NoLongerAssigned, true);
+        if (answer == null)
+            return Failure("This term has no saved answer to change. Reload the page to see your saved work.", true);
+        if (annotation.PressedButton == "Save and Next Term" &&
+            !await DimensionsAgreeAsync(source.Id, [annotation.BoxCoordinates!]))
+            return Failure("The image dimensions differ from earlier annotations. Stop and ask the research administrator to check the source image.", true);
+
+        var now = DateTime.UtcNow;
+        var lastChange = await context.AnswerRevisions.Where(revision => revision.AnswerId == answer.Id)
+            .MaxAsync(revision => (DateTime?)revision.RevisedAt);
+        context.AnswerRevisions.Add(new AnswerRevision
+        {
+            AnswerId = answer.Id, MedDataId = source.Id, UserId = user.Id, ExtractedKeyword = answer.ExtractedKeyword,
+            PressedButton = answer.PressedButton, BoxCoordinates = answer.BoxCoordinates, Comment = answer.Comment,
+            SavedAt = lastChange ?? answer.CreatedAt, RevisedAt = now
+        });
+        answer.PressedButton = annotation.PressedButton;
+        answer.BoxCoordinates = annotation.PressedButton == "Save and Next Term" ? annotation.BoxCoordinates : "";
+        answer.PixelMask = annotation.PixelMask;
+        answer.Comment = annotation.Comment ?? "";
+        await context.SaveChangesAsync();
+        source.KeywordStates = await BuildKeywordStatesAsync(source.Id, user.Email);
+        await context.SaveChangesAsync();
+        await transaction.CommitAsync();
+        return new(true);
+    }
+
+    // The checks every term answer passes, new or changed. A drawn answer gets its pixel mask here, before the workflow
+    // lock, so a large image never holds up other annotators.
+    private static AnnotationSaveResult? CheckAnswer(User user, AnnotatedMedData annotation, out string keyword)
+    {
+        keyword = annotation.ExtractedKeyword?.Trim() ?? "";
+        if (string.IsNullOrWhiteSpace(user.Email))
+            return Failure("Your account needs an email address.");
+        if (keyword.Length == 0 || (annotation.Comment?.Length ?? 0) > 4000 || (annotation.TechnicalProblem?.Length ?? 0) > 4000)
+            return Failure("Choose a valid term and keep comments and problem reports below 4,000 characters.");
+        if (annotation.PressedButton is not ("Save and Next Term" or "Uncertain/Skip" or "Not Visible/Abstract"))
+            return Failure("Choose a valid annotation response.");
+        if (annotation.PressedButton == "Save and Next Term")
+        {
+            if (!AnnotationCoordinates.TryValidate(annotation.BoxCoordinates, out var error))
+                return Failure(error);
+            annotation.PixelMask = AnnotationMask.FromCoordinates(annotation.BoxCoordinates!).ToJson();
+        }
+        else if (!string.IsNullOrWhiteSpace(annotation.BoxCoordinates))
+            return Failure("Skipped or non-visible terms must not include geometry.");
+        else annotation.PixelMask = null;
+        return null;
     }
 
     public async Task<AnnotationSaveResult> CompleteProfessionalAsync(int medDataId, User user)
@@ -218,17 +276,16 @@ public class MedDataRepository : IMedDataRepository
         var answers = await context.AnnotatedMedDatas.Where(item => item.MedDataId == medDataId && item.Email == user.Email).OrderBy(item => item.Id).ToListAsync();
         var customs = await context.CustomAnnotations.Where(item => item.MedDataId == medDataId && item.UserId == user.Id).OrderBy(item => item.Id).ToListAsync();
         var checks = await context.MetadataChecks.Where(item => item.MedDataId == medDataId && item.UserId == user.Id).OrderBy(item => item.Id).ToListAsync();
+        var answerIds = answers.Select(item => item.Id).ToList();
+        // Earlier versions of changed answers; they leave with their answers, so the copy keeps them too.
+        var revisions = await context.AnswerRevisions.Where(item => answerIds.Contains(item.AnswerId)).OrderBy(item => item.Id).ToListAsync();
         context.ImageSkips.Add(new ImageSkip
         {
             MedDataId = medDataId, UserId = user.Id, CreatedAt = DateTime.UtcNow,
             // Annotation fields only: the skip row already says who, so exports can share this copy under any identity setting.
-            DiscardedWork = answers.Count + customs.Count + checks.Count == 0 ? null : JsonSerializer.Serialize(new
-            {
-                answers = answers.Select(item => new { item.ExtractedKeyword, item.PressedButton, item.BoxCoordinates, item.PixelMask, item.Comment, item.TechnicalProblem, item.Timestamps, item.CreatedAt }),
-                customs = customs.Select(item => new { item.Term, item.Coordinates, item.PixelMask, item.CreatedAt }),
-                checks = checks.Select(item => new { item.Field, item.ShownValue, item.Verdict, item.CorrectedValue, item.IsNewValue, item.UpdatedAt })
-            })
+            DiscardedWork = answers.Count + customs.Count + checks.Count == 0 ? null : JsonSerializer.Serialize(DiscardedWork(answers, customs, checks, revisions))
         });
+        context.AnswerRevisions.RemoveRange(revisions);
         context.AnnotatedMedDatas.RemoveRange(answers);
         context.CustomAnnotations.RemoveRange(customs);
         context.MetadataChecks.RemoveRange(checks);
@@ -574,6 +631,28 @@ public class MedDataRepository : IMedDataRepository
             await context.Database.ExecuteSqlRawAsync("SELECT pg_advisory_xact_lock(58021014)", cancellationToken);
         return transaction;
     }
+
+    // The skip row's copy of what the specialist had saved. "revisions" (earlier versions of changed answers) is only
+    // there when they changed an answer, so copies made before answers could be changed keep the same shape.
+    private static Dictionary<string, object?> DiscardedWork(List<AnnotatedMedData> answers, List<CustomAnnotation> customs,
+        List<MetadataCheck> checks, List<AnswerRevision> revisions)
+    {
+        var work = new Dictionary<string, object?>
+        {
+            ["answers"] = answers.Select(item => new { item.ExtractedKeyword, item.PressedButton, item.BoxCoordinates, item.PixelMask, item.Comment, item.TechnicalProblem, item.Timestamps, item.CreatedAt }),
+            ["customs"] = customs.Select(item => new { item.Term, item.Coordinates, item.PixelMask, item.CreatedAt }),
+            ["checks"] = checks.Select(item => new { item.Field, item.ShownValue, item.Verdict, item.CorrectedValue, item.IsNewValue, item.UpdatedAt })
+        };
+        if (revisions.Count > 0)
+            work["revisions"] = revisions.Select(item => new { item.ExtractedKeyword, item.PressedButton, item.BoxCoordinates, item.Comment, item.SavedAt, item.RevisedAt });
+        return work;
+    }
+
+    // A change that is already in place: shapes, response and comment as sent.
+    private static bool SameCorrection(AnnotatedMedData existing, AnnotatedMedData incoming) =>
+        existing.PressedButton == incoming.PressedButton
+        && (existing.BoxCoordinates ?? "") == (incoming.PressedButton == "Save and Next Term" ? incoming.BoxCoordinates ?? "" : "")
+        && (existing.Comment ?? "") == (incoming.Comment ?? "");
 
     private static bool SameResponse(AnnotatedMedData existing, AnnotatedMedData incoming) =>
         existing.PressedButton == incoming.PressedButton

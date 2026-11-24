@@ -23,6 +23,7 @@ public class MedDataDbContext : IdentityDbContext<User, IdentityRole, string>
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<SignIn> SignIns => Set<SignIn>();
     public DbSet<ImageTime> ImageTimes => Set<ImageTime>();
+    public DbSet<AnswerRevision> AnswerRevisions => Set<AnswerRevision>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -57,6 +58,10 @@ public class MedDataDbContext : IdentityDbContext<User, IdentityRole, string>
         modelBuilder.Entity<MetadataCheck>().HasIndex(check => new { check.MedDataId, check.UserId, check.Field }).IsUnique();
         modelBuilder.Entity<MetadataCheck>().HasIndex(check => check.IsNewValue);
         modelBuilder.Entity<ImageSkip>().HasIndex(skip => new { skip.MedDataId, skip.UserId }).IsUnique();
+        modelBuilder.Entity<AnswerRevision>().HasOne<AnnotatedMedData>().WithMany().HasForeignKey(revision => revision.AnswerId)
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<AnswerRevision>().HasIndex(revision => revision.MedDataId);
+        modelBuilder.Entity<AnswerRevision>().HasIndex(revision => revision.RevisedAt);
         modelBuilder.Entity<Notification>().HasIndex(notification => notification.Key).IsUnique();
         modelBuilder.Entity<Notification>().HasIndex(notification => notification.SentAt);
         modelBuilder.Entity<Notification>().Property(notification => notification.Key).HasMaxLength(200);

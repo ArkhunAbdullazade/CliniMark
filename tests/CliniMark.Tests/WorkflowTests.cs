@@ -389,6 +389,86 @@ public sealed class WorkflowTests
             .GetCustomAttributes(typeof(AuthorizeAttribute), false).Cast<AuthorizeAttribute>(), item => item.Roles == "Medical_Student");
     }
 
+    [Fact]
+    public async Task ASavedTermCanBeChangedUntilTheNextImageAndEveryEarlierVersionIsKept()
+    {
+        await using var db = await WorkflowDatabase.CreateAsync();
+        await db.AssignAsync();
+        var original = Response(1);
+        original.Comment = "first note";
+        original.TechnicalProblem = "slow image";
+        Assert.True((await db.Repository.SaveProfessionalAsync(db.Owner, original)).Success);
+        var saved = await db.Context.AnnotatedMedDatas.AsNoTracking().SingleAsync();
+
+        // Drawn to Uncertain, with a new comment. Sending the same change again (a retry) adds nothing.
+        AnnotatedMedData Uncertain() => new() { MedDataId = 1, ExtractedKeyword = " lesion ", PressedButton = "Uncertain/Skip", BoxCoordinates = "", Comment = "not sure after all" };
+        Assert.True((await db.Repository.CorrectProfessionalAsync(db.Owner, Uncertain())).Success);
+        Assert.True((await db.Repository.CorrectProfessionalAsync(db.Owner, Uncertain())).Success);
+
+        var answer = await db.Context.AnnotatedMedDatas.AsNoTracking().SingleAsync();
+        Assert.Equal((saved.Id, "Uncertain/Skip", "", (string?)null, "not sure after all"),
+            (answer.Id, answer.PressedButton, answer.BoxCoordinates, answer.PixelMask, answer.Comment));
+        // Its first-save time, timings and technical note stay as they were.
+        Assert.Equal((saved.CreatedAt, "(100,200)", "slow image"), (answer.CreatedAt, answer.Timestamps, answer.TechnicalProblem));
+        var first = await db.Context.AnswerRevisions.AsNoTracking().SingleAsync();
+        Assert.Equal((saved.Id, 1, "owner", "lesion", "Save and Next Term", Coordinates, "first note", saved.CreatedAt),
+            (first.AnswerId, first.MedDataId, first.UserId, first.ExtractedKeyword, first.PressedButton, first.BoxCoordinates, first.Comment, first.SavedAt));
+        Assert.Equal("[4]", (await db.Context.MedDatas.AsNoTracking().SingleAsync(image => image.Id == 1)).KeywordStates);
+
+        // Back to drawn: the mask is made again, and the next earlier version was saved when the first was replaced.
+        var drawn = Response(1);
+        drawn.Comment = "outlined after all";
+        Assert.True((await db.Repository.CorrectProfessionalAsync(db.Owner, drawn)).Success);
+        answer = await db.Context.AnnotatedMedDatas.AsNoTracking().SingleAsync();
+        Assert.Equal(("Save and Next Term", Coordinates, "outlined after all"), (answer.PressedButton, answer.BoxCoordinates, answer.Comment));
+        Assert.NotNull(answer.PixelMask);
+        var revisions = await db.Context.AnswerRevisions.AsNoTracking().OrderBy(item => item.Id).ToListAsync();
+        Assert.Equal(2, revisions.Count);
+        Assert.Equal(("Uncertain/Skip", "", "not sure after all", revisions[0].RevisedAt),
+            (revisions[1].PressedButton, revisions[1].BoxCoordinates, revisions[1].Comment, revisions[1].SavedAt));
+
+        // Nobody else can change it.
+        var other = Response(1);
+        other.Comment = "someone else";
+        Assert.True((await db.Repository.CorrectProfessionalAsync(db.Other, other)).Conflict);
+
+        // After Next Image it is final; only a retry of the change already made still succeeds.
+        Assert.True((await db.Repository.SaveMetadataChecksAsync(db.Owner, 1, LabelChecks.Answered)).Success);
+        Assert.True((await db.Repository.CompleteProfessionalAsync(1, db.Owner)).Success);
+        var late = Response(1);
+        late.Comment = "too late";
+        var refused = await db.Repository.CorrectProfessionalAsync(db.Owner, late);
+        Assert.True(refused.Conflict);
+        Assert.Contains("no longer assigned", refused.Message);
+        Assert.True((await db.Repository.CorrectProfessionalAsync(db.Owner, drawn)).Success);
+        Assert.Equal(2, await db.Context.AnswerRevisions.CountAsync());
+        Assert.Equal("outlined after all", (await db.Context.AnnotatedMedDatas.AsNoTracking().SingleAsync()).Comment);
+    }
+
+    [Fact]
+    public async Task OnlyASavedTermOfTheirOwnImageCanBeChangedAndTheChangeIsChecked()
+    {
+        await using var db = await WorkflowDatabase.CreateAsync();
+        await db.AssignAsync();
+
+        var unanswered = await db.Repository.CorrectProfessionalAsync(db.Owner, Response(1));
+        Assert.True(unanswered.Conflict);
+        Assert.Contains("no saved answer", unanswered.Message);
+
+        Assert.True((await db.Repository.SaveProfessionalAsync(db.Owner, Response(1))).Success);
+        var drawnWithoutShapes = Response(1);
+        drawnWithoutShapes.BoxCoordinates = "";
+        var uncertainWithShapes = Response(1);
+        uncertainWithShapes.PressedButton = "Uncertain/Skip";
+        var otherTerm = Response(1);
+        otherTerm.ExtractedKeyword = "margin";
+        var otherImage = Response(2);
+        foreach (var invalid in new[] { drawnWithoutShapes, uncertainWithShapes, otherTerm, otherImage })
+            Assert.False((await db.Repository.CorrectProfessionalAsync(db.Owner, invalid)).Success);
+        Assert.Empty(db.Context.AnswerRevisions);
+        Assert.Equal(Coordinates, (await db.Context.AnnotatedMedDatas.AsNoTracking().SingleAsync()).BoxCoordinates);
+    }
+
     private static AnnotatedMedData Response(int id) => new()
     {
         MedDataId = id, BoxCoordinates = Coordinates, ExtractedKeyword = "lesion", PressedButton = "Save and Next Term", Timestamps = "(100,200)"

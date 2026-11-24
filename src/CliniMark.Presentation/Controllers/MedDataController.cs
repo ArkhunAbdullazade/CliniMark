@@ -57,6 +57,37 @@ public class MedDataController : Controller
         }
     }
 
+    // Changes a term the specialist already answered on this image (they selected it in the description), while the image
+    // is still theirs. The replaced version is kept (AnswerRevisions).
+    [HttpPost]
+    [Authorize(Roles = "Professional")]
+    [RequestSizeLimit(2_000_000)]
+    public async Task<IActionResult> CorrectAnnotatedMedData([FromBody] AnnotatedMedDataDto? dto)
+    {
+        if (!ModelState.IsValid || dto == null || dto.Id <= 0)
+            return BadRequest(new { success = false, message = "Invalid annotation payload." });
+        var user = await userManager.GetUserAsync(User);
+        if (user == null) return Unauthorized(new { success = false, message = "Your session has ended. Sign in again." });
+
+        try
+        {
+            var result = await medDataRepository.CorrectProfessionalAsync(user, new AnnotatedMedData
+            {
+                MedDataId = dto.Id,
+                BoxCoordinates = dto.BoxCoordinates,
+                ExtractedKeyword = dto.ExtractedKeyword,
+                PressedButton = dto.PressedButton,
+                Comment = dto.Comment
+            });
+            return SaveResult(result);
+        }
+        catch (Exception exception)
+        {
+            logger.LogError(exception, "Changing an answer failed for image {MedDataId} and user {UserId}.", dto.Id, user.Id);
+            return StatusCode(503, new { success = false, message = "Your changes could not be saved. Keep this page open and retry." });
+        }
+    }
+
     [HttpPut]
     [Authorize(Roles = "Professional")]
     public async Task<IActionResult> NextImage([FromQuery] int medDataId)

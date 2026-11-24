@@ -4,6 +4,17 @@ What changed in CliniMark and why, newest first. Git holds every line of every c
 
 Database changes are in `src/CliniMark.Presentation/Migrations`, and each release that changes the database has a script in `deployment/`.
 
+## 2026-11-24: specialists can change a term they already answered
+
+- Clinicians asked to be able to go back to a term after Save and Next Term. Selecting a saved term in the description now opens it to be changed, not just to look at. Its shapes and comment come back and can be edited. The answer can also change, between a drawing, Uncertain/Skip and Not Visible/Abstract; to make a drawn term Uncertain or Not visible, its shapes are deleted first. **Save changes** keeps the change and returns to the term they were on (or to Next Image when all are saved). **Cancel**, a new button that only shows then, leaves the term as it was. Leaving with unsaved changes asks first. The open term is outlined in the text, and saved terms say on hover that they can be changed.
+- Changes are possible until Next Image. After that the image is finished, and a change is refused as "no longer assigned".
+- Nothing is lost. The answer row takes the new version, so every count, table and export uses the corrected answer. The version it replaced goes to a new table, `AnswerRevisions`, with when it was saved and when it was changed. The answer keeps its first save time, drawing timings and technical note. A repeated request (a retry) changes nothing.
+- Admin image page: an answer that was changed shows "Changed n times by the specialist", which opens the earlier versions. Export: a new `answer_revisions` table, explained in the archive's README. Skip the case also copies earlier versions into its copy of the discarded work.
+- Email notifications: a comment added or changed while changing an answer is announced like any other comment. A comment is never announced twice.
+- Server: `POST /MedData/CorrectAnnotatedMedData` (`CorrectProfessionalAsync`) runs the same checks as a new answer, under the same lock.
+
+Database script: `deployment/release-2026-11-24-migrations.sql` (adds one table; nothing is removed).
+
 ## 2026-11-24: Previous and Next through one participant's images
 
 - An image opened from a participant's Images worked on list now has a bar above and below it: "Images worked on by <name> · Image 3 of 577", with Previous image and Next image buttons. They follow the same order as the list (current locks first, then the most recent saves), so all of one annotator's work can be checked without going back each time. The left and right arrow keys do the same, except while typing, in a dropdown or on the "Colour by" switch. The participant's name links back to their page.

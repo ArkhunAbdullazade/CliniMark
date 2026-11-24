@@ -13,7 +13,9 @@ document.addEventListener("DOMContentLoaded", () => {
     custom: "Custom annotation: draw a closed contour around any finding that is not highlighted in the text, then name and save it. Select Boundary Box or Freehand Contour to return to the current term."
   };
   // The term in the current-term prompt is shown in bold red, so the specialist sees at once what to outline.
-  const currentTermPrompt = /^(Annotate the current term: )(.+)(\. Draw a rectangular boundary box or a free contour\. Zoom, move, resize, rotate, and delete as needed\.)$/s;
+  const currentTermPrompt = /^(.*?Annotate the current term: )(.+)(\. Draw a rectangular boundary box or a free contour\. Zoom, move, resize, rotate, and delete as needed\.)$/s;
+  // A saved term opened to change it (selected in the description).
+  const changeTermPrompt = /^(Changing your saved answer for )(.+?)(\. (?:Its saved shapes are shown|It was saved as ).*)$/s;
   // So is the reason Next Image is still locked once every term is saved.
   const confirmLabels = "Confirm the image modality, speciality and body region";
   const emphasised = text => {
@@ -26,7 +28,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!status) return;
     const hint = inspecting && !["error", "saving"].includes(baseStatus.state);
     const message = hint ? inspectionHints[inspecting] : baseStatus.message;
-    const parts = hint ? null : currentTermPrompt.exec(message);
+    const parts = hint ? null : currentTermPrompt.exec(message) || changeTermPrompt.exec(message);
     if (parts) status.replaceChildren(parts[1], emphasised(parts[2]), parts[3]);
     else if (!hint && message.includes(confirmLabels)) {
       const [before, after] = message.split(confirmLabels);
@@ -79,6 +81,8 @@ document.addEventListener("DOMContentLoaded", () => {
   const skip = document.getElementById("skip-button");
   const absent = document.getElementById("not-present-button");
   const skipImage = document.getElementById("skip-image-button");
+  // Closes a saved term opened to change it, keeping it as it was.
+  const cancel = document.getElementById("cancel-change-button");
   const comments = document.getElementById("comments");
   // Saved with the term like the comment, but kept separate so technical issues never mix with clinical notes. It can
   // also be sent at once (problemReport.js), so it never depends on the image or the tools working.
@@ -108,26 +112,33 @@ document.addEventListener("DOMContentLoaded", () => {
       buttons();
       if (!initialized || currentIndex !== -1 || saving) return;
       if (reviewIndex === -1) showStatus(prompt());
-      else if (reviewLead) showStatus(`${reviewLead} ${reviewNext()}`);
+      else if (!dirty) showStatus(changePrompt());
     }});
   let customRecords = [], labelRecords = [];
-  let history = [], currentIndex = -1, reviewIndex = -1, reviewLead = "";
+  // reviewIndex is the saved term opened to change it (-1: none). Its saved comment, and whether its shapes were touched.
+  let history = [], currentIndex = -1, reviewIndex = -1;
+  let opened = null, shapesTouched = false;
   let historyLoaded = false, historyLoading = false;
   let started = Date.now(), firstDraw = 0;
   window.setAnnotationStartTime = () => { if (!firstDraw) firstDraw = Date.now(); };
   const termName = i => terms[i]?.dataset.keyword || terms[i]?.textContent.trim();
   const saved = i => history.find(row => row.extractedKeyword === termName(i));
   const pendingIndex = () => terms.findIndex((_, i) => !saved(i));
+  // A saved term that is open has changes when its shapes were touched or its comment differs from the saved one.
+  const changed = () => reviewIndex !== -1 && opened !== null && (shapesTouched || comments.value.trim() !== opened.comment);
   function buttons() {
-    const complete = initialized && currentIndex === -1;
-    next.textContent = complete ? "Next Image" : "Save and Next Term";
-    next.disabled = released || saving || !initialized || !manager.ready || (complete ? labels?.complete() === false : reviewIndex !== -1 || !manager.annotations.length || manager.currentAction !== "none");
-    skip.disabled = absent.disabled = released || saving || !initialized || !manager.ready || complete || reviewIndex !== -1 || manager.annotations.length > 0;
+    const changing = initialized && reviewIndex !== -1;
+    const complete = initialized && currentIndex === -1 && !changing;
+    next.textContent = changing ? "Save changes" : complete ? "Next Image" : "Save and Next Term";
+    next.disabled = released || saving || !initialized || !manager.ready || (complete ? labels?.complete() === false
+      : !manager.annotations.length || manager.currentAction !== "none" || (changing && !changed()));
+    skip.disabled = absent.disabled = released || saving || !initialized || !manager.ready || complete || manager.annotations.length > 0;
+    if (cancel) { cancel.hidden = !changing; cancel.disabled = saving; }
     // Also while the image is failing to load: a broken case must not trap the specialist.
     skipImage.disabled = released || saving;
-    comments.disabled = released || !initialized || !manager.ready || saving || reviewIndex !== -1 || complete;
+    comments.disabled = released || !initialized || !manager.ready || saving || complete;
     problem.disabled = saving;
-    manager.readOnly = released || !initialized || !manager.ready || saving || reviewIndex !== -1 || complete;
+    manager.readOnly = released || !initialized || !manager.ready || saving || complete;
     // Custom annotations can be added whenever the image is theirs, including while reviewing or after the last term.
     manager.customAllowed = !released && initialized && manager.ready && !saving;
     labels?.setEnabled(!released && initialized && manager.ready && !saving);
@@ -137,15 +148,24 @@ document.addEventListener("DOMContentLoaded", () => {
       term.classList.remove("current_keyword", "annotated_keyword", "not_annotated_keyword", "skipped_keyword");
       const row = saved(i);
       term.classList.add(row ? row.pressedButton === "Save and Next Term" ? "annotated_keyword" : "skipped_keyword" : i === currentIndex ? "current_keyword" : "not_annotated_keyword");
+      term.classList.toggle("changing_keyword", i === reviewIndex);
       term.setAttribute("aria-pressed", String(i === (reviewIndex === -1 ? currentIndex : reviewIndex)));
+      // Saved terms open again to be changed (hoverDescriptions.js shows this after a pause).
+      if (row) term.dataset.description = "Select to see your saved answer for this term and change it if needed.";
+      else delete term.dataset.description;
     });
   }
-  const prompt = () => currentIndex === -1 ? (labels?.complete() === false ? `All terms saved. ${confirmLabels}, then select Next Image.` : "All terms saved. Select Next Image to continue. You can select a saved term to review it.") : `Annotate the current term: ${termName(currentIndex)}. Draw a rectangular boundary box or a free contour. Zoom, move, resize, rotate, and delete as needed.`;
-  const reviewNext = () => currentIndex >= 0 ? "Select the current term to continue."
-    : labels?.complete() === false ? `All terms are saved. ${confirmLabels}, then select Next Image.`
-    : "All terms are saved. Select Next Image to continue.";
+  const prompt = () => currentIndex === -1 ? (labels?.complete() === false ? `All terms saved. ${confirmLabels}, then select Next Image.` : "All terms saved. Select Next Image to continue. You can still select a saved term in the text to change it.") : `Annotate the current term: ${termName(currentIndex)}. Draw a rectangular boundary box or a free contour. Zoom, move, resize, rotate, and delete as needed.`;
+  const reviewNext = () => "Select Save changes to keep your changes, or Cancel to leave it as it was.";
+  const changePrompt = () => {
+    const record = saved(reviewIndex);
+    const drawn = record?.pressedButton === "Save and Next Term";
+    return `Changing your saved answer for ${termName(reviewIndex)}. ${drawn
+      ? "Its saved shapes are shown: move, resize, delete or add shapes, or edit the comment. To answer Uncertain/Skip or Not Visible/Abstract instead, delete its shapes first."
+      : `It was saved as ${record?.pressedButton}. Draw shapes to annotate it, choose the other answer, or edit the comment.`} ${reviewNext()}`;
+  };
   function showCurrent() {
-    reviewIndex = -1;
+    reviewIndex = -1; opened = null; shapesTouched = false;
     manager.resetAnnotation(); comments.value = ""; dirty = false;
     currentIndex = pendingIndex(); started = Date.now(); firstDraw = 0;
     buttons();
@@ -189,10 +209,19 @@ document.addEventListener("DOMContentLoaded", () => {
   });
   // Removing every shape and the comment returns the term to its untouched state.
   function draftChanged(message) {
+    if (reviewIndex !== -1) {
+      // A comment edit alone can make Save changes available.
+      dirty = changed();
+      showStatus(dirty ? `Unsaved changes to ${termName(reviewIndex)}. ${reviewNext()}` : changePrompt(), dirty ? "unsaved" : "ready");
+      buttons();
+      return;
+    }
     dirty = manager.annotations.length > 0 || comments.value.trim() !== "";
     showStatus(dirty ? message : prompt(), dirty ? "unsaved" : "ready");
   }
   manager.onAnnotationsChange = () => {
+    // Loading saved shapes doesn't come through here, so on an opened saved term this is always the specialist's change.
+    if (reviewIndex !== -1 && !manager.readOnly) shapesTouched = true;
     if (!manager.readOnly && initialized) draftChanged("Unsaved changes. Select Save and Next Term to save this term.");
     buttons();
   };
@@ -217,17 +246,51 @@ document.addEventListener("DOMContentLoaded", () => {
     if (released || saving || !initialized || !manager.ready) return;
     const record = saved(i);
     if (!record && i !== currentIndex) return;
-    if (dirty && !confirm("Discard unsaved changes to review another term?")) return;
+    if (i === reviewIndex) return;
+    if (dirty && !confirm(reviewIndex !== -1 ? `Discard your unsaved changes to ${termName(reviewIndex)}?` : "Discard unsaved changes to open another term?")) return;
     if (!record) { showCurrent(); return; }
-    manager.resetAnnotation(); dirty = false; reviewIndex = i; comments.value = record.comment || ""; reviewLead = "";
-    if (record.boxCoordinates) {
-      try { manager.loadCoordinates(record.boxCoordinates); reviewLead = `Saved annotation for ${termName(i)} (read only).`; }
-      catch (error) { showStatus(`This saved response has legacy or changed image coordinates. It is preserved and has not been converted. ${error.message}`, "error"); }
-    } else reviewLead = `Saved response for ${termName(i)}: ${record.pressedButton}.`;
-    if (reviewLead) showStatus(`${reviewLead} ${reviewNext()}`);
-    buttons();
+    openSaved(i, record);
     });
   });
+  // Opens a saved term to change it: its shapes and comment come back, editable, until Save changes or Cancel.
+  function openSaved(i, record) {
+    manager.resetAnnotation(); dirty = false; shapesTouched = false; opened = null;
+    if (record.boxCoordinates) {
+      try { manager.loadCoordinates(record.boxCoordinates); }
+      catch (error) {
+        showCurrent();
+        showStatus(`Your saved answer for ${termName(i)} uses older image coordinates, so it can't be changed here. It is kept as saved. ${error.message}`, "error");
+        return;
+      }
+    }
+    reviewIndex = i; comments.value = record.comment || "";
+    opened = {comment: (record.comment || "").trim()};
+    buttons();
+    showStatus(changePrompt());
+  }
+
+  // Saves the open saved term with its new shapes, answer and comment (the server keeps the version it replaces).
+  async function saveChange(action) {
+    if (released || saving || !initialized || !manager.ready || reviewIndex === -1 || assignmentId !== window.annotatedMedData.id) return;
+    const i = reviewIndex, record = saved(i), comment = comments.value.trim();
+    let coordinates = "";
+    try {
+      // Untouched shapes are sent exactly as saved, so a comment change doesn't rewrite them.
+      if (action === "Save and Next Term") coordinates = !shapesTouched && record.pressedButton === action ? record.boxCoordinates : manager.getAllAnnotationsJSON();
+    } catch (error) { showStatus(error.message, "error"); return; }
+    if (action === record.pressedButton && coordinates === (record.boxCoordinates || "") && comment === opened.comment) {
+      showCurrent(); return;
+    }
+    const payload = {Id: assignmentId, BoxCoordinates: coordinates, ExtractedKeyword: termName(i), PressedButton: action, Comment: comment};
+    saving = true; buttons(); showStatus("Saving your changes… keep this page open.", "saving");
+    try {
+      await request("/MedData/CorrectAnnotatedMedData", {method: "POST", body: JSON.stringify(payload)});
+      Object.assign(record, {boxCoordinates: coordinates, pressedButton: action, comment});
+      saving = false; showCurrent();
+      showStatus(`Your changes to ${termName(i)} are saved. ${prompt()}`);
+    } catch (error) { requestFailed(`Changing ${payload.ExtractedKeyword}`, error); saving = false; buttons(); showStatus(error.message, "error"); lockLost(error); }
+  }
+
   async function save(action) {
     if (released || saving || !initialized || !manager.ready || currentIndex < 0 || reviewIndex !== -1 || assignmentId !== window.annotatedMedData.id) return;
     let coordinates = "";
@@ -250,6 +313,7 @@ document.addEventListener("DOMContentLoaded", () => {
   next.addEventListener("click", async () => {
     if (released || saving || !initialized || !manager.ready) return;
     if (custom?.hasPending()) { showStatus("Save or cancel the custom annotation before moving on.", "error"); return; }
+    if (reviewIndex !== -1) { await saveChange("Save and Next Term"); return; }
     if (currentIndex !== -1) { await save("Save and Next Term"); return; }
     saving = true; buttons(); showStatus("Loading the next image…", "saving");
     try {
@@ -270,8 +334,13 @@ document.addEventListener("DOMContentLoaded", () => {
       saving = false; dirty = false; navigating = true; location.reload();
     } catch (error) { requestFailed("Skipping the image", error); saving = false; buttons(); showStatus(error.message, "error"); lockLost(error); }
   });
-  skip.addEventListener("click", () => save("Uncertain/Skip"));
-  absent.addEventListener("click", () => save("Not Visible/Abstract"));
+  skip.addEventListener("click", () => reviewIndex !== -1 ? saveChange("Uncertain/Skip") : save("Uncertain/Skip"));
+  absent.addEventListener("click", () => reviewIndex !== -1 ? saveChange("Not Visible/Abstract") : save("Not Visible/Abstract"));
+  cancel?.addEventListener("click", () => {
+    if (saving || reviewIndex === -1) return;
+    if (dirty && !confirm(`Discard your unsaved changes to ${termName(reviewIndex)}?`)) return;
+    showCurrent();
+  });
   buttons();
   initialize();
 });

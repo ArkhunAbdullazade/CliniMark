@@ -53,6 +53,7 @@ public sealed class ResultsExportService
                 await WriteMetadataChecksAsync(zip, options, people, cancellationToken);
                 await WriteProblemReportsAsync(zip, options.Format, people, cancellationToken);
                 await WriteImageSkipsAsync(zip, options, people, cancellationToken);
+                await WriteAnswerRevisionsAsync(zip, options, people, cancellationToken);
                 await WritePixelMaskTableAsync(zip, options, people, completeSets, cancellationToken);
                 using (var table = Entry(zip, "full_data", options.Format))
                     await WriteFullDataRowsAsync(table, options.Identity, new FullDataQuery(), people, cancellationToken);
@@ -320,6 +321,20 @@ public sealed class ResultsExportService
         }
     }
 
+    // Earlier versions of term answers that specialists changed before moving on; specialist_responses has the current one.
+    private async Task WriteAnswerRevisionsAsync(ZipArchive zip, ExportOptions options, People people, CancellationToken cancellationToken)
+    {
+        using var table = Entry(zip, "answer_revisions", options.Format);
+        table.Header(["RevisionId", "ResponseId", "ImageId", "Term", "Response", "Coordinates", "Comment", "SavedAtUtc", "ReplacedAtUtc",
+            .. AnnotatorHeaders(options.Identity)]);
+        await foreach (var revision in context.AnswerRevisions.AsNoTracking().OrderBy(revision => revision.Id).AsAsyncEnumerable().WithCancellation(cancellationToken))
+        {
+            var person = people.ById(revision.UserId);
+            table.Row([revision.Id, revision.AnswerId, revision.MedDataId, revision.ExtractedKeyword, revision.PressedButton, revision.BoxCoordinates,
+                revision.Comment, revision.SavedAt, revision.RevisedAt, .. AnnotatorValues(options.Identity, person, person?.Position, person?.ClinicalExperience ?? 0)]);
+        }
+    }
+
     private sealed record MaskRow(string Kind, long Id, int ImageId, string? Term, string Mask, Person? Person);
 
     private static string MaskFile(MaskRow mask) => $"masks/{mask.ImageId}_{mask.Kind}_{mask.Id}.png";
@@ -489,6 +504,11 @@ public sealed class ResultsExportService
                               never changed. Images completed before this check existed have no rows.
             problem_reports   technical problems: reports typed by participants (user-report) and errors their pages
                               logged automatically (image-load-error, save-error, script-error). Account ids only.
+            answer_revisions  earlier versions of term answers. A specialist can open a term they already answered and
+                              change it until they move to the next image; specialist_responses then holds the new
+                              version, and each row here is a version it replaced (ResponseId is that answer's
+                              ResponseId). SavedAtUtc is when that version was saved, ReplacedAtUtc when it was changed.
+                              The answer's timings and SavedAtUtc in specialist_responses stay those of its first save.
             image_skips       images a specialist sent back with Skip the case, usually as outside their speciality.
                               The image went back to the pool and started fresh for the next person. DiscardedWork keeps
                               a copy of what they had saved on it; those rows are not in the other tables.

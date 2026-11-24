@@ -21,6 +21,7 @@ class Element {
     this.classList = {
       add: name => classes.add(name),
       remove: (...names) => names.forEach(name => classes.delete(name)),
+      toggle: (name, force = !classes.has(name)) => { if (force) classes.add(name); else classes.delete(name); return force; },
       contains: name => classes.has(name)
     };
   }
@@ -45,7 +46,7 @@ async function page(occurrences, expectedCount, options = {}) {
   const skipImage = options.skipImage;
   const events = {};
   const elements = Object.fromEntries(['annotation-status', 'next-button', 'skip-button', 'skip-image-button',
-    'not-present-button', 'comments', 'technical-problem', 'image-container'].map(id => [id, new Element()]));
+    'not-present-button', 'comments', 'technical-problem', 'image-container', 'cancel-change-button'].map(id => [id, new Element()]));
   const header = new Element();
   header.dataset.keywordCount = String(expectedCount);
   let onReady;
@@ -63,7 +64,7 @@ async function page(occurrences, expectedCount, options = {}) {
     resetAnnotation() { this.annotations = []; }
     stopInteraction() { this.stopped = true; this.readOnly = true; }
     getAllAnnotationsJSON() { return 'synthetic image-coordinate envelope'; }
-    loadCoordinates(coordinates) { this.loaded = coordinates; }
+    loadCoordinates(coordinates) { this.loaded = coordinates; this.annotations = [{loadedShape: true}]; }
   }
   const requestErrors = [], confirms = [], reloads = [];
   const context = {
@@ -80,11 +81,12 @@ async function page(occurrences, expectedCount, options = {}) {
     },
     CanvasManager, confirm: message => { confirms.push(message); return options.confirm ?? true; },
     location: {reload() { reloads.push(true); }},
-    fetch: async (url, options = {}) => {
-      calls.push({url, ...options});
+    fetch: async (url, request = {}) => {
+      calls.push({url, ...request});
       if (url.includes('CurrentAnnotations') && loadHistory) return loadHistory();
       if (url === '/MedData/ProcessAnnotatedMedData' && saveAnnotation) return saveAnnotation();
       if (url.includes('SkipImage') && skipImage) return skipImage();
+      if (url === '/MedData/CorrectAnnotatedMedData' && options.correct) return options.correct();
       return {ok: true, json: async () => url.includes('CurrentAnnotations') ? {annotations: []} : {success: true}};
     }
   };
@@ -124,10 +126,14 @@ test('inline repeated phrases advance once per canonical term in description ord
   assert.equal(lesion.classList.contains('current_keyword'), true);
 
   await repeatedBoundary.click();
-  assert.equal(manager.readOnly, true, 'Repeated saved phrase opens the same saved response');
-  assert.equal(manager.loaded, 'synthetic image-coordinate envelope');
+  assert.equal(manager.loaded, 'synthetic image-coordinate envelope', 'Repeated saved phrase opens the same saved response');
+  assert.equal(manager.readOnly, false, 'A saved term opens to be changed');
+  assert.equal(firstBoundary.classList.contains('changing_keyword'), true);
+  assert.equal(elements['next-button'].textContent, 'Save changes');
+  assert.equal(elements['next-button'].disabled, true, 'Nothing to save until something changes');
   await lesion.click();
   assert.equal(manager.readOnly, false);
+  assert.equal(firstBoundary.classList.contains('changing_keyword'), false);
   manager.annotations = [{syntheticShape: true}];
   manager.onAnnotationsChange();
   await elements['next-button'].click();
@@ -189,11 +195,17 @@ test('reviewing a saved term keeps saying that the labels are missing, until the
   const {elements, manager} = await page([term], 1, {labels: setup});
   await finishTerm(elements, manager);
   await term.click();
-  assert.match(elements['annotation-status'].textContent, /^Saved annotation for lesion \(read only\)\. .*Confirm the image modality/);
+  assert.match(elements['annotation-status'].textContent, /^Changing your saved answer for lesion\. Its saved shapes are shown/);
+  labels.settings.onChange();
+  assert.match(elements['annotation-status'].textContent, /^Changing your saved answer for lesion\./, 'A label answer does not hide the open term');
+  assert.equal(elements['next-button'].textContent, 'Save changes');
 
+  await elements['cancel-change-button'].click();
+  assert.match(elements['annotation-status'].textContent, /Confirm the image modality/);
   labels.done = true;
   labels.settings.onChange();
-  assert.match(elements['annotation-status'].textContent, /^Saved annotation for lesion \(read only\)\. All terms are saved\. Select Next Image/);
+  assert.match(elements['annotation-status'].textContent, /^All terms saved\. Select Next Image/);
+  assert.equal(elements['next-button'].textContent, 'Next Image');
 });
 
 test('Skip the case moves on at once when nothing has been entered', async () => {
@@ -387,7 +399,7 @@ test('an image arriving first shares the in-flight fetch and restores history wi
   await new Promise(setImmediate);
   assert.equal(current.classList.contains('current_keyword'), true);
   await savedTerm.click();
-  assert.equal(manager.readOnly, true);
+  assert.equal(manager.readOnly, false);
   assert.equal(manager.loaded, 'saved coordinate envelope');
   assert.equal(elements.comments.value, 'saved comment');
   await current.click();
@@ -545,4 +557,122 @@ test('the problem box stays usable when the image never loads, and failed reques
   assert.equal(elements['technical-problem'].disabled, false);
   assert.equal(elements.comments.disabled, true);
   assert.deepEqual(requestErrors.map(error => [error.action, error.status]), [['Loading saved answers', 503]]);
+});
+
+const drawnHistory = () => historyResponse([{extractedKeyword: 'lesion', pressedButton: 'Save and Next Term',
+  boxCoordinates: 'saved coordinate envelope', comment: 'first note'}]);
+const corrections = calls => calls.filter(call => call.url === '/MedData/CorrectAnnotatedMedData').map(call => JSON.parse(call.body));
+
+test('a saved term changed only in its comment is sent with its shapes exactly as saved', async () => {
+  const lesion = new Element('lesion', 'lesion'), margin = new Element('margin', 'margin');
+  const {elements, calls, manager} = await page([lesion, margin], 2, {loadHistory: drawnHistory});
+  assert.equal(margin.classList.contains('current_keyword'), true);
+  assert.equal(lesion.dataset.description !== undefined, true, 'Saved terms say they can be opened');
+
+  await lesion.click();
+  assert.equal(elements.comments.value, 'first note');
+  assert.equal(elements['cancel-change-button'].hidden, false);
+  assert.equal(elements['skip-button'].disabled, true, 'Its shapes must go before it can be Uncertain');
+  const status = elements['annotation-status'];
+  assert.equal(status.children[1].textContent, 'lesion', 'The term is emphasised in the status');
+  assert.equal(elements['next-button'].disabled, true);
+  await elements['next-button'].click();
+  assert.equal(corrections(calls).length, 0, 'Nothing is sent while nothing changed');
+  assert.equal(margin.classList.contains('current_keyword'), true, 'An unchanged term just closes');
+
+  await lesion.click();
+  elements.comments.value = 'second note';
+  await elements.comments.fire('input');
+  assert.equal(elements['next-button'].disabled, false);
+  assert.equal(manager.readOnly, false);
+  await elements['next-button'].click();
+  assert.deepEqual(corrections(calls), [{Id: 1, BoxCoordinates: 'saved coordinate envelope', ExtractedKeyword: 'lesion',
+    PressedButton: 'Save and Next Term', Comment: 'second note'}]);
+  assert.match(status.textContent, /^Your changes to lesion are saved\. Annotate the current term: margin/);
+  assert.equal(status.children[1].textContent, 'margin');
+  assert.equal(margin.classList.contains('current_keyword'), true, 'Back on the term they were on');
+  assert.equal(elements['cancel-change-button'].hidden, true);
+
+  await lesion.click();
+  assert.equal(elements.comments.value, 'second note', 'The page keeps the changed answer');
+});
+
+test('a drawn term becomes Uncertain once its shapes are deleted, and new shapes are sent when they change', async () => {
+  const lesion = new Element('lesion', 'lesion'), margin = new Element('margin', 'margin');
+  const {elements, calls, manager} = await page([lesion, margin], 2, {loadHistory: drawnHistory});
+  await lesion.click();
+  manager.annotations = [];
+  manager.onAnnotationsChange();
+  assert.equal(elements['skip-button'].disabled, false);
+  assert.equal(elements['next-button'].disabled, true, 'Save changes needs shapes; the other answers are the buttons beside it');
+  await elements['skip-button'].click();
+  assert.deepEqual(corrections(calls).at(-1), {Id: 1, BoxCoordinates: '', ExtractedKeyword: 'lesion', PressedButton: 'Uncertain/Skip', Comment: 'first note'});
+  assert.equal(lesion.classList.contains('skipped_keyword'), true);
+
+  await lesion.click();
+  assert.equal(elements['skip-button'].disabled, false, 'An Uncertain term opens without shapes');
+  manager.annotations = [{syntheticShape: true}];
+  manager.onAnnotationsChange();
+  await elements['next-button'].click();
+  assert.deepEqual(corrections(calls).at(-1), {Id: 1, BoxCoordinates: 'synthetic image-coordinate envelope', ExtractedKeyword: 'lesion',
+    PressedButton: 'Save and Next Term', Comment: 'first note'});
+  assert.equal(lesion.classList.contains('annotated_keyword'), true);
+});
+
+test('Cancel leaves the saved answer as it was, asking first when something changed', async () => {
+  const options = {loadHistory: drawnHistory, confirm: false};
+  const lesion = new Element('lesion', 'lesion'), margin = new Element('margin', 'margin');
+  const {elements, calls, manager, confirms, warnsBeforeLeaving} = await page([lesion, margin], 2, options);
+  await lesion.click();
+  manager.annotations = [];
+  manager.onAnnotationsChange();
+  assert.equal(warnsBeforeLeaving(), true, 'Unsaved changes to a saved term are protected');
+  await elements['cancel-change-button'].click();
+  assert.equal(confirms.length, 1);
+  assert.equal(elements['next-button'].textContent, 'Save changes', 'Declining keeps the term open');
+  options.confirm = true;
+  await margin.click();
+  assert.equal(confirms.length, 2, 'Opening another term asks too');
+  assert.equal(elements['next-button'].textContent, 'Save and Next Term');
+  assert.equal(corrections(calls).length, 0);
+  assert.equal(warnsBeforeLeaving(), false);
+  await lesion.click();
+  assert.equal(manager.loaded, 'saved coordinate envelope', 'Still the saved shapes');
+});
+
+test('a refused change keeps the term open with the reason, and the next change can still be saved', async () => {
+  let refuse = true;
+  const lesion = new Element('lesion', 'lesion'), margin = new Element('margin', 'margin');
+  const {elements, calls, requestErrors} = await page([lesion, margin], 2, {loadHistory: drawnHistory,
+    correct: async () => refuse
+      ? {ok: false, status: 400, json: async () => ({success: false, message: 'Choose a valid annotation response.'})}
+      : {ok: true, json: async () => ({success: true})}});
+  await lesion.click();
+  elements.comments.value = 'second note';
+  await elements.comments.fire('input');
+  await elements['next-button'].click();
+  assert.equal(elements['annotation-status'].textContent, 'Choose a valid annotation response.');
+  assert.equal(elements['next-button'].textContent, 'Save changes');
+  assert.equal(requestErrors.at(-1).action, 'Changing lesion');
+  refuse = false;
+  await elements['next-button'].click();
+  assert.equal(corrections(calls).length, 2);
+  assert.match(elements['annotation-status'].textContent, /^Your changes to lesion are saved/);
+});
+
+test('after the last term, saved terms can still be changed before Next Image', async () => {
+  const lesion = new Element('lesion', 'lesion');
+  const {elements, calls, manager} = await page([lesion], 1, {loadHistory: drawnHistory});
+  assert.equal(elements['next-button'].textContent, 'Next Image');
+  assert.equal(manager.readOnly, true, 'Nothing to draw once every term is saved');
+  await lesion.click();
+  assert.equal(manager.readOnly, false);
+  assert.equal(elements.comments.disabled, false);
+  manager.annotations = [];
+  manager.onAnnotationsChange();
+  await elements['not-present-button'].click();
+  assert.equal(corrections(calls).at(-1).PressedButton, 'Not Visible/Abstract');
+  assert.equal(elements['next-button'].textContent, 'Next Image');
+  assert.equal(manager.readOnly, true);
+  assert.equal(calls.filter(call => call.url.includes('NextImage')).length, 0, 'Saving a change never moves to the next image');
 });
