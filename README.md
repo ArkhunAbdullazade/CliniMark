@@ -88,7 +88,7 @@ Students outline whatever they can identify and type their own label. Several sh
 
 ## Signing up and choosing images
 
-Each participant has their own account and password; there's no shared study password. Sign-up asks for an institutional or workplace email address: addresses at personal email services such as Gmail, Outlook, Hotmail, Yahoo or iCloud are refused (`InstitutionalEmail`). Accounts the study team creates are not checked. Choosing **medical student** as the position opens the student workspace, and any other position opens the specialist one.
+Each participant has their own account and password; there's no shared study password. Sign-up asks for an institutional or workplace email address: addresses at personal email services such as Gmail, Outlook, Hotmail, Yahoo or iCloud are refused (`InstitutionalEmail`). Accounts the study team creates are not checked. Position and workplace are required. Choosing **medical student** as the position opens the student workspace, and any other position opens the specialist one.
 
 Image modality and speciality are required. Body region is optional, and leaving it empty means all body regions. Accounts from before speciality became required (2026-11-23) may have none, which still means all specialities until they next save their filters. An image is offered when it matches one of the chosen options in every list that has a choice. The options are the display labels of the CliniMark datasets (`app_labels/label_vocabulary.csv`, version `app-labels-1.1.0`): 8 modalities, 21 specialities and 14 body regions. Participants can change their choices at any time from the Filters button.
 

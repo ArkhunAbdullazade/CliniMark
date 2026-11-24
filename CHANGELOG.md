@@ -4,6 +4,16 @@ What changed in CliniMark and why, newest first. Git holds every line of every c
 
 Database changes are in `src/CliniMark.Presentation/Migrations`, and each release that changes the database has a script in `deployment/`.
 
+## 2026-11-24: the label check always shows in full, and a shorter sign-up page
+
+- "Please confirm for this image" never scrolls now, whatever the window size. Before, it was capped at 45% of the column's height (72% while a label search was open). On laptop screens that cut it off, and images with sex, age or skin tone made it scroll. It now always takes its full height; the Saved terms and custom-annotation lists below it give way instead. Shorter screens get slightly tighter spacing, and the label search list is a little shorter there. Checked at 1920×1080, 1536×864, 1440×900, 1366×768, 1280×720, 1366×768 at 125% zoom and 1280×600, with the search closed and open.
+  - With the search open on a window 614 px tall or less, the right column itself scrolls a little; the box is never cut.
+  - The column also keeps 64 px clear at the bottom, up from 48, so Skip the case no longer covers the bottom of the lists.
+- Sign-up page:
+  - The two sentences under the title are gone ("Register with your institutional or workplace email address…" and "Your account password is personal…").
+  - So is the line naming personal email services under the email field. A personal address is still refused, with that explanation in the error message.
+  - Position and Workplace now say "(required)". Both were already required by the browser and the server.
+
 ## 2026-11-24: specialists can change a term they already answered
 
 - Clinicians asked to be able to go back to a term after Save and Next Term. Selecting a saved term in the description now opens it to be changed, not just to look at. Its shapes and comment come back and can be edited. The answer can also change, between a drawing, Uncertain/Skip and Not Visible/Abstract; to make a drawn term Uncertain or Not visible, its shapes are deleted first. **Save changes** keeps the change and returns to the term they were on (or to Next Image when all are saved). **Cancel**, a new button that only shows then, leaves the term as it was. Leaving with unsaved changes asks first. The open term is outlined in the text, and saved terms say on hover that they can be changed.

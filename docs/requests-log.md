@@ -400,3 +400,27 @@ Decisions: selecting a saved term opens it for changes until Next Image; changes
 > 2. in addition to 1, let's on the right side under the comments/technical reports buttons have also the annotated medical terms appearing one under another as they progress with annotation, with some way of signifying that an annotator can always click on them and come back to annotations they did before to edit them
 
 Decisions: only terms that can be selected react to the pointer (terms not reached yet can't be opened); the list follows the order of the text and shows each answer with an Edit mark; still on the test site first.
+
+## 2026-11-24: go live, the label check fits, and sign-up page changes
+
+**2026-11-24 UTC**
+
+> I like it, you can go live and apply these to the live demo too. Just please also make sure a small detail: "Please confirm for this image" metadata block on top right must not have any scrolling, all info must fit the fixed window block.
+
+**2026-11-24 UTC**
+
+> Also, on the registration page apply the following:
+>
+> 1. delete this part under the email address description sentence "Personal addresses such as Gmail, Outlook, Hotmail, Yahoo or iCloud aren't accepted."
+>
+> 2. make position and workplace required fields (not optional)
+
+**2026-11-24 UTC**
+
+> also get rid of the following description on sign up page "Register with your institutional or workplace email address. You can sign in immediately after registration.
+>
+> Your account password is personal. Don't share it with anyone."
+>
+> apply these changes directly to live platform
+
+Decisions: the label check takes its full height and the lists below give way; Position and Workplace were already enforced, so they are now marked "(required)"; everything goes live in one release with the term-changing feature.

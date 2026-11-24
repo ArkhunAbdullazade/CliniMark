@@ -11,8 +11,9 @@ main[role="main"] { height: 100%; min-height: 0; padding-bottom: 0 !important; }
 .annotation-workspace { --right-column: 304px; --column-gap: 12px; display: flex; flex-direction: row; align-items: stretch; width: 100%; height: 100%; min-height: 0; margin: 0; padding: 8px 0; gap: var(--column-gap); }
 .annotation-workspace .left-column { display: flex; flex-direction: column; flex: 1 1 0; min-width: 0; min-height: 0; height: 100%; gap: 5px; }
 .annotation-workspace .right-column { display: flex; flex-direction: column; flex: 0 0 var(--right-column); width: var(--right-column); min-width: 0; min-height: 0; height: 100%; gap: 8px; }
-/* Room for Skip the case, which sits in this column's bottom corner. */
-.annotation-workspace .right-column:not(.student-mode) { padding-bottom: 48px; }
+/* Room for Skip the case, which sits in this column's bottom corner (it reaches about 60px up). Only a very short window makes the column itself
+   scroll; the label check above never does (see below). */
+.annotation-workspace .right-column:not(.student-mode) { padding-bottom: 64px; overflow-y: auto; }
 
 /* Image details */
 .metadata { flex: 0 1 auto; max-height: 45%; min-height: 0; display: flex; overflow: hidden; background: var(--surface); border: 1px solid var(--cardinal); border-radius: var(--radius); box-shadow: 0 1px 5px rgba(0, 0, 0, .1); }
@@ -26,8 +27,10 @@ main[role="main"] { height: 100%; min-height: 0; padding-bottom: 0 !important; }
 .metadata-item .value { min-width: 0; color: var(--ink); }
 .metadata-item .value.filter-value { color: var(--cardinal); font-weight: 700; }
 
-/* Label check: Yes, No or Can't tell for each of the image's labels (see metadataCheck.js). */
-.metadata:has(.label-picker) { max-height: 72%; }
+/* Label check: Yes, No or Can't tell for each of the image's labels (see metadataCheck.js). On the specialist page the
+   whole box is always shown at its full height, never scrolled: the saved-terms and custom lists below it give way. */
+.right-column:not(.student-mode) > .metadata { flex: 0 0 auto; max-height: none; }
+.right-column:not(.student-mode) > .metadata > .metadata-inner { overflow: visible; }
 .label-check { padding: 4px 0 6px; border-bottom: 1px solid var(--line-soft); }
 /* The last thing Next Image is waiting for. The tint reaches the box edges without moving anything inside it. */
 .label-check.needs-answer { margin: -4px -12px 0; padding: 8px 12px 6px; background: #ffe9a3; }
@@ -54,7 +57,7 @@ main[role="main"] { height: 100%; min-height: 0; padding-bottom: 0 !important; }
 .label-error { margin: 4px 0 0; color: var(--cardinal); font-size: .8rem; }
 .label-picker { margin-top: 5px; }
 .label-search { width: 100%; min-height: 28px; padding: 2px 8px; color: var(--ink); background: var(--surface); border: 1px solid var(--cardinal); border-radius: var(--radius-control); font-size: .8rem; }
-.label-options { max-height: 132px; margin: 3px 0 0; padding: 0; overflow-y: auto; list-style: none; border: 1px solid var(--line-soft); border-radius: var(--radius-control); }
+.label-options { max-height: min(132px, 15vh); margin: 3px 0 0; padding: 0; overflow-y: auto; list-style: none; border: 1px solid var(--line-soft); border-radius: var(--radius-control); }
 .label-option, .label-none { padding: 3px 8px; font-size: .8rem; line-height: 1.3; overflow-wrap: anywhere; }
 .label-option { cursor: pointer; }
 .label-option:hover, .label-option.active { color: #fff; background: var(--cardinal); }
@@ -264,6 +267,17 @@ main[role="main"] { height: 100%; min-height: 0; padding-bottom: 0 !important; }
 }
 @media (max-height: 600px) {
   .description-panel { --description-lines: 5; }
+}
+/* Shorter screens: the label check tightens so it still fits in full beside the image. */
+@media (max-height: 820px) {
+  .label-check { padding: 2px 0 4px; }
+  .label-check.needs-answer { padding: 5px 12px 4px; }
+  .label-check-title { margin: 1px 0 2px; }
+  .label-row { padding: 3px 0; }
+  .label-line { margin-bottom: 2px; }
+  .label-answer { min-height: 24px; }
+  .label-all { min-height: 27px; margin-top: 3px; }
+  .metadata-inner > p, .metadata-inner > .metadata-item { padding: 4px 0; }
 }
 
 /* Longer button descriptions (hoverDescriptions.js): after two seconds on a button, a red box slides out in the same

@@ -11,8 +11,6 @@
     <div>
         <a class="auth-logo" asp-controller="Home" asp-action="Index"><img src="~/images/clinimark-logo.png" asp-append-version="true" alt="CliniMark" width="184" height="40" /></a>
         <h1>Create your research account</h1>
-        <p class="auth-lead">Register with your institutional or workplace email address. You can sign in immediately after registration.</p>
-        <p class="auth-lead">Your account password is personal. Don't share it with anyone.</p>
         <form method="post" asp-action="PostSignup" asp-controller="Identity" data-image-filter-form data-signup-form>
             <div asp-validation-summary="All" class="text-danger" role="alert"></div>
             <div class="row g-3 mb-4">
@@ -20,7 +18,7 @@
                     <label asp-for="Email" class="form-label">Institutional email address</label>
                     <input asp-for="Email" type="email" class="form-control" autocomplete="email" required aria-describedby="email-help email-personal"
                            data-personal-domains="@string.Join(' ', InstitutionalEmail.PersonalDomains)" data-personal-families="@string.Join(' ', InstitutionalEmail.PersonalFamilies)" />
-                    <small id="email-help" class="form-text">The address of your hospital, university or institute. Personal addresses such as Gmail, Outlook, Hotmail, Yahoo or iCloud aren't accepted.</small>
+                    <small id="email-help" class="form-text">The address of your hospital, university or institute.</small>
                     <span id="email-personal" class="text-danger d-block" data-email-personal aria-live="polite"></span>
                     <span asp-validation-for="Email" class="text-danger"></span>
                 </div>
@@ -47,7 +45,7 @@
                     <span asp-validation-for="ConfirmPassword" class="text-danger"></span>
                 </div>
                 <div class="col-md-6">
-                    <label asp-for="Position" class="form-label">Position</label>
+                    <label asp-for="Position" class="form-label">Position <span class="filter-required">(required)</span></label>
                     <select asp-for="Position" class="form-select" required>
                         <option value="">Choose your position</option>
                         <option value="specialist">Specialist</option>
@@ -58,7 +56,7 @@
                     <span asp-validation-for="Position" class="text-danger"></span>
                 </div>
                 <div class="col-md-6">
-                    <label asp-for="University" class="form-label">Workplace</label>
+                    <label asp-for="University" class="form-label">Workplace <span class="filter-required">(required)</span></label>
                     <input asp-for="University" class="form-control" autocomplete="organization" required />
                     <span asp-validation-for="University" class="text-danger"></span>
                 </div>
