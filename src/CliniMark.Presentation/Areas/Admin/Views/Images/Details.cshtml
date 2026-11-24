@@ -19,13 +19,14 @@
         })
     };
     var returnUrl = AdminUi.CurrentUrl(Context.Request);
+    var steps = ViewData[CliniMark.Presentation.Areas.Admin.Controllers.ImagesController.ParticipantStepsKey] as ParticipantImageSteps;
 }
 @section Actions {
     @if (!string.IsNullOrWhiteSpace(image.SourceUrl))
     {
         <a class="btn btn-sm btn-outline-secondary" href="@image.SourceUrl" target="_blank" rel="noopener noreferrer"><i class="bi bi-box-arrow-up-right"></i> Source article</a>
     }
-    <form method="post" asp-action="SetRemoved" asp-route-id="@image.Id" class="d-inline"
+    <form method="post" asp-action="SetRemoved" asp-route-id="@image.Id" asp-route-participant="@steps?.Person.Id" class="d-inline"
           data-confirm-button="@(image.ExcludedAt == null ? "Remove" : "Restore")"
           data-confirm="@(image.ExcludedAt == null
               ? $"Remove image #{image.Id} from the study? Use this for an image that shouldn't be annotated. Anyone working on it is locked out of it, saved answers are kept, and it won't be assigned again until restored."
@@ -36,6 +37,11 @@
         </button>
     </form>
     <a class="btn btn-sm btn-outline-secondary" asp-action="Index"><i class="bi bi-arrow-left"></i> All images</a>
+}
+
+@if (steps != null)
+{
+    <partial name="_ParticipantSteps" model="(steps, image.Id, false)" />
 }
 
 @if (image.ExcludedAt != null)
@@ -319,9 +325,18 @@
     }
 </section>
 
+@if (steps != null)
+{
+    <partial name="_ParticipantSteps" model="(steps, image.Id, true)" />
+}
+
 <script type="application/json" id="overlay-data">@Html.Raw(System.Text.Json.JsonSerializer.Serialize(overlay))</script>
 
 @section Scripts {
     <script src="~/js/annotationGeometry.js" asp-append-version="true"></script>
     <script src="~/js/admin/adminOverlay.js" asp-append-version="true"></script>
+    @if (steps != null)
+    {
+        <script src="~/js/admin/stepKeys.js" asp-append-version="true"></script>
+    }
 }

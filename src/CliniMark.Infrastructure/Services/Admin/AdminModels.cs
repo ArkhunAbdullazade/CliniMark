@@ -133,6 +133,15 @@ public sealed record ParticipantWork(int ImageId, string? Speciality, string? Mo
 
 public sealed record ParticipantDetail(ParticipantRow Row, IReadOnlyList<ParticipantWork> Work);
 
+/// <summary>
+/// Where an image sits in one participant's Images worked on list, in the order of their page, so the admin can step
+/// through everything that participant did. Position counts from 1, and is 0 when the image isn't in their list.
+/// </summary>
+public sealed record ParticipantImageSteps(Person Person, int Position, int Count, int? PreviousId, int? NextId)
+{
+    public bool InList => Position > 0;
+}
+
 public sealed class ResponseQuery
 {
     public string Role { get; set; } = "specialist";

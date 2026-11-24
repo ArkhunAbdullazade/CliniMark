@@ -166,6 +166,50 @@ public sealed class AdminServicesTests
     }
 
     [Fact]
+    public async Task ImageStepsFollowTheParticipantPageOrder()
+    {
+        await using var db = await AdminDatabase.CreateAsync();
+        var now = DateTime.UtcNow;
+        // Saved work on images 1 and 3 (3 most recently), a lock on image 2 with nothing saved yet, and another
+        // specialist's newer answer on image 1, which isn't part of the first specialist's work.
+        db.Context.AnnotatedMedDatas.AddRange(
+            new AnnotatedMedData { MedDataId = 1, Email = db.First.Email, ExtractedKeyword = "lesion", CreatedAt = now.AddHours(-3) },
+            new AnnotatedMedData { MedDataId = 1, Email = db.First.Email, ExtractedKeyword = "margin", CreatedAt = now.AddHours(-2) },
+            new AnnotatedMedData { MedDataId = 3, Email = db.First.Email, ExtractedKeyword = "lesion", CreatedAt = now.AddHours(-1) },
+            new AnnotatedMedData { MedDataId = 1, Email = db.Second.Email, ExtractedKeyword = "lesion", CreatedAt = now });
+        db.Context.AnnotatedByStudentsMedDatas.Add(new AnnotatedByStudentsMedData { MedDataId = 2, Email = db.Student.Email, CreatedAt = now });
+        var locked = await db.Context.MedDatas.SingleAsync(image => image.Id == 2);
+        locked.LockedByUserId = db.First.Id;
+        locked.LockedAt = now;
+        await db.Context.SaveChangesAsync();
+
+        // Current lock first, then the most recent saves: the participant page's list.
+        Assert.Equal([2, 3, 1], (await db.Queries.GetParticipantAsync(db.First.Id))!.Work.Select(item => item.ImageId));
+        var first = await db.Queries.GetParticipantImageStepsAsync(db.First.Id, 2);
+        var middle = await db.Queries.GetParticipantImageStepsAsync(db.First.Id, 3);
+        var last = await db.Queries.GetParticipantImageStepsAsync(db.First.Id, 1);
+        Assert.Equal((1, 3, (int?)null, (int?)3), (first!.Position, first.Count, first.PreviousId, first.NextId));
+        Assert.Equal((2, 3, (int?)2, (int?)1), (middle!.Position, middle.Count, middle.PreviousId, middle.NextId));
+        Assert.Equal((3, 3, (int?)3, (int?)null), (last!.Position, last.Count, last.PreviousId, last.NextId));
+        Assert.Equal("first", middle.Person.FullName);
+
+        // An image outside their list, and links naming someone who isn't a participant.
+        var outside = await db.Queries.GetParticipantImageStepsAsync(db.Second.Id, 3);
+        Assert.Equal((false, 1, (int?)null, (int?)null), (outside!.InList, outside.Count, outside.PreviousId, outside.NextId));
+        Assert.Null(await db.Queries.GetParticipantImageStepsAsync("nobody", 1));
+        Assert.Null(await db.Queries.GetParticipantImageStepsAsync(db.Admin.Id, 1));
+
+        // Students step through the images their groups were saved on.
+        var student = await db.Queries.GetParticipantImageStepsAsync(db.Student.Id, 2);
+        Assert.Equal((1, 1), (student!.Position, student.Count));
+
+        // A removed image no longer counts as locked, as on the participant page.
+        locked.ExcludedAt = now;
+        await db.Context.SaveChangesAsync();
+        Assert.Equal(2, (await db.Queries.GetParticipantImageStepsAsync(db.First.Id, 3))!.Count);
+    }
+
+    [Fact]
     public async Task ImagesFilterByStatusAndSearch()
     {
         await using var db = await AdminDatabase.CreateAsync();

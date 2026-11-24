@@ -339,8 +339,43 @@ public sealed class AdminQueryService
         }
         foreach (var locked in row.LockedImages.Where(id => work.All(item => item.ImageId != id)))
             work.Add(new ParticipantWork(locked, null, null, 0, 0, false, true, null));
-        return new ParticipantDetail(row, work.OrderByDescending(item => item.Locked).ThenByDescending(item => item.LastSaveAt ?? DateTime.MinValue).ToList());
+        return new ParticipantDetail(row, OrderWork(work));
     }
+
+    /// <summary>
+    /// The previous and next image in a participant's Images worked on list, for stepping through their work from the
+    /// image page. Same images and order as <see cref="GetParticipantAsync"/>, without the figures that page works out.
+    /// </summary>
+    public async Task<ParticipantImageSteps?> GetParticipantImageStepsAsync(string participantId, int imageId, CancellationToken cancellationToken = default)
+    {
+        var people = await AdminData.LoadPeopleAsync(context, cancellationToken);
+        var person = people.ById(participantId);
+        if (person == null || person.Role is not ("Professional" or "Medical_Student")) return null;
+        var email = person.Email ?? "";
+        var saved = person.IsStudent
+            ? await context.AnnotatedByStudentsMedDatas.AsNoTracking().Where(group => group.Email == email).GroupBy(group => group.MedDataId)
+                .Select(group => new { ImageId = group.Key, Last = group.Max(item => item.CreatedAt) }).ToListAsync(cancellationToken)
+            : await context.AnnotatedMedDatas.AsNoTracking().Where(answer => answer.Email == email).GroupBy(answer => answer.MedDataId)
+                .Select(group => new { ImageId = group.Key, Last = group.Max(item => item.CreatedAt) }).ToListAsync(cancellationToken);
+        var images = context.MedDatas.AsNoTracking().Where(image => image.ExcludedAt == null);
+        var locked = (await (person.IsStudent
+                ? images.Where(image => image.LockedByStudentUserId == participantId)
+                : images.Where(image => image.LockedByUserId == participantId))
+            .Select(image => image.Id).ToListAsync(cancellationToken)).ToHashSet();
+        var work = saved.Select(item => new ParticipantWork(item.ImageId, null, null, 0, 0, false, locked.Contains(item.ImageId), item.Last)).ToList();
+        work.AddRange(locked.Where(id => work.All(item => item.ImageId != id)).Select(id => new ParticipantWork(id, null, null, 0, 0, false, true, null)));
+        var order = OrderWork(work).Select(item => item.ImageId).ToList();
+        var index = order.IndexOf(imageId);
+        return new ParticipantImageSteps(person, index + 1, order.Count,
+            index > 0 ? order[index - 1] : null,
+            index >= 0 && index < order.Count - 1 ? order[index + 1] : null);
+    }
+
+    // A participant's Images worked on list: current locks first, then the most recent saves. The image id settles ties,
+    // so the participant page and the image page's Previous and Next always agree.
+    private static List<ParticipantWork> OrderWork(IEnumerable<ParticipantWork> work) => work
+        .OrderByDescending(item => item.Locked).ThenByDescending(item => item.LastSaveAt ?? DateTime.MinValue).ThenByDescending(item => item.ImageId)
+        .ToList();
 
     /// <summary>The time a participant spent on each image they opened or saved work for, most recent first.</summary>
     public async Task<ParticipantTime?> GetParticipantTimeAsync(string id, CancellationToken cancellationToken = default)

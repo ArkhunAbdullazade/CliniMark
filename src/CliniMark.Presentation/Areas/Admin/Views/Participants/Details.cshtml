@@ -89,7 +89,7 @@
             <div class="admin-card-header">
                 <div>
                     <h2 class="admin-card-title">Images worked on</h2>
-                    <p class="admin-card-note">Current locks first, then the most recent saves</p>
+                    <p class="admin-card-note">Current locks first, then the most recent saves. Open an image to step through them with Previous and Next.</p>
                 </div>
             </div>
             @if (Model.Work.Count == 0)
@@ -106,7 +106,7 @@
                             {
                                 <tr>
                                     <td>
-                                        <a class="fw-semibold" asp-controller="Images" asp-action="Details" asp-route-id="@work.ImageId">#@work.ImageId</a>
+                                        <a class="fw-semibold" asp-controller="Images" asp-action="Details" asp-route-id="@work.ImageId" asp-route-participant="@person.Id">#@work.ImageId</a>
                                         <div class="muted small">@AdminUi.Title(work.Speciality ?? "") @(work.Modality is { } modality ? "· " + modality : "")</div>
                                     </td>
                                     <td>

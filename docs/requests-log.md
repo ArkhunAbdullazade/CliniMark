@@ -375,3 +375,11 @@ Decisions: both yellow warnings on the sign-up page were removed (the request qu
 **2026-11-24 UTC**
 
 > currently there are 7 technical problems reported, check them and explain and resolve
+
+## 2026-11-24: Previous and Next image on the admin image page
+
+**2026-11-24 UTC**
+
+> one more feature we need to add to the admin page: when I click on a participant and any of the images he/she has annotated, in order to see another image and annotations, i need to return and click on another image. It would be nice to have smth like "Next Image" and "Previous Image" buttons available when I view any image annotated by a specific participant, in order to quicker check all the work done by a single annotator. Currently there is only "Source Article", Remove from study, and All images buttons. We should add next and previous image navigator somewhere on that same page. Implement and directly go live
+
+Decisions: the order is the participant page's Images worked on list; the bar is shown above and below the image page, and the arrow keys step too; released straight to the live site as asked, without a test-site round.

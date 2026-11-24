@@ -4,6 +4,12 @@ What changed in CliniMark and why, newest first. Git holds every line of every c
 
 Database changes are in `src/CliniMark.Presentation/Migrations`, and each release that changes the database has a script in `deployment/`.
 
+## 2026-11-24: Previous and Next through one participant's images
+
+- An image opened from a participant's Images worked on list now has a bar above and below it: "Images worked on by <name> · Image 3 of 577", with Previous image and Next image buttons. They follow the same order as the list (current locks first, then the most recent saves), so all of one annotator's work can be checked without going back each time. The left and right arrow keys do the same, except while typing, in a dropdown or on the "Colour by" switch. The participant's name links back to their page.
+- The bar stays after Remove from study or Restore. Images opened from All images look as before. An image that isn't in the participant's list says so.
+- The previous and next image come from a light query that reads only that participant's answers and locks, so each step is quick. The participant page's list now breaks ties by image number, so both always agree.
+
 ## 2026-11-24: no false "Page error" reports from the end-of-series page
 
 - Leaving the specialist page while it had no image (the end-of-series page, or "No images are available in your filters right now") logged a "Page error": "Cannot access 'custom' before initialization". The check that warns about unsaved work read the custom annotations, which are only set up when there is an image. Participants saw nothing and lost nothing, because there was no image to save and the browser went on to the next page. But each exit added a problem report and a notification email. The first 7 reports came on 2026-11-23, from two specialists choosing new filters. The check now works on pages without an image. The fault had been there since custom annotations were added on 2026-11-02. It surfaced now because participants were reaching the end of their filters.

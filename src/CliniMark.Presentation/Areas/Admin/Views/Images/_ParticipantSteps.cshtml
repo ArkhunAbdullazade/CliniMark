@@ -1,0 +1,49 @@
+@*
+    Steps through one participant's images when the image page was opened from their page: Previous and Next follow the
+    order of their Images worked on list (current locks first, then the most recent saves). The arrow keys do the same
+    (stepKeys.js). Shown above and below the image page, so the next image is in reach after reading the answers.
+*@
+@model (ParticipantImageSteps Steps, int ImageId, bool Bottom)
+@{
+    var steps = Model.Steps;
+    var person = steps.Person;
+    string Link(int id) => Url.Action("Details", "Images", new { id, participant = person.Id })!;
+}
+<nav class="participant-steps @(Model.Bottom ? "participant-steps-bottom mt-3" : "mb-3")" aria-label="Images worked on by @person.DisplayName">
+    <div class="participant-steps-who">
+        <i class="bi bi-person" aria-hidden="true"></i>
+        <span>Images worked on by <a asp-controller="Participants" asp-action="Details" asp-route-id="@person.Id" class="fw-semibold">@person.DisplayName</a></span>
+        @if (steps.InList)
+        {
+            <span class="participant-steps-count">Image <strong>@steps.Position</strong> of @steps.Count</span>
+        }
+        else
+        {
+            <span class="participant-steps-count">Image #@Model.ImageId isn't in this list.</span>
+        }
+    </div>
+    @if (steps.InList)
+    {
+        <div class="participant-steps-buttons">
+            @if (!Model.Bottom) { <span class="participant-steps-keys d-none d-lg-inline" aria-hidden="true">← → keys</span> }
+            <div class="btn-group btn-group-sm" role="group" aria-label="Step through the images">
+                @if (steps.PreviousId is int previous)
+                {
+                    <a class="btn btn-outline-secondary" href="@Link(previous)" data-step="previous" rel="prev" title="Image #@previous"><i class="bi bi-chevron-left" aria-hidden="true"></i> Previous image</a>
+                }
+                else
+                {
+                    <span class="btn btn-outline-secondary disabled" aria-disabled="true"><i class="bi bi-chevron-left" aria-hidden="true"></i> Previous image</span>
+                }
+                @if (steps.NextId is int next)
+                {
+                    <a class="btn btn-outline-secondary" href="@Link(next)" data-step="next" rel="next" title="Image #@next">Next image <i class="bi bi-chevron-right" aria-hidden="true"></i></a>
+                }
+                else
+                {
+                    <span class="btn btn-outline-secondary disabled" aria-disabled="true">Next image <i class="bi bi-chevron-right" aria-hidden="true"></i></span>
+                }
+            </div>
+        </div>
+    }
+</nav>

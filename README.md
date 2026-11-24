@@ -138,7 +138,7 @@ Time spent is measured on the annotation page. It counts while the page is the v
 | --- | --- |
 | Images | Every image with its labels, progress and lock |
 | Locks | Images reserved for one person, stale and partial work first, released one at a time or together |
-| Participants | Each person's choices, progress, current lock and time spent, with the time on each image one click away |
+| Participants | Each person's choices, progress, current lock and time spent, with the time on each image one click away. An image opened from their list has Previous image and Next image (or the arrow keys) to go through all their work |
 | Responses | Every saved answer or student group, filtered and downloaded as exactly those rows |
 | Full data | One row per image-text pair, with everything anyone saved about it |
 | Problems | Problems participants reported, and errors their pages logged on their own |

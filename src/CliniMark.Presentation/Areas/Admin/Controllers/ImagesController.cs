@@ -10,11 +10,17 @@ public class ImagesController(AdminQueryService queries, AssignmentAdminService 
     public async Task<IActionResult> Index([FromQuery] ImageQuery query, CancellationToken cancellationToken) =>
         View(new ImagesViewModel(await queries.GetImagesAsync(query, cancellationToken), query, await queries.GetCategoryOptionsAsync(cancellationToken)));
 
-    public async Task<IActionResult> Details(int id, CancellationToken cancellationToken)
+    // Opened from a participant's page, the image page also steps through that participant's images (Previous and Next).
+    public async Task<IActionResult> Details(int id, string? participant, CancellationToken cancellationToken)
     {
         var detail = await queries.GetImageAsync(id, cancellationToken);
-        return detail == null ? NotFound() : View(detail);
+        if (detail == null) return NotFound();
+        if (!string.IsNullOrWhiteSpace(participant))
+            ViewData[ParticipantStepsKey] = await queries.GetParticipantImageStepsAsync(participant, id, cancellationToken);
+        return View(detail);
     }
+
+    public const string ParticipantStepsKey = "ParticipantSteps";
 
     [HttpPost]
     public async Task<IActionResult> Release(int id, bool student, string holderId, string? returnUrl)
@@ -26,11 +32,11 @@ public class ImagesController(AdminQueryService queries, AssignmentAdminService 
     }
 
     [HttpPost]
-    public async Task<IActionResult> SetRemoved(int id, bool removed)
+    public async Task<IActionResult> SetRemoved(int id, bool removed, string? participant)
     {
         var result = await assignments.SetRemovedAsync(id, removed, AdminId);
         queries.InvalidateOverview();
         Flash(result.Message, result.Released);
-        return RedirectToAction(nameof(Details), new { id });
+        return RedirectToAction(nameof(Details), new { id, participant });
     }
 }
