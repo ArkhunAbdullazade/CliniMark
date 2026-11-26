@@ -208,6 +208,8 @@ Annotation data is only useful if it can be trusted, and most of these choices f
 
 **Nothing is quietly lost.** A skipped case keeps a copy of whatever was saved on it. A lock an admin releases keeps its partial work as an incomplete set. Exports read a consistent snapshot, so they never pause annotators.
 
+**Images come from the app's own address.** The study images are stored in Azure blob storage, but pages load them through CliniMark, at `/study-images/{image id}/{file}`. A hospital network that lets the app through then lets the images through too; some web filters block blob storage. The app fetches only the exact address the database holds for that image, and only for signed-in accounts. Files are named by the SHA-256 of their bytes, so browsers keep them. Exports and the image archive still read from storage directly.
+
 **Production only starts when it's set up properly.** It never migrates or seeds itself, and startup stops with a clear message if the database, its migrations or the data-protection key path are missing. Pages send a Content Security Policy with a per-request nonce. Sign-in and sign-up are rate-limited per client address, with enough headroom for a group joining from one hospital network.
 
 ## Architecture

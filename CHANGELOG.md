@@ -4,6 +4,17 @@ What changed in CliniMark and why, newest first. Git holds every line of every c
 
 Database changes are in `src/CliniMark.Presentation/Migrations`, and each release that changes the database has a script in `deployment/`.
 
+## 2026-11-26: images load through CliniMark's own address
+
+- A specialist reported that the images never appeared on his hospital computer but did on his phone. He filed 11 automatic "Image did not load" reports on 2026-11-26, for six different images. The app and the images were fine: the images came from a separate address, the study's Azure blob storage. His hospital network or computer blocked that address, while his phone, on mobile data, was not behind it. Some hospital web filters block Azure storage as "online file storage".
+- Pages now load study images through the app itself, at `/study-images/{image id}/{file}`. A network that lets CliniMark through lets its images through too. This covers the specialist and student pages, and the admin image page, image list and Full data link.
+- Safety and load:
+  - The route is for signed-in accounts only.
+  - It fetches only the exact storage address the database holds for that image, and only when the file name matches, so it can't be used to fetch anything else. A wrong file name, an unknown image, an address outside blob storage, or a file missing in storage gives "not found". A storage error gives a gateway error, which the page reports as before.
+  - Images are streamed, never held in memory. They're named by the SHA-256 of their bytes, so browsers keep them (`private, max-age=31536000, immutable`).
+- Unchanged: the database still holds the storage addresses; exports and the image archive read from storage directly; images at any other address (such as the local samples) are shown as before.
+- The images are the same files, and saved coordinates use the same pixel sizes (checked in a browser against the image straight from storage).
+
 ## 2026-11-24: the label check always shows in full, and a shorter sign-up page
 
 - "Please confirm for this image" never scrolls now, whatever the window size. Before, it was capped at 45% of the column's height (72% while a label search was open). On laptop screens that cut it off, and images with sex, age or skin tone made it scroll. It now always takes its full height; the Saved terms and custom-annotation lists below it give way instead. Shorter screens get slightly tighter spacing, and the label search list is a little shorter there. Checked at 1920×1080, 1536×864, 1440×900, 1366×768, 1280×720, 1366×768 at 125% zoom and 1280×600, with the search closed and open.

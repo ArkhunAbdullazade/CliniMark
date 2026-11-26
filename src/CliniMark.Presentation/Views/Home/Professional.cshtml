@@ -31,8 +31,9 @@
                 <div class="annotation-section">
                     <div class="image-viewport">
                     <div id="image-container">
+                        @* Through the app's own address when the image is in blob storage (StudyImageAddress). *@
                         <img id="sourceImage"
-                            src="@Model.ImageUrl"
+                            src="@CliniMark.Core.Services.StudyImageAddress.For(Model.Id, Model.ImageUrl)"
                             alt="Image for Annotation" style="display:none; max-width: 100%; max-height: 100%; object-fit: contain;">
                         <div id="canvasContainer">
                             <canvas id="mainCanvas"></canvas>

@@ -99,7 +99,7 @@
                             <td class="full-cell-narrow">
                                 <dl class="full-list">
                                     <dt>PMCID</dt><dd>@image.Pmcid</dd>
-                                    <dt>Image</dt><dd><a href="@image.ImageUrl" target="_blank" rel="noopener">Open</a></dd>
+                                    <dt>Image</dt><dd><a href="@CliniMark.Core.Services.StudyImageAddress.For(image.Id, image.ImageUrl)" target="_blank" rel="noopener">Open</a></dd>
                                     <dt>Source</dt><dd>@if (!string.IsNullOrWhiteSpace(image.SourceUrl)) { <a href="@image.SourceUrl" target="_blank" rel="noopener">Open</a> }</dd>
                                     <dt>Licence</dt><dd>@image.SourceLicense</dd>
                                 </dl>

@@ -91,7 +91,7 @@
                             <td>
                                 @if (!string.IsNullOrWhiteSpace(image.ImageUrl))
                                 {
-                                    <a asp-action="Details" asp-route-id="@image.Id"><img class="thumb" src="@image.ImageUrl" alt="" loading="lazy" referrerpolicy="no-referrer" /></a>
+                                    <a asp-action="Details" asp-route-id="@image.Id"><img class="thumb" src="@CliniMark.Core.Services.StudyImageAddress.For(image.Id, image.ImageUrl)" alt="" loading="lazy" referrerpolicy="no-referrer" /></a>
                                 }
                                 else
                                 {

@@ -424,3 +424,15 @@ Decisions: only terms that can be selected react to the pointer (terms not reach
 > apply these changes directly to live platform
 
 Decisions: the label check takes its full height and the lists below give way; Position and Workplace were already enforced, so they are now marked "(required)"; everything goes live in one release with the term-changing feature.
+
+## 2026-11-26: images that don't open on one computer
+
+**2026-11-26 UTC**
+
+> currently there are a few technical reports in our live app. One of the annotators informed me that the images dont open on his computer, but open on the smartphone. What is the problem?
+
+**2026-11-26 UTC**
+
+> yes, serve images through CliniMark, and go live directly. Only make sure nothing breaks, and this change doesnt negatively affect anything
+
+Decisions: images in blob storage load through `/study-images/{id}/{file}`, for signed-in accounts only, fetching only the address the database holds; nothing else changes; released straight to live as asked, after the test site.

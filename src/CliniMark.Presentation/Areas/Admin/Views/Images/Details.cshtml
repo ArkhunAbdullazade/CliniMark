@@ -71,7 +71,7 @@
                     <div class="d-flex flex-column flex-lg-row gap-3">
                         <div class="flex-grow-1 text-center">
                             <div class="image-stage" id="image-stage">
-                                <img id="admin-image" src="@image.ImageUrl" alt="Study image @image.Id" referrerpolicy="no-referrer" />
+                                <img id="admin-image" src="@CliniMark.Core.Services.StudyImageAddress.For(image.Id, image.ImageUrl)" alt="Study image @image.Id" referrerpolicy="no-referrer" />
                             </div>
                             <div id="overlay-notes" class="small text-start mt-2"></div>
                         </div>

@@ -206,6 +206,8 @@ builder.Services.AddScoped<SignInLog>();
 builder.Services.AddScoped<ImageTimeLog>();
 // No overall timeout: the service limits each attempt itself.
 builder.Services.AddHttpClient<ImageArchiveService>(client => client.Timeout = Timeout.InfiniteTimeSpan);
+// Study images through the app's own address (/study-images); the proxy limits each request itself.
+builder.Services.AddHttpClient<StudyImageProxy>(client => client.Timeout = Timeout.InfiniteTimeSpan);
 if (!isOperatorCommand) builder.Services.AddHostedService<LockSweeper>();
 // Emails the study team about registrations, problems, comments, targets and the weekly report (off unless configured).
 if (!isOperatorCommand) builder.Services.AddHostedService<NotificationWorker>();

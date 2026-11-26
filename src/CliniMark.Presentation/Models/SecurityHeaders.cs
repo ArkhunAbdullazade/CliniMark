@@ -4,7 +4,8 @@ public static class SecurityHeaders
 {
     public const string NonceKey = "csp-nonce";
 
-    // Study images load from outside the app (workbook links locally, blob storage when live), so only img-src stays open. Razor already encodes page text;
+    // Study images in blob storage load through the app (/study-images, StudyImageAddress); img-src stays open for any other
+    // image address (workbook links locally) and for older pages still open in a browser. Razor already encodes page text;
     // this limits the damage if anything ever slipped through.
     public static string Policy(string nonce) =>
         "default-src 'self'; " +
