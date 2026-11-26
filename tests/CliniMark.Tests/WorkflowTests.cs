@@ -469,6 +469,41 @@ public sealed class WorkflowTests
         Assert.Equal(Coordinates, (await db.Context.AnnotatedMedDatas.AsNoTracking().SingleAsync()).BoxCoordinates);
     }
 
+    [Fact]
+    public async Task ACommentOnTheWholeImageIsSavedOnItsOwnUntilTheNextImage()
+    {
+        await using var db = await WorkflowDatabase.CreateAsync();
+        await db.AssignAsync();
+        Assert.True((await db.Repository.SaveProfessionalAsync(db.Owner, Response(1))).Success);
+
+        // After every term is saved, before Next Image: saved, changed, saved again as a retry, cleared, written again.
+        Assert.True((await db.Repository.SaveImageCommentAsync(db.Owner, 1, "  First thought  ")).Success);
+        var first = await db.Context.ImageComments.AsNoTracking().SingleAsync();
+        Assert.Equal(("First thought", "owner", 1), (first.Text, first.UserId, first.MedDataId));
+        Assert.True((await db.Repository.SaveImageCommentAsync(db.Owner, 1, "Second thought")).Success);
+        Assert.True((await db.Repository.SaveImageCommentAsync(db.Owner, 1, "Second thought")).Success);
+        var second = await db.Context.ImageComments.AsNoTracking().SingleAsync();
+        Assert.Equal(("Second thought", first.Id, first.CreatedAt), (second.Text, second.Id, second.CreatedAt));
+        Assert.True(second.UpdatedAt >= first.UpdatedAt);
+        Assert.True((await db.Repository.SaveImageCommentAsync(db.Owner, 1, " ")).Success);
+        Assert.Empty(db.Context.ImageComments);
+        Assert.True((await db.Repository.SaveImageCommentAsync(db.Owner, 1, "Final thought")).Success);
+        Assert.Equal("Final thought", (await db.Repository.GetImageCommentAsync(1, db.Owner.Id))?.Text);
+
+        // Too long, or someone else: refused.
+        Assert.False((await db.Repository.SaveImageCommentAsync(db.Owner, 1, new string('x', ImageComment.MaxLength + 1))).Success);
+        Assert.True((await db.Repository.SaveImageCommentAsync(db.Other, 1, "Not mine")).Conflict);
+        Assert.Null(await db.Repository.GetImageCommentAsync(1, db.Other.Id));
+
+        // After Next Image it is final; only a retry of the saved text still succeeds.
+        Assert.True((await db.Repository.SaveMetadataChecksAsync(db.Owner, 1, LabelChecks.Answered)).Success);
+        Assert.True((await db.Repository.CompleteProfessionalAsync(1, db.Owner)).Success);
+        Assert.True((await db.Repository.SaveImageCommentAsync(db.Owner, 1, "Final thought")).Success);
+        var late = await db.Repository.SaveImageCommentAsync(db.Owner, 1, "Too late");
+        Assert.True(late.Conflict);
+        Assert.Equal("Final thought", (await db.Context.ImageComments.AsNoTracking().SingleAsync()).Text);
+    }
+
     private static AnnotatedMedData Response(int id) => new()
     {
         MedDataId = id, BoxCoordinates = Coordinates, ExtractedKeyword = "lesion", PressedButton = "Save and Next Term", Timestamps = "(100,200)"

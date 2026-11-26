@@ -48,7 +48,7 @@ async function page(occurrences, expectedCount, options = {}) {
   const events = {};
   const elements = Object.fromEntries(['annotation-status', 'next-button', 'skip-button', 'skip-image-button',
     'not-present-button', 'comments', 'technical-problem', 'image-container', 'cancel-change-button',
-    'saved-terms', 'saved-count', 'saved-items'].map(id => [id, new Element()]));
+    'saved-terms', 'saved-count', 'saved-items', 'image-comment', 'image-comment-status'].map(id => [id, new Element()]));
   const header = new Element();
   header.dataset.keywordCount = String(expectedCount);
   let onReady;
@@ -89,6 +89,7 @@ async function page(occurrences, expectedCount, options = {}) {
       if (url === '/MedData/ProcessAnnotatedMedData' && saveAnnotation) return saveAnnotation();
       if (url.includes('SkipImage') && skipImage) return skipImage();
       if (url === '/MedData/CorrectAnnotatedMedData' && options.correct) return options.correct();
+      if (url === '/MedData/SaveImageComment' && options.imageComment) return options.imageComment();
       return {ok: true, json: async () => url.includes('CurrentAnnotations') ? {annotations: []} : {success: true}};
     }
   };
@@ -736,4 +737,58 @@ test('selecting the term already being drawn keeps the drawing and asks nothing'
   assert.equal(confirms.length, 0);
   assert.equal(manager.annotations.length, 1);
   assert.equal(elements['next-button'].disabled, false);
+});
+
+const imageComments = calls => calls.filter(call => call.url === '/MedData/SaveImageComment').map(call => JSON.parse(call.body));
+const savedOnce = (extra = {}) => () => ({ok: true, json: async () => ({annotations: [{extractedKeyword: 'lesion', pressedButton: 'Save and Next Term',
+  boxCoordinates: 'saved coordinate envelope', comment: ''}], ...extra})});
+
+test('after every term is saved, a comment on the whole image can still be written and is saved on its own', async () => {
+  const lesion = new Element('lesion', 'lesion');
+  const {elements, calls} = await page([lesion], 1, {loadHistory: savedOnce()});
+  assert.equal(elements['next-button'].textContent, 'Next Image');
+  assert.equal(elements.comments.disabled, true, 'The term box waits for a term');
+  assert.match(elements.comments.placeholder, /select it in the text or in Saved terms\. For the case as a whole, use the box below/);
+  const box = elements['image-comment'];
+  assert.equal(box.disabled, false, 'The comment on the whole image is open');
+
+  box.value = 'Synthetic overall note';
+  await box.fire('input');
+  assert.match(elements['image-comment-status'].textContent, /Not saved yet/);
+  await box.fire('change');
+  await new Promise(setImmediate);
+  assert.deepEqual(imageComments(calls), [{Id: 1, Comment: 'Synthetic overall note'}]);
+  assert.equal(elements['image-comment-status'].textContent, 'Saved.');
+  await box.fire('change');
+  assert.equal(imageComments(calls).length, 1, 'Leaving the box again without a change sends nothing');
+});
+
+test('Next Image saves the comment on the whole image first, and stays if it cannot be saved', async () => {
+  let fail = true;
+  const lesion = new Element('lesion', 'lesion');
+  const {elements, calls, warnsBeforeLeaving} = await page([lesion], 1, {loadHistory: savedOnce(), imageComment: async () => fail
+    ? {ok: false, status: 503, json: async () => ({success: false, message: 'The comment could not be saved. Keep this page open and retry.'})}
+    : {ok: true, json: async () => ({success: true})}});
+  elements['image-comment'].value = 'Typed, never left the box';
+  assert.equal(warnsBeforeLeaving(), true, 'Leaving the page with an unsaved comment asks first');
+  await elements['next-button'].click();
+  assert.equal(calls.filter(call => call.url.includes('NextImage')).length, 0, 'No next image while the comment is unsaved');
+  assert.match(elements['annotation-status'].textContent, /comment on the whole image could not be saved/);
+  assert.equal(elements['image-comment-status'].classList.contains('error'), true);
+
+  fail = false;
+  await elements['next-button'].click();
+  const order = calls.map(call => call.url).filter(url => url.includes('SaveImageComment') || url.includes('NextImage'));
+  assert.deepEqual(order.slice(-2), ['/MedData/SaveImageComment', '/MedData/NextImage?medDataId=1']);
+  assert.equal(warnsBeforeLeaving(), false);
+});
+
+test('a comment on the whole image saved earlier comes back when the page opens again', async () => {
+  const lesion = new Element('lesion', 'lesion'), margin = new Element('margin', 'margin');
+  const {elements, calls, warnsBeforeLeaving} = await page([lesion, margin], 2, {loadHistory: savedOnce({imageComment: 'Saved before the reload'})});
+  assert.equal(elements['image-comment'].value, 'Saved before the reload');
+  assert.equal(elements['image-comment'].disabled, false, 'Also while terms are still to do');
+  assert.equal(warnsBeforeLeaving(), false, 'Nothing unsaved');
+  await elements['image-comment'].fire('change');
+  assert.equal(imageComments(calls).length, 0);
 });

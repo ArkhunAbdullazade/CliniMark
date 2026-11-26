@@ -78,6 +78,9 @@ html { font-size: 14px; }
 .admin-grid-tiles { grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); }
 .admin-grid-2 { grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); }
 
+/* Image page: a specialist's comment on the whole image keeps its line breaks. */
+.image-comment-text { white-space: pre-line; overflow-wrap: anywhere; }
+
 /* Image page: earlier versions of an answer the specialist changed. */
 .answer-history { margin-top: .3rem; font-size: .82rem; }
 .answer-history summary { color: var(--muted); cursor: pointer; }

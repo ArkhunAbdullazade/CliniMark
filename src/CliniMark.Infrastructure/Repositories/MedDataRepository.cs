@@ -279,13 +279,16 @@ public class MedDataRepository : IMedDataRepository
         var answerIds = answers.Select(item => item.Id).ToList();
         // Earlier versions of changed answers; they leave with their answers, so the copy keeps them too.
         var revisions = await context.AnswerRevisions.Where(item => answerIds.Contains(item.AnswerId)).OrderBy(item => item.Id).ToListAsync();
+        var imageComment = await context.ImageComments.SingleOrDefaultAsync(item => item.MedDataId == medDataId && item.UserId == user.Id);
         context.ImageSkips.Add(new ImageSkip
         {
             MedDataId = medDataId, UserId = user.Id, CreatedAt = DateTime.UtcNow,
             // Annotation fields only: the skip row already says who, so exports can share this copy under any identity setting.
-            DiscardedWork = answers.Count + customs.Count + checks.Count == 0 ? null : JsonSerializer.Serialize(DiscardedWork(answers, customs, checks, revisions))
+            DiscardedWork = answers.Count + customs.Count + checks.Count == 0 && imageComment == null ? null
+                : JsonSerializer.Serialize(DiscardedWork(answers, customs, checks, revisions, imageComment))
         });
         context.AnswerRevisions.RemoveRange(revisions);
+        if (imageComment != null) context.ImageComments.Remove(imageComment);
         context.AnnotatedMedDatas.RemoveRange(answers);
         context.CustomAnnotations.RemoveRange(customs);
         context.MetadataChecks.RemoveRange(checks);
@@ -475,6 +478,43 @@ public class MedDataRepository : IMedDataRepository
             .Where(item => item.MedDataId == medDataId && item.UserId == user.Id).OrderBy(item => item.Id).ToListAsync();
     }
 
+    /// <summary>
+    /// Saves the specialist's comment on the whole image (ImageComment) on its own, while the image is theirs: at any
+    /// point until Next Image, including after every term is saved. Empty text removes it. Saving the same text again (a
+    /// retry) changes nothing, even after the image is completed.
+    /// </summary>
+    public async Task<AnnotationSaveResult> SaveImageCommentAsync(User user, int medDataId, string? text)
+    {
+        var comment = text?.Trim() ?? "";
+        if (comment.Length > ImageComment.MaxLength)
+            return Failure("Keep the comment below 4,000 characters.");
+        await using var transaction = await BeginWorkflowAsync();
+        var source = await context.MedDatas.FindAsync(medDataId);
+        if (source == null || !UserFilters(user).Matches(source))
+            return Failure("This image does not match your selected filters.", true);
+        var existing = await context.ImageComments.SingleOrDefaultAsync(item => item.MedDataId == medDataId && item.UserId == user.Id);
+        if ((existing?.Text ?? "") == comment)
+            return new(true);
+        if (source.IsAnnotated || source.LockedByUserId != user.Id)
+            return Failure(NoLongerAssigned, true);
+
+        var now = DateTime.UtcNow;
+        if (comment.Length == 0) context.ImageComments.Remove(existing!);
+        else if (existing == null)
+            context.ImageComments.Add(new ImageComment { MedDataId = medDataId, UserId = user.Id, Text = comment, CreatedAt = now, UpdatedAt = now });
+        else
+        {
+            existing.Text = comment;
+            existing.UpdatedAt = now;
+        }
+        await context.SaveChangesAsync();
+        await transaction.CommitAsync();
+        return new(true);
+    }
+
+    public Task<ImageComment?> GetImageCommentAsync(int medDataId, string userId) =>
+        context.ImageComments.AsNoTracking().SingleOrDefaultAsync(item => item.MedDataId == medDataId && item.UserId == userId);
+
     // Offered to everyone in the correction search, so people reuse a value instead of creating spelling variants.
     public async Task<IReadOnlyDictionary<string, IReadOnlyList<string>>> GetAddedMetadataValuesAsync()
     {
@@ -632,10 +672,10 @@ public class MedDataRepository : IMedDataRepository
         return transaction;
     }
 
-    // The skip row's copy of what the specialist had saved. "revisions" (earlier versions of changed answers) is only
-    // there when they changed an answer, so copies made before answers could be changed keep the same shape.
+    // The skip row's copy of what the specialist had saved. "revisions" (earlier versions of changed answers) and
+    // "imageComment" are only there when there are some, so copies made before those existed keep the same shape.
     private static Dictionary<string, object?> DiscardedWork(List<AnnotatedMedData> answers, List<CustomAnnotation> customs,
-        List<MetadataCheck> checks, List<AnswerRevision> revisions)
+        List<MetadataCheck> checks, List<AnswerRevision> revisions, ImageComment? imageComment)
     {
         var work = new Dictionary<string, object?>
         {
@@ -645,6 +685,8 @@ public class MedDataRepository : IMedDataRepository
         };
         if (revisions.Count > 0)
             work["revisions"] = revisions.Select(item => new { item.ExtractedKeyword, item.PressedButton, item.BoxCoordinates, item.Comment, item.SavedAt, item.RevisedAt });
+        if (imageComment != null)
+            work["imageComment"] = new { imageComment.Text, imageComment.CreatedAt, imageComment.UpdatedAt };
         return work;
     }
 

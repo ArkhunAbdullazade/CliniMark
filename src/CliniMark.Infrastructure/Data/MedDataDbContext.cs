@@ -24,6 +24,7 @@ public class MedDataDbContext : IdentityDbContext<User, IdentityRole, string>
     public DbSet<SignIn> SignIns => Set<SignIn>();
     public DbSet<ImageTime> ImageTimes => Set<ImageTime>();
     public DbSet<AnswerRevision> AnswerRevisions => Set<AnswerRevision>();
+    public DbSet<ImageComment> ImageComments => Set<ImageComment>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -62,6 +63,8 @@ public class MedDataDbContext : IdentityDbContext<User, IdentityRole, string>
             .OnDelete(DeleteBehavior.Cascade);
         modelBuilder.Entity<AnswerRevision>().HasIndex(revision => revision.MedDataId);
         modelBuilder.Entity<AnswerRevision>().HasIndex(revision => revision.RevisedAt);
+        modelBuilder.Entity<ImageComment>().HasIndex(comment => new { comment.MedDataId, comment.UserId }).IsUnique();
+        modelBuilder.Entity<ImageComment>().HasIndex(comment => comment.UpdatedAt);
         modelBuilder.Entity<Notification>().HasIndex(notification => notification.Key).IsUnique();
         modelBuilder.Entity<Notification>().HasIndex(notification => notification.SentAt);
         modelBuilder.Entity<Notification>().Property(notification => notification.Key).HasMaxLength(200);

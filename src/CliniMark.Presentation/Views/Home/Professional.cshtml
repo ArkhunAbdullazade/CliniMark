@@ -102,9 +102,15 @@
                     </button>
                 </div>
                 <div class="note-panel" id="comments-panel">
-                    <div class="note-panel-inner">
-                        <label for="comments" class="visually-hidden">Comments on this term</label>
+                    @* Two comments: on the current term (saved with its answer), and on the whole image (saved on its own, any time
+                       before Next Image, including after every term is saved; professionalPage.js). *@
+                    <div class="note-panel-inner note-panel-pair">
+                        <label for="comments" class="note-label">On this term</label>
                         <textarea class="form-control" id="comments" maxlength="4000" placeholder="Leave your comments about this term here..."></textarea>
+                        <label for="image-comment" class="note-label">On the whole image</label>
+                        <textarea class="form-control" id="image-comment" maxlength="4000" disabled
+                                  placeholder="Anything about the case as a whole. Saved on its own, any time before Next Image."></textarea>
+                        <span class="note-status" id="image-comment-status" role="status" aria-live="polite"></span>
                     </div>
                 </div>
                 <div class="note-panel" id="problem-panel">

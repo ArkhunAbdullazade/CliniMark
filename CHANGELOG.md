@@ -4,6 +4,18 @@ What changed in CliniMark and why, newest first. Git holds every line of every c
 
 Database changes are in `src/CliniMark.Presentation/Migrations`, and each release that changes the database has a script in `deployment/`.
 
+## 2026-11-26: a comment on the whole image, and comments after the last term
+
+- A specialist reported "unable to save comments" (problem report #19). He was right. Comments were saved only with a term's answer, so once every term of an image was saved, the comment box was switched off, with no explanation. The only way to add one was to reopen a term, which nothing pointed to. He had saved all three terms and wanted to comment before moving on.
+- The Comments panel now has two boxes:
+  - **On this term:** as before, saved with the term's answer. Once every term is saved, it explains how to comment on one of them: select it in the text or in Saved terms.
+  - **On the whole image:** saved on its own when the specialist leaves the box, and before Next Image or Log Out. It can be written at any point until Next Image, including after the last term. It comes back after a reload, says "Not saved yet" or "Saved.", and leaving the page with unsaved text asks first. If it can't be saved, Next Image stays on the image and says why. Clearing it removes it.
+- Opening Comments puts the cursor in the first box that can be typed in.
+- Where it shows: a "Comments on the whole image" section on the admin image page, a new `image_comments` table in the export (explained in its README), and an email like other comments, sent once per saved version. Skip the case copies the comment into its copy of the discarded work.
+- Server: `POST /MedData/SaveImageComment`, one comment per specialist and image, saved under the same lock as answers. It can't be changed after Next Image; sending the same text again is harmless.
+
+Database script: `deployment/release-2026-11-26-migrations.sql` (adds one table; nothing is removed).
+
 ## 2026-11-26: time counts only while the clinician is working
 
 - The time measured on each image now stops sooner when a clinician isn't working on it:

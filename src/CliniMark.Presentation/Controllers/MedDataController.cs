@@ -129,9 +129,11 @@ public class MedDataController : Controller
         if (annotations == null) return StatusCode(403, new { success = false, message = "This image is not assigned to you." });
         var customs = await medDataRepository.GetCustomAnnotationsAsync(medDataId, user) ?? [];
         var checks = await medDataRepository.GetMetadataChecksAsync(medDataId, user) ?? [];
+        var imageComment = await medDataRepository.GetImageCommentAsync(medDataId, user.Id);
         return Json(new
         {
             success = true,
+            imageComment = imageComment?.Text ?? "",
             annotations = annotations.Select(item => new { item.ExtractedKeyword, item.PressedButton, item.BoxCoordinates, item.Comment, item.TechnicalProblem }),
             customAnnotations = customs.Select(item => new { item.Id, item.Term, item.Coordinates }),
             metadataChecks = checks.Select(item => new { item.Field, item.Verdict, item.CorrectedValue, item.IsNewValue })
@@ -154,6 +156,24 @@ public class MedDataController : Controller
         {
             logger.LogError(exception, "Label check save failed for image {MedDataId} and user {UserId}.", dto.Id, user.Id);
             return StatusCode(503, new { success = false, message = "The answer could not be saved. Keep this page open and retry." });
+        }
+    }
+
+    // The specialist's comment on the whole image, saved on its own (ImageComment); empty text removes it.
+    [HttpPost]
+    [Authorize(Roles = "Professional")]
+    [RequestSizeLimit(64_000)]
+    public async Task<IActionResult> SaveImageComment([FromBody] ImageCommentDto? dto)
+    {
+        if (!ModelState.IsValid || dto == null || dto.Id <= 0)
+            return BadRequest(new { success = false, message = "Keep the comment below 4,000 characters." });
+        var user = await userManager.GetUserAsync(User);
+        if (user == null) return Unauthorized(new { success = false, message = "Your session has ended. Sign in again." });
+        try { return SaveResult(await medDataRepository.SaveImageCommentAsync(user, dto.Id, dto.Comment)); }
+        catch (Exception exception)
+        {
+            logger.LogError(exception, "Image comment save failed for image {MedDataId} and user {UserId}.", dto.Id, user.Id);
+            return StatusCode(503, new { success = false, message = "The comment could not be saved. Keep this page open and retry." });
         }
     }
 

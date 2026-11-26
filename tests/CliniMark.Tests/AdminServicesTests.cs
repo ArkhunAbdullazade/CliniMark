@@ -242,7 +242,7 @@ public sealed class AdminServicesTests
 
         var files = await ReadArchiveAsync(await db.Export.CreateArchiveAsync(new ExportOptions { Identity = identity }));
 
-        var expected = new List<string> { "README.txt", "answer_revisions.csv", "custom_annotations.csv", "full_data.csv", "image_skips.csv", "images.csv", "metadata_checks.csv", "pixel_masks.csv", "problem_reports.csv", "progress.csv", "specialist_responses.csv", "student_annotations.csv" };
+        var expected = new List<string> { "README.txt", "answer_revisions.csv", "custom_annotations.csv", "image_comments.csv", "full_data.csv", "image_skips.csv", "images.csv", "metadata_checks.csv", "pixel_masks.csv", "problem_reports.csv", "progress.csv", "specialist_responses.csv", "student_annotations.csv" };
         if (identity != IdentityMode.None) expected.Add("participants.csv");
         Assert.Equal(expected.Order(), files.Keys.Order());
         Assert.Equal(identity == IdentityMode.Full, files.Values.Any(text => text.Contains("first@example.test")));
@@ -306,7 +306,7 @@ public sealed class AdminServicesTests
         var archive = await WriteImageArchiveAsync(db, new ImageServer(request => files[IdOf(request)]), new ExportOptions { Format = format, IncludeImages = true });
 
         using var zip = new ZipArchive(new MemoryStream(archive), ZipArchiveMode.Read);
-        Assert.Equal(["README.txt", "answer_revisions" + extension, "custom_annotations" + extension, "full_data" + extension, "image_skips" + extension, "images" + extension, "images/1.jpg", "images/2.png", "images/3.jpg", "images_manifest" + extension,
+        Assert.Equal(["README.txt", "answer_revisions" + extension, "custom_annotations" + extension, "full_data" + extension, "image_comments" + extension, "image_skips" + extension, "images" + extension, "images/1.jpg", "images/2.png", "images/3.jpg", "images_manifest" + extension,
             "metadata_checks" + extension, "participants" + extension, "pixel_masks" + extension, "problem_reports" + extension, "progress" + extension, "specialist_responses" + extension, "student_annotations" + extension],
             zip.Entries.Select(entry => entry.FullName).Order(StringComparer.Ordinal));
         Assert.Equal(files[1], EntryBytes(zip, "images/1.jpg"));
@@ -861,6 +861,30 @@ public sealed class AdminServicesTests
         using var copy = JsonDocument.Parse(skip.DiscardedWork!);
         Assert.Equal("not there", copy.RootElement.GetProperty("answers")[0].GetProperty("Comment").GetString());
         Assert.Equal("first note", copy.RootElement.GetProperty("revisions")[0].GetProperty("Comment").GetString());
+    }
+
+    [Fact]
+    public async Task ACommentOnTheWholeImageShowsOnTheImagePageInTheExportAndInASkipCopy()
+    {
+        await using var db = await AdminDatabase.CreateAsync();
+        await db.AssignAsync(db.First);
+        Assert.True((await db.Repository.SaveProfessionalAsync(db.First, Answer("lesion"))).Success);
+        Assert.True((await db.Repository.SaveImageCommentAsync(db.First, 1, "Poor image quality overall")).Success);
+
+        var comment = Assert.Single((await db.Queries.GetImageAsync(1))!.ImageComments);
+        Assert.Equal(("Poor image quality overall", db.First.Id), (comment.Text, comment.AnnotatorId));
+        var files = await ReadArchiveAsync(await db.Export.CreateArchiveAsync(new ExportOptions()));
+        var rows = files["image_comments.csv"].Split("\r\n", StringSplitOptions.RemoveEmptyEntries);
+        Assert.Equal(2, rows.Length);
+        Assert.StartsWith("CommentId,ImageId,Comment,SavedAtUtc,UpdatedAtUtc,AnnotatorCode", rows[0]);
+        Assert.Contains("Poor image quality overall", rows[1]);
+        Assert.Contains("SPEC-001", rows[1]);
+        Assert.Contains("image_comments", files["README.txt"]);
+
+        Assert.True((await db.Repository.SkipImageAsync(1, db.First)).Success);
+        Assert.Empty(db.Context.ImageComments);
+        using var copy = JsonDocument.Parse((await db.Context.ImageSkips.AsNoTracking().SingleAsync()).DiscardedWork!);
+        Assert.Equal("Poor image quality overall", copy.RootElement.GetProperty("imageComment").GetProperty("Text").GetString());
     }
 
     [Fact]

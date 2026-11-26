@@ -223,6 +223,39 @@
     }
 </section>
 
+@if (Model.ImageComments.Count > 0)
+{
+    <section class="admin-card mb-3" aria-labelledby="image-comments-title">
+        <div class="admin-card-header">
+            <div>
+                <h2 class="admin-card-title" id="image-comments-title">Comments on the whole image</h2>
+                <p class="admin-card-note">Written by the specialist in the Comments panel, beside the comments saved with each term</p>
+            </div>
+        </div>
+        <div class="admin-table-wrap">
+            <table class="table admin-table align-middle">
+                <thead><tr><th>Specialist</th><th>Comment</th><th class="d-none d-sm-table-cell">Saved</th></tr></thead>
+                <tbody>
+                    @foreach (var comment in Model.ImageComments)
+                    {
+                        <tr>
+                            <td class="text-nowrap">
+                                @if (comment.AnnotatorId != null)
+                                {
+                                    <a asp-controller="Participants" asp-action="Details" asp-route-id="@comment.AnnotatorId">@comment.AnnotatorName</a>
+                                }
+                                else { @comment.AnnotatorName }
+                            </td>
+                            <td class="small image-comment-text">@comment.Text</td>
+                            <td class="text-nowrap d-none d-sm-table-cell"><time datetime="@AdminUi.Iso(comment.UpdatedAt)" data-local="datetime"></time></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </section>
+}
+
 <section class="admin-card mb-3">
     <div class="admin-card-header">
         <div>

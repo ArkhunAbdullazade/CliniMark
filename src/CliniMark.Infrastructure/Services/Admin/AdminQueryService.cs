@@ -189,6 +189,8 @@ public sealed class AdminQueryService
             .OrderBy(custom => custom.Id).ToListAsync(cancellationToken);
         var checks = await context.MetadataChecks.AsNoTracking().Where(check => check.MedDataId == id)
             .OrderBy(check => check.Id).ToListAsync(cancellationToken);
+        var imageComments = await context.ImageComments.AsNoTracking().Where(comment => comment.MedDataId == id)
+            .OrderBy(comment => comment.Id).ToListAsync(cancellationToken);
         var earlier = (await context.AnswerRevisions.AsNoTracking().Where(revision => revision.MedDataId == id)
                 .OrderBy(revision => revision.Id).ToListAsync(cancellationToken))
             .GroupBy(revision => revision.AnswerId)
@@ -232,6 +234,11 @@ public sealed class AdminQueryService
                 var person = people.ById(check.UserId);
                 return new MetadataCheckRow(check.Field, check.ShownValue, check.Verdict, check.CorrectedValue, check.IsNewValue, check.UpdatedAt,
                     person?.Id, person?.DisplayName ?? "Removed account");
+            }).ToList(),
+            imageComments.Select(comment =>
+            {
+                var person = people.ById(comment.UserId);
+                return new ImageCommentRow(comment.Text, comment.UpdatedAt, person?.Id, person?.DisplayName ?? "Removed account");
             }).ToList());
     }
 

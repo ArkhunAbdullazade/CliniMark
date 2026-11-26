@@ -448,3 +448,11 @@ Decisions: images in blob storage load through `/study-images/{id}/{file}`, for 
 > yes, do both and go live directly
 
 Decisions: the idle limit goes from 3 minutes to 1; time counts only while the CliniMark window is the one in use; switching back to it counts as working; time already recorded is unchanged.
+
+## 2026-11-26: "unable to save comments"
+
+**2026-11-26 UTC**
+
+> one more technical error reported: no possibility to save the comment. Is it really true? resolve and go live
+
+Decisions: true once every term is saved; a comment on the whole image is added beside the term comments (new table ImageComments) and the term box explains how to comment on a saved term; test site, then live; report #19 resolved after go-live.

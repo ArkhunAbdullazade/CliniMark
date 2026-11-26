@@ -98,6 +98,30 @@ public sealed class NotificationTests
     }
 
     [Fact]
+    public async Task ACommentOnTheWholeImageIsAnnouncedOncePerSavedVersion()
+    {
+        await using var db = await Db.CreateAsync();
+        var person = db.AddUser("spec", "Professional", Start.AddHours(-2), "Dr Spec");
+        await db.SaveAsync();
+        await db.Scanner().EnqueueAsync(Start);
+
+        var comment = new ImageComment { MedDataId = 1, UserId = person.Id, Text = "Overall <b>odd</b>", CreatedAt = Start.AddMinutes(1), UpdatedAt = Start.AddMinutes(1) };
+        db.Context.ImageComments.Add(comment);
+        await db.SaveAsync();
+        Assert.Equal(1, await db.Scanner().EnqueueAsync(Start.AddMinutes(2)));
+        Assert.Equal(0, await db.Scanner().EnqueueAsync(Start.AddMinutes(3)));
+        comment.Text = "Overall fine after all";
+        comment.UpdatedAt = Start.AddMinutes(4);
+        await db.SaveAsync();
+        Assert.Equal(1, await db.Scanner().EnqueueAsync(Start.AddMinutes(5)));
+
+        var rows = await db.Context.Notifications.Where(item => item.Kind == Notification.Problem).OrderBy(item => item.Id).ToListAsync();
+        Assert.Equal(["Comment on the whole image from Dr Spec on image 1", "Changed comment on the whole image from Dr Spec on image 1"], rows.Select(item => item.Title));
+        Assert.Contains("Overall &lt;b&gt;odd&lt;/b&gt;", rows[0].Body);
+        Assert.Contains("Overall fine after all", rows[1].Body);
+    }
+
+    [Fact]
     public async Task EachTargetIsAnnouncedOnceWhenSpecialistsReachIt()
     {
         await using var db = await Db.CreateAsync();

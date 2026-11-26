@@ -106,7 +106,11 @@ public sealed record StudentGroup(int Id, string? Label, string? Coordinates, Da
 public sealed record ImageDetail(
     MedData Image, IReadOnlyList<string> Keywords, IReadOnlyList<SpecialistAnswer> Answers,
     IReadOnlyList<AnnotatorSet> SpecialistSets, IReadOnlyList<StudentGroup> Groups,
-    LockHolder? SpecialistLock, LockHolder? StudentLock, IReadOnlyList<CustomRow> Customs, IReadOnlyList<MetadataCheckRow> MetadataChecks);
+    LockHolder? SpecialistLock, LockHolder? StudentLock, IReadOnlyList<CustomRow> Customs, IReadOnlyList<MetadataCheckRow> MetadataChecks,
+    IReadOnlyList<ImageCommentRow> ImageComments);
+
+/// <summary>A specialist's comment on the whole image (beside the comments saved with each term).</summary>
+public sealed record ImageCommentRow(string Text, DateTime UpdatedAt, string? AnnotatorId, string AnnotatorName);
 
 /// <summary>A finding a specialist outlined and named themselves, beyond the image's terms.</summary>
 public sealed record CustomRow(int Id, string Term, string Coordinates, DateTime CreatedAt, string? AnnotatorId, string AnnotatorName);

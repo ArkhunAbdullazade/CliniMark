@@ -54,6 +54,7 @@ public sealed class ResultsExportService
                 await WriteProblemReportsAsync(zip, options.Format, people, cancellationToken);
                 await WriteImageSkipsAsync(zip, options, people, cancellationToken);
                 await WriteAnswerRevisionsAsync(zip, options, people, cancellationToken);
+                await WriteImageCommentsAsync(zip, options, people, cancellationToken);
                 await WritePixelMaskTableAsync(zip, options, people, completeSets, cancellationToken);
                 using (var table = Entry(zip, "full_data", options.Format))
                     await WriteFullDataRowsAsync(table, options.Identity, new FullDataQuery(), people, cancellationToken);
@@ -335,6 +336,19 @@ public sealed class ResultsExportService
         }
     }
 
+    // Specialists' comments on a whole image, beside the comments saved with each term in specialist_responses.
+    private async Task WriteImageCommentsAsync(ZipArchive zip, ExportOptions options, People people, CancellationToken cancellationToken)
+    {
+        using var table = Entry(zip, "image_comments", options.Format);
+        table.Header(["CommentId", "ImageId", "Comment", "SavedAtUtc", "UpdatedAtUtc", .. AnnotatorHeaders(options.Identity)]);
+        await foreach (var comment in context.ImageComments.AsNoTracking().OrderBy(comment => comment.Id).AsAsyncEnumerable().WithCancellation(cancellationToken))
+        {
+            var person = people.ById(comment.UserId);
+            table.Row([comment.Id, comment.MedDataId, comment.Text, comment.CreatedAt, comment.UpdatedAt,
+                .. AnnotatorValues(options.Identity, person, person?.Position, person?.ClinicalExperience ?? 0)]);
+        }
+    }
+
     private sealed record MaskRow(string Kind, long Id, int ImageId, string? Term, string Mask, Person? Person);
 
     private static string MaskFile(MaskRow mask) => $"masks/{mask.ImageId}_{mask.Kind}_{mask.Id}.png";
@@ -509,6 +523,9 @@ public sealed class ResultsExportService
                               version, and each row here is a version it replaced (ResponseId is that answer's
                               ResponseId). SavedAtUtc is when that version was saved, ReplacedAtUtc when it was changed.
                               The answer's timings and SavedAtUtc in specialist_responses stay those of its first save.
+            image_comments    a specialist's comment on the whole image, one per specialist and image, written beside the
+                              comments saved with each term (those are in specialist_responses). SavedAtUtc is when it
+                              was first saved, UpdatedAtUtc when it was last changed.
             image_skips       images a specialist sent back with Skip the case, usually as outside their speciality.
                               The image went back to the pool and started fresh for the next person. DiscardedWork keeps
                               a copy of what they had saved on it; those rows are not in the other tables.

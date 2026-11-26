@@ -42,6 +42,7 @@ public sealed class NotificationScanner(MedDataDbContext context, IOptions<Notif
         added += await AddAsync(await ProblemsAsync(started.Value, now, cancellationToken), cancellationToken);
         added += await AddAsync(await CommentsAsync(started.Value, now, cancellationToken), cancellationToken);
         added += await AddAsync(await CommentChangesAsync(started.Value, now, cancellationToken), cancellationToken);
+        added += await AddAsync(await ImageCommentsAsync(started.Value, now, cancellationToken), cancellationToken);
         added += await AddAsync(await MilestonesAsync(now, cancellationToken), cancellationToken);
         added += await AddAsync(await WeeklyAsync(started.Value, now, cancellationToken), cancellationToken);
         return added;
@@ -197,6 +198,35 @@ public sealed class NotificationScanner(MedDataDbContext context, IOptions<Notif
                     Field.Text("Earlier comment", before.Length == 0 ? null : before)));
                 result.Add(Row("note-change:" + change.Id, Notification.Problem, title, body, now));
             }
+        }
+        return result;
+    }
+
+    // A specialist's comment on the whole image (ImageComment). Each saved version is announced once; versions saved within
+    // the same minute come as one, the latest.
+    private async Task<List<Notification>> ImageCommentsAsync(DateTime since, DateTime now, CancellationToken cancellationToken)
+    {
+        var comments = await context.ImageComments.AsNoTracking().Where(comment => comment.UpdatedAt >= since)
+            .OrderBy(comment => comment.Id).ToListAsync(cancellationToken);
+        if (comments.Count == 0) return [];
+        string Key(ImageComment comment) => $"image-comment:{comment.Id}:{comment.UpdatedAt.Ticks}";
+        var missing = await MissingAsync(comments.Select(Key).ToList(), cancellationToken);
+        if (missing.Count == 0) return [];
+        var everyone = await PeopleAsync(cancellationToken);
+        var result = new List<Notification>();
+        foreach (var comment in comments.Where(comment => missing.Contains(Key(comment))))
+        {
+            var person = everyone.ById(comment.UserId);
+            var name = person?.DisplayName ?? "an unknown account";
+            var changed = comment.UpdatedAt > comment.CreatedAt;
+            var title = $"{(changed ? "Changed comment" : "Comment")} on the whole image from {name} on image {comment.MedDataId}";
+            var body = Card(title, Fields(
+                Field.Text("Type", changed ? "Comment on the whole image, changed" : "Comment on the whole image"),
+                Field.Text("When", When(comment.UpdatedAt)),
+                Field.Text("From", person != null ? Who(person) : "an unknown account"),
+                await ImageFieldAsync(comment.MedDataId, cancellationToken),
+                Field.Text("Comment", comment.Text)));
+            result.Add(Row(Key(comment), Notification.Problem, title, body, now));
         }
         return result;
     }

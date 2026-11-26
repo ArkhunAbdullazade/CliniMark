@@ -16,6 +16,8 @@ public interface IMedDataRepository
     Task ReleaseAssignmentsAsync(string userId, bool isStudent);
     Task<AnnotationSaveResult> SaveProfessionalAsync(User user, AnnotatedMedData annotation);
     Task<AnnotationSaveResult> CorrectProfessionalAsync(User user, AnnotatedMedData annotation);
+    Task<AnnotationSaveResult> SaveImageCommentAsync(User user, int medDataId, string? text);
+    Task<ImageComment?> GetImageCommentAsync(int medDataId, string userId);
     Task<AnnotationSaveResult> CompleteProfessionalAsync(int medDataId, User user);
     Task<AnnotationSaveResult> SkipImageAsync(int medDataId, User user);
     Task<AnnotationSaveResult> SaveStudentAsync(User user, IReadOnlyList<AnnotatedByStudentsMedData> annotations);

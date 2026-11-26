@@ -29,7 +29,7 @@ document.addEventListener("DOMContentLoaded", () => {
     toggle.addEventListener("click", () => {
       pinned = pinned === toggle ? null : toggle;
       show(pinned);
-      if (pinned) panelOf(toggle).querySelector("textarea")?.focus();
+      if (pinned) panelOf(toggle).querySelector("textarea:not(:disabled)")?.focus();
       else toggle.focus();
     });
   });
