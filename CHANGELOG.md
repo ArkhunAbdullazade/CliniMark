@@ -4,6 +4,14 @@ What changed in CliniMark and why, newest first. Git holds every line of every c
 
 Database changes are in `src/CliniMark.Presentation/Migrations`, and each release that changes the database has a script in `deployment/`.
 
+## 2026-11-26: time counts only while the clinician is working
+
+- The time measured on each image now stops sooner when a clinician isn't working on it:
+  - **One minute instead of three.** Counting stops after 1 minute without mouse, keyboard or touch use on the page, down from 3 minutes. A clinician called away to a patient adds at most 1 minute, not up to 3.
+  - **Only while CliniMark is the window in use.** Counting stops as soon as another program is in front, even if CliniMark is still visible on screen beside it. The mouse merely passing over the page from another program doesn't count either. Switching back to the window counts as working, including with Alt-Tab.
+- As before, nothing counts in a hidden tab, while the tutorial plays, or while the computer sleeps, and a break is never counted after the clinician returns.
+- Time recorded before this change stays as it was. The admin time page and the README say how time is measured, and since when.
+
 ## 2026-11-26: images load through CliniMark's own address
 
 - A specialist reported that the images never appeared on his hospital computer but did on his phone. He filed 11 automatic "Image did not load" reports on 2026-11-26, for six different images. The app and the images were fine: the images came from a separate address, the study's Azure blob storage. His hospital network or computer blocked that address, while his phone, on mobile data, was not behind it. Some hospital web filters block Azure storage as "online file storage".

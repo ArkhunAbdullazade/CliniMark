@@ -134,7 +134,7 @@ Admins sign in on the same page and land in `/Admin`, a separate area that annot
 
 The overview shows live progress for both roles, activity and drawing times, and it flags problems before they stall the study. Two examples are images that match nobody's choices and participants who have run out of work. Each image has a page that draws every saved annotation over it, one layer per term or group, coloured by term or by annotator. Pointing at a shape highlights the answer it belongs to.
 
-Time spent is measured on the annotation page. It counts while the page is the visible browser tab and the participant has used the mouse, keyboard or touch screen in the last 3 minutes, and pauses while the tutorial plays. The page reports its running total every half minute and before moving on. Work saved before measuring began has an estimate, marked ≈, built from the per-term timings saved with each answer.
+Time spent is measured on the annotation page. It counts only while the page is open in the window the participant is using (another program in front stops it, even with CliniMark still on screen) and they have used the mouse, keyboard or touch screen on it in the last minute, so a page left open while a clinician sees a patient stops counting within a minute. It pauses while the tutorial plays. The page reports its running total every half minute and before moving on. Work saved before measuring began has an estimate, marked ≈, built from the per-term timings saved with each answer.
 
 | Page | What it's for |
 | --- | --- |

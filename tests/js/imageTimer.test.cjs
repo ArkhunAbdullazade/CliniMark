@@ -12,8 +12,8 @@ const ok = () => ({ok: true, json: async () => ({success: true, recorded: true})
 function harness() {
   let now = 1_000_000;
   const timers = [], timeouts = [], requests = [], responses = [], listeners = {}, windowListeners = {};
-  const tutorial = {open: false};
-  const document = {hidden: false,
+  const tutorial = {open: false}, focus = {value: true};
+  const document = {hidden: false, hasFocus: () => focus.value,
     getElementById(id) { return id === 'tutorial-dialog' ? tutorial : null; },
     addEventListener(name, callback) { (listeners[name] ||= new Set()).add(callback); },
     removeEventListener(name, callback) { listeners[name]?.delete(callback); }};
@@ -34,12 +34,13 @@ function harness() {
   const timer = window.trackImageTime({imageId: 42, token: 'csrf-token'});
   // Runs the one-second timer the given number of times, a second apart.
   const seconds = async count => { for (let i = 0; i < count; i++) { now += 1000; timers[0]?.(); await flush(); } };
-  return {timer, window, document, tutorial, requests, responses, timeouts, seconds,
+  return {timer, window, document, tutorial, focus, requests, responses, timeouts, seconds,
     advance: ms => { now += ms; },
     input: async name => { for (const callback of [...(listeners[name] || [])]) callback(); await flush(); },
     fire: async name => { for (const callback of [...(listeners[name] || [])]) callback(); await flush(); },
     fireWindow: async name => { for (const callback of [...(windowListeners[name] || [])]) callback(); await flush(); },
-    listening: () => (listeners.pointermove?.size || 0) + (listeners.visibilitychange?.size || 0) + (windowListeners.pagehide?.size || 0)};
+    listening: () => (listeners.pointermove?.size || 0) + (listeners.visibilitychange?.size || 0) + (windowListeners.pagehide?.size || 0)
+      + (windowListeners.focus?.size || 0)};
 }
 
 test('counts seconds while the page is visible and in use, and reports the running total', async () => {
@@ -62,30 +63,57 @@ test('counts seconds while the page is visible and in use, and reports the runni
   assert.equal(h.timer.seconds(), 31);
 });
 
-test('stops counting after three minutes without input, in a hidden tab and while the tutorial plays', async () => {
+test('stops counting after one minute without input, in a hidden tab and while the tutorial plays', async () => {
   const h = harness();
   await h.seconds(200);
-  assert.equal(h.timer.seconds(), 180, 'Nothing counts after three idle minutes');
+  assert.equal(h.timer.seconds(), 60, 'Nothing counts after one idle minute (a clinician called away to a patient)');
   await h.input('pointermove');
   await h.seconds(10);
-  assert.equal(h.timer.seconds(), 190, 'Input starts it again, without counting the idle stretch');
+  assert.equal(h.timer.seconds(), 70, 'Input starts it again, without counting the idle stretch');
 
   h.document.hidden = true;
   await h.fire('visibilitychange');
   await h.seconds(60);
-  assert.equal(h.timer.seconds(), 190, 'A hidden tab never counts');
+  assert.equal(h.timer.seconds(), 70, 'A hidden tab never counts');
   h.document.hidden = false;
   await h.fire('visibilitychange');
   await h.input('keydown');
   await h.seconds(5);
-  assert.equal(h.timer.seconds(), 195);
+  assert.equal(h.timer.seconds(), 75);
 
   h.tutorial.open = true;
   await h.seconds(30);
-  assert.equal(h.timer.seconds(), 195, 'The tutorial video is not time on the image');
+  assert.equal(h.timer.seconds(), 75, 'The tutorial video is not time on the image');
   h.tutorial.open = false;
   await h.seconds(2);
-  assert.equal(h.timer.seconds(), 197);
+  assert.equal(h.timer.seconds(), 77);
+});
+
+test('another program in front stops counting at once, even with the page still on screen', async () => {
+  const h = harness();
+  await h.seconds(5);
+  h.focus.value = false;
+  await h.seconds(20);
+  await h.input('pointermove');
+  await h.seconds(20);
+  assert.equal(h.timer.seconds(), 5, 'Neither the time in the other program nor the pointer passing over the page counts');
+  h.focus.value = true;
+  await h.fireWindow('focus');
+  await h.seconds(3);
+  assert.equal(h.timer.seconds(), 8, 'Back in the window, it counts again from that moment');
+});
+
+test('switching back to the window by keyboard counts as using it', async () => {
+  const h = harness();
+  await h.seconds(10);
+  h.focus.value = false;
+  await h.seconds(120);
+  h.focus.value = true;
+  await h.seconds(5);
+  assert.equal(h.timer.seconds(), 10, 'Without input, a window that only regained focus after a long break does not count');
+  await h.fireWindow('focus');
+  await h.seconds(5);
+  assert.equal(h.timer.seconds(), 15);
 });
 
 test('a sleeping computer or a throttled tab adds at most two seconds at once', async () => {

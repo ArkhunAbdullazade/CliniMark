@@ -4,8 +4,8 @@ using Microsoft.EntityFrameworkCore;
 namespace CliniMark.Infrastructure.Services.Admin;
 
 /// <summary>
-/// Time a participant spent on images. Measured is what the annotation page counted while it was the visible tab and the
-/// person was using it (ImageTime rows). Estimated covers specialist answers saved before an image was measured, which
+/// Time a participant spent on images. Measured is what the annotation page counted while it was open in the window in
+/// use and the person was working on it (ImageTime rows; see imageTimer.js). Estimated covers specialist answers saved before an image was measured, which
 /// is all work from before timing began: the time from each term appearing to its save, as saved with the answer.
 /// </summary>
 public sealed record TimeSpent(long MeasuredSeconds, long EstimatedSeconds)

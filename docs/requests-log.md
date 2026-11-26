@@ -436,3 +436,15 @@ Decisions: the label check takes its full height and the lists below give way; P
 > yes, serve images through CliniMark, and go live directly. Only make sure nothing breaks, and this change doesnt negatively affect anything
 
 Decisions: images in blob storage load through `/study-images/{id}/{file}`, for signed-in accounts only, fetching only the address the database holds; nothing else changes; released straight to live as asked, after the test site.
+
+## 2026-11-26: time should count only while the clinician is working
+
+**2026-11-26 UTC**
+
+> can you verify whether, currently, the way we track the time that an annotator spends on any of the images, we specifically track that the Trademark page is open and the clinician is working (versus when it might be in the browser tab, but the clinician is not particularly annotating or analyzing the image, but has the platform open)? In the latter case, we don't want the time to count. We only need the time to count while a clinician annotator is working on something, and not the time when the platform is open. Clinicians, in their free time, do those annotations, but then the patients can come, or they can go and leave the computer open. They might not be really annotating, but time Can you just verify how exactly it works at the moment?
+
+**2026-11-26 UTC**
+
+> yes, do both and go live directly
+
+Decisions: the idle limit goes from 3 minutes to 1; time counts only while the CliniMark window is the one in use; switching back to it counts as working; time already recorded is unchanged.

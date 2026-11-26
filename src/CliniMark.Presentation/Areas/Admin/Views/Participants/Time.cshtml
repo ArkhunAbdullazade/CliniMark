@@ -137,7 +137,7 @@
         </div>
     }
     <div class="admin-card-body border-top">
-        <p class="admin-card-note mb-1"><strong>How time is measured.</strong> Time counts while the image's annotation page is the visible browser tab and the participant has used the mouse, keyboard or touch screen in the last 3 minutes, so a page left open unattended stops counting. It pauses while the tutorial video is open, and includes time on images they later skipped.</p>
+        <p class="admin-card-note mb-1"><strong>How time is measured.</strong> Time counts only while the image's annotation page is open in the window the participant is using (another program in front stops it, even with CliniMark still on screen) and they have used the mouse, keyboard or touch screen on it in the last minute, so a page left open unattended stops counting within a minute. Before 2026-11-26 the limit was 3 minutes and the window did not have to be the one in use. It pauses while the tutorial video is open, and includes time on images they later skipped.</p>
         @if (estimatedImages > 0)
         {
             <p class="admin-card-note mb-0"><strong>Estimated time</strong> (marked ≈) is for answers saved before timing began on @estimatedImages @(estimatedImages == 1 ? "image" : "images"). It adds up, for each term, the time from the term appearing to its save (at most 10 minutes a term), as saved with the answer. Terms answered without drawing and the label check aren't included, and time in another tab is.</p>

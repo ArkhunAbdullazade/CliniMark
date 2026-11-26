@@ -2,8 +2,9 @@ namespace CliniMark.Core.Models;
 
 /// <summary>
 /// Active time one participant spent on one image during one opening of its annotation page (imageTimer.js). The page
-/// counts only while it is the visible tab and the person has used the mouse, keyboard or touch screen in the last few
-/// minutes, and it reports its running total, so Seconds only ever grows. An image's time is the sum of its rows.
+/// counts only while it is open in the window in use and the person has used the mouse, keyboard or touch screen on it in
+/// the last minute (3 minutes, and visible was enough, before 2026-11-26), and it reports its running total, so Seconds
+/// only ever grows. An image's time is the sum of its rows.
 /// </summary>
 public class ImageTime
 {

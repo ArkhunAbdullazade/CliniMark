@@ -1,12 +1,13 @@
 "use strict";
 
 // Measures how long the participant actively works on the open image, for the time figures in the study team's admin
-// panel. Time counts while this page is the visible tab and the person has used the mouse, keyboard or touch screen in
-// the last three minutes, so a page left open unattended stops counting; it also pauses while the tutorial video is
-// open. The page reports its running total after the first second, every half minute, before moving on and when it is
+// panel. Time counts only while this page is the visible tab of the active window (another program in front stops it,
+// even with CliniMark still on screen), and the person has used the mouse, keyboard or touch screen on it in the last
+// minute, so a page left open while they see a patient stops counting within a minute; it also pauses while the
+// tutorial video is open. Coming back to the window counts as using it. The page reports its running total after the first second, every half minute, before moving on and when it is
 // hidden or closed. Each report repeats the whole total, so a lost or repeated report never loses or doubles time.
 (() => {
-  const TICK = 1000, REPORT_EVERY = 30000, IDLE_AFTER = 3 * 60000, FLUSH_WAIT = 1500;
+  const TICK = 1000, REPORT_EVERY = 30000, IDLE_AFTER = 60000, FLUSH_WAIT = 1500;
   const INPUT_EVENTS = ["pointerdown", "pointermove", "keydown", "wheel", "scroll", "touchstart"];
 
   function viewId() {
@@ -19,11 +20,13 @@
     const view = viewId();
     let activeMs = 0, sent = 0, early = false, lastInput = Date.now(), lastTick = Date.now(), lastReport = Date.now(), stopped = false;
     const tutorialOpen = () => document.getElementById("tutorial-dialog")?.open === true;
+    // The browser window is the one in use (not merely visible behind or beside another program).
+    const focused = () => typeof document.hasFocus !== "function" || document.hasFocus();
     // Adds the time since the last tick if the person was working. A step is at most two ticks, so a sleeping laptop
     // or a throttled background tab never adds a long stretch at once.
     const tick = () => {
       const now = Date.now();
-      if (!stopped && !document.hidden && !tutorialOpen() && now - lastInput <= IDLE_AFTER)
+      if (!stopped && !document.hidden && focused() && !tutorialOpen() && now - lastInput <= IDLE_AFTER)
         activeMs += Math.min(Math.max(0, now - lastTick), 2 * TICK);
       lastTick = now;
     };
@@ -44,6 +47,8 @@
       else lastTick = Date.now();
     };
     const pagehide = () => send(true);
+    // Switching back to the window is a deliberate act, so it counts as using the page.
+    const windowFocus = () => { input(); lastTick = Date.now(); };
     const timer = setInterval(() => {
       tick();
       const now = Date.now();
@@ -57,6 +62,7 @@
     INPUT_EVENTS.forEach(name => document.addEventListener(name, input, {capture: true, passive: true}));
     document.addEventListener("visibilitychange", visibility);
     window.addEventListener("pagehide", pagehide);
+    window.addEventListener("focus", windowFocus);
 
     const tracker = {
       seconds: () => { tick(); return Math.floor(activeMs / 1000); },
@@ -72,6 +78,7 @@
         INPUT_EVENTS.forEach(name => document.removeEventListener(name, input, {capture: true}));
         document.removeEventListener("visibilitychange", visibility);
         window.removeEventListener("pagehide", pagehide);
+        window.removeEventListener("focus", windowFocus);
         send(true);
       }
     };
