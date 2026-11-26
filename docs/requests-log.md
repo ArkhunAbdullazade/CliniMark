@@ -456,3 +456,9 @@ Decisions: the idle limit goes from 3 minutes to 1; time counts only while the C
 > one more technical error reported: no possibility to save the comment. Is it really true? resolve and go live
 
 Decisions: true once every term is saved; a comment on the whole image is added beside the term comments (new table ImageComments) and the term box explains how to comment on a saved term; test site, then live; report #19 resolved after go-live.
+
+**2026-11-26 UTC**, follow-up:
+
+> no I don't like the way it is now, with two boxes appearing. It must be simple, one box where a annotator types a comment, and then click a small save button and that's it.
+
+Decisions: one box with a Save button; it holds the specialist's comment on the image (ImageComments), saved at once; comments are no longer saved per term; unsaved text is still saved before Next Image or Log Out.

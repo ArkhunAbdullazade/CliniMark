@@ -116,7 +116,7 @@ public sealed class NotificationTests
         Assert.Equal(1, await db.Scanner().EnqueueAsync(Start.AddMinutes(5)));
 
         var rows = await db.Context.Notifications.Where(item => item.Kind == Notification.Problem).OrderBy(item => item.Id).ToListAsync();
-        Assert.Equal(["Comment on the whole image from Dr Spec on image 1", "Changed comment on the whole image from Dr Spec on image 1"], rows.Select(item => item.Title));
+        Assert.Equal(["Comment from Dr Spec on image 1", "Changed comment from Dr Spec on image 1"], rows.Select(item => item.Title));
         Assert.Contains("Overall &lt;b&gt;odd&lt;/b&gt;", rows[0].Body);
         Assert.Contains("Overall fine after all", rows[1].Body);
     }

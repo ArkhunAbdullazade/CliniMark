@@ -336,7 +336,7 @@ public sealed class ResultsExportService
         }
     }
 
-    // Specialists' comments on a whole image, beside the comments saved with each term in specialist_responses.
+    // Specialists' comments on an image, from the Comments panel; comments saved with a term before 2026-11-26 are in specialist_responses.
     private async Task WriteImageCommentsAsync(ZipArchive zip, ExportOptions options, People people, CancellationToken cancellationToken)
     {
         using var table = Entry(zip, "image_comments", options.Format);
@@ -523,9 +523,9 @@ public sealed class ResultsExportService
                               version, and each row here is a version it replaced (ResponseId is that answer's
                               ResponseId). SavedAtUtc is when that version was saved, ReplacedAtUtc when it was changed.
                               The answer's timings and SavedAtUtc in specialist_responses stay those of its first save.
-            image_comments    a specialist's comment on the whole image, one per specialist and image, written beside the
-                              comments saved with each term (those are in specialist_responses). SavedAtUtc is when it
-                              was first saved, UpdatedAtUtc when it was last changed.
+            image_comments    a specialist's comment on the image, one per specialist and image, from the Comments panel.
+                              Since 2026-11-26 this is where comments go; earlier ones were saved with a term and are in
+                              specialist_responses. SavedAtUtc is when it was first saved, UpdatedAtUtc when it last changed.
             image_skips       images a specialist sent back with Skip the case, usually as outside their speciality.
                               The image went back to the pool and started fresh for the next person. DiscardedWork keeps
                               a copy of what they had saved on it; those rows are not in the other tables.

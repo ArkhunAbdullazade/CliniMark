@@ -4,6 +4,14 @@ What changed in CliniMark and why, newest first. Git holds every line of every c
 
 Database changes are in `src/CliniMark.Presentation/Migrations`, and each release that changes the database has a script in `deployment/`.
 
+## 2026-11-26: one comment box with a Save button
+
+- The two boxes in the Comments panel ("On this term" and "On the whole image") were replaced, at the study lead's request, by one box with a small **Save** button. It's laid out like the technical-problem panel's Send now.
+- The box holds the specialist's comment on the image. Save stores it at once and shows "Saved."; while there is unsaved text it says "Not saved yet." and Save is available. It can be written and changed at any time until Next Image, including after every term is saved, and it comes back after a reload. Clearing it and pressing Save removes it.
+- Nothing typed is lost: text not yet saved is saved before Next Image or Log Out, Next Image stays on the image if that fails, and leaving the page asks first.
+- Comments are no longer saved with each term. Saving a term sends no comment, and changing a saved term keeps the comment it was saved with. Comments saved with terms until now stay in the answers and in `specialist_responses`. New ones are in `ImageComments` (admin image page, "Comments"; export, `image_comments`; emails "Comment from … on image …").
+- No database change: the `ImageComments` table went live earlier the same day.
+
 ## 2026-11-26: a comment on the whole image, and comments after the last term
 
 - A specialist reported "unable to save comments" (problem report #19). He was right. Comments were saved only with a term's answer, so once every term of an image was saved, the comment box was switched off, with no explanation. The only way to add one was to reopen a term, which nothing pointed to. He had saved all three terms and wanted to comment before moving on.

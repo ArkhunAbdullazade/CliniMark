@@ -479,7 +479,7 @@ public class MedDataRepository : IMedDataRepository
     }
 
     /// <summary>
-    /// Saves the specialist's comment on the whole image (ImageComment) on its own, while the image is theirs: at any
+    /// Saves the specialist's comment on the image (ImageComment, the Comments panel's Save) while the image is theirs: at any
     /// point until Next Image, including after every term is saved. Empty text removes it. Saving the same text again (a
     /// retry) changes nothing, even after the image is completed.
     /// </summary>

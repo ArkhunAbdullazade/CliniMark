@@ -5,7 +5,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // Custom annotations (customAnnotations.js), set up only once there is an image. Declared here because the
   // leave-page check below runs on every page, including the end-of-series page that has no image.
   let custom = null;
-  // The comment on the whole image (set up below once there is an image): unsaved text, and saving it before leaving.
+  // The specialist's comment on the image (set up below once there is an image): unsaved text, and saving it before leaving.
   let imageCommentPending = () => false, flushImageComment = async () => true;
   const status = document.getElementById("annotation-status");
   let baseStatus = {message: status?.textContent || "", state: status?.dataset.state || "ready"};
@@ -66,8 +66,8 @@ document.addEventListener("DOMContentLoaded", () => {
   for (const id of ["end-button", "end-button-center"]) {
     document.getElementById(id)?.addEventListener("click", async () => {
       if (saving) return;
-      if (dirty && !confirm("This term has unsaved annotations or comments. Discard them and log out?")) return;
-      if (!(await flushImageComment()) && !confirm("Your comment on the whole image could not be saved. Log out anyway?")) return;
+      if (dirty && !confirm("This term has unsaved annotations. Discard them and log out?")) return;
+      if (!(await flushImageComment()) && !confirm("Your comment could not be saved. Log out anyway?")) return;
       try {
         // The time on the open image is sent while the session still exists (imageTimer.js).
         await window.imageTimer?.flush();
@@ -118,27 +118,30 @@ document.addEventListener("DOMContentLoaded", () => {
       else if (!dirty) showStatus(changePrompt());
     }});
   let customRecords = [], labelRecords = [];
-  // Comment on the whole image (ImageComment): beside the term comments, saved on its own whenever the box is left, and
-  // before Next Image or Log Out; available until Next Image, including after every term is saved.
-  const imageComment = document.getElementById("image-comment");
-  const imageCommentStatus = document.getElementById("image-comment-status");
+  // The Comments panel: one comment on this image (ImageComment), typed in the box and saved with its Save button. It can
+  // be written and changed at any time until Next Image. Text not yet saved is saved before Next Image or Log Out, and
+  // leaving the page asks first, so nothing typed is lost.
+  const commentSave = document.getElementById("comment-save");
+  const commentStatus = document.getElementById("comment-status");
   let imageCommentSaved = "", imageCommentSaving = null;
-  const imageCommentNote = (text, error = false) => {
-    if (!imageCommentStatus) return;
-    imageCommentStatus.textContent = text;
-    imageCommentStatus.classList.toggle("error", error);
+  const commentNote = (text, state = "") => {
+    if (!commentStatus) return;
+    commentStatus.textContent = text;
+    commentStatus.dataset.state = state;
   };
-  imageCommentPending = () => !!imageComment && initialized && imageComment.value.trim() !== imageCommentSaved;
+  imageCommentPending = () => initialized && comments.value.trim() !== imageCommentSaved;
+  const commentButton = () => { if (commentSave) commentSave.disabled = released || !initialized || !!imageCommentSaving || !imageCommentPending(); };
   function saveImageComment() {
-    if (!imageComment || released || !initialized) return Promise.resolve(true);
+    if (released || !initialized) return Promise.resolve(true);
     if (imageCommentSaving) return imageCommentSaving;
-    const text = imageComment.value.trim();
+    const text = comments.value.trim();
     if (text === imageCommentSaved) return Promise.resolve(true);
-    imageCommentNote("Saving…");
+    commentNote("Saving…");
     imageCommentSaving = request("/MedData/SaveImageComment", {method: "POST", body: JSON.stringify({Id: assignmentId, Comment: text})})
-      .then(() => { imageCommentSaved = text; imageCommentNote(text ? "Saved." : "Removed."); return true; })
-      .catch(error => { requestFailed("Saving the comment on the whole image", error); imageCommentNote(error.message, true); lockLost(error); return false; })
-      .finally(() => { imageCommentSaving = null; });
+      .then(() => { imageCommentSaved = text; commentNote(text ? "Saved." : "Comment removed.", "sent"); return true; })
+      .catch(error => { requestFailed("Saving the comment", error); commentNote(error.message, "error"); lockLost(error); return false; })
+      .finally(() => { imageCommentSaving = null; commentButton(); });
+    commentButton();
     return imageCommentSaving;
   }
   // Saves until what is in the box is saved (it may change while a save is on its way); false if a save failed.
@@ -150,9 +153,12 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     return !imageCommentPending();
   };
-  imageComment?.addEventListener("input", () => imageCommentNote(imageCommentPending() ? "Not saved yet: it saves when you leave this box." : ""));
-  imageComment?.addEventListener("change", () => { saveImageComment(); });
-  // reviewIndex is the saved term opened to change it (-1: none). Its saved comment, and whether its shapes were touched.
+  comments.addEventListener("input", () => {
+    commentNote(imageCommentPending() ? "Not saved yet." : "");
+    commentButton();
+  });
+  commentSave?.addEventListener("click", () => { saveImageComment(); });
+  // reviewIndex is the saved term opened to change it (-1: none), and whether its shapes were touched.
   let history = [], currentIndex = -1, reviewIndex = -1;
   let opened = null, shapesTouched = false;
   let historyLoaded = false, historyLoading = false;
@@ -213,7 +219,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (savedCount) savedCount.textContent = `${count} of ${terms.length}`;
   }
   // A saved term that is open has changes when its shapes were touched or its comment differs from the saved one.
-  const changed = () => reviewIndex !== -1 && opened !== null && (shapesTouched || comments.value.trim() !== opened.comment);
+  const changed = () => reviewIndex !== -1 && opened !== null && shapesTouched;
   function buttons() {
     const changing = initialized && reviewIndex !== -1;
     const complete = initialized && currentIndex === -1 && !changing;
@@ -224,11 +230,8 @@ document.addEventListener("DOMContentLoaded", () => {
     if (cancel) { cancel.hidden = !changing; cancel.disabled = saving; }
     // Also while the image is failing to load: a broken case must not trap the specialist.
     skipImage.disabled = released || saving;
-    comments.disabled = released || !initialized || !manager.ready || saving || complete;
-    comments.placeholder = complete
-      ? "Every term is saved. To comment on one of them, select it in the text or in Saved terms. For the case as a whole, use the box below."
-      : "Leave your comments about this term here...";
-    if (imageComment) imageComment.disabled = released || !initialized;
+    comments.disabled = released || !initialized;
+    commentButton();
     problem.disabled = saving;
     manager.readOnly = released || !initialized || !manager.ready || saving || complete;
     // Custom annotations can be added whenever the image is theirs, including while reviewing or after the last term.
@@ -258,12 +261,12 @@ document.addEventListener("DOMContentLoaded", () => {
     const record = saved(reviewIndex);
     const drawn = record?.pressedButton === "Save and Next Term";
     return `Changing your saved answer for ${termName(reviewIndex)}. ${drawn
-      ? "Its saved shapes are shown: move, resize, delete or add shapes, or edit the comment. To answer Uncertain/Skip or Not Visible/Abstract instead, delete its shapes first."
-      : `It was saved as ${record?.pressedButton}. Draw shapes to annotate it, choose the other answer, or edit the comment.`} ${reviewNext()}`;
+      ? "Its saved shapes are shown: move, resize, delete or add shapes. To answer Uncertain/Skip or Not Visible/Abstract instead, delete its shapes first."
+      : `It was saved as ${record?.pressedButton}. Draw shapes to annotate it, or choose the other answer.`} ${reviewNext()}`;
   };
   function showCurrent() {
     reviewIndex = -1; opened = null; shapesTouched = false;
-    manager.resetAnnotation(); comments.value = ""; dirty = false;
+    manager.resetAnnotation(); dirty = false;
     currentIndex = pendingIndex(); started = Date.now(); firstDraw = 0;
     buttons();
     showStatus(prompt());
@@ -289,7 +292,7 @@ document.addEventListener("DOMContentLoaded", () => {
         customRecords = result.customAnnotations || [];
         labelRecords = result.metadataChecks || [];
         imageCommentSaved = (result.imageComment || "").trim();
-        if (imageComment) imageComment.value = imageCommentSaved;
+        comments.value = imageCommentSaved;
         historyLoaded = true;
         window.hasAnnotatedCurrentImage = history.length > 0;
       } catch (error) { requestFailed("Loading saved answers", error); showStatus(error.message, "error"); buttons(); return; }
@@ -315,7 +318,7 @@ document.addEventListener("DOMContentLoaded", () => {
       buttons();
       return;
     }
-    dirty = manager.annotations.length > 0 || comments.value.trim() !== "";
+    dirty = manager.annotations.length > 0;
     showStatus(dirty ? message : prompt(), dirty ? "unsaved" : "ready");
   }
   manager.onAnnotationsChange = () => {
@@ -324,7 +327,6 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!manager.readOnly && initialized) draftChanged("Unsaved changes. Select Save and Next Term to save this term.");
     buttons();
   };
-  comments.addEventListener("input", () => draftChanged(comments.value.trim() ? "Unsaved comment." : "Unsaved changes. Select Save and Next Term to save this term."));
   // Active time on this image, for the study team (imageTimer.js).
   const timer = window.trackImageTime?.({imageId: assignmentId, token});
   const watch = window.watchAssignment?.({imageId: assignmentId, busy: () => saving || navigating,
@@ -355,7 +357,7 @@ document.addEventListener("DOMContentLoaded", () => {
     openSaved(i, record);
   }
 
-  // Opens a saved term to change it: its shapes and comment come back, editable, until Save changes or Cancel.
+  // Opens a saved term to change it: its shapes come back, editable, until Save changes or Cancel.
   function openSaved(i, record) {
     manager.resetAnnotation(); dirty = false; shapesTouched = false; opened = null;
     if (record.boxCoordinates) {
@@ -366,22 +368,23 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
       }
     }
-    reviewIndex = i; comments.value = record.comment || "";
-    opened = {comment: (record.comment || "").trim()};
+    reviewIndex = i;
+    opened = {};
     buttons();
     showStatus(changePrompt());
   }
 
-  // Saves the open saved term with its new shapes, answer and comment (the server keeps the version it replaces).
+  // Saves the open saved term with its new shapes and answer (the server keeps the version it replaces). A comment saved
+  // with the term before comments moved to the Comments panel stays as it was.
   async function saveChange(action) {
     if (released || saving || !initialized || !manager.ready || reviewIndex === -1 || assignmentId !== window.annotatedMedData.id) return;
-    const i = reviewIndex, record = saved(i), comment = comments.value.trim();
+    const i = reviewIndex, record = saved(i), comment = (record.comment || "").trim();
     let coordinates = "";
     try {
-      // Untouched shapes are sent exactly as saved, so a comment change doesn't rewrite them.
+      // Untouched shapes are sent exactly as saved, so changing only the answer doesn't rewrite them.
       if (action === "Save and Next Term") coordinates = !shapesTouched && record.pressedButton === action ? record.boxCoordinates : manager.getAllAnnotationsJSON();
     } catch (error) { showStatus(error.message, "error"); return; }
-    if (action === record.pressedButton && coordinates === (record.boxCoordinates || "") && comment === opened.comment) {
+    if (action === record.pressedButton && coordinates === (record.boxCoordinates || "")) {
       showCurrent(); return;
     }
     const payload = {Id: assignmentId, BoxCoordinates: coordinates, ExtractedKeyword: termName(i), PressedButton: action, Comment: comment};
@@ -400,7 +403,7 @@ document.addEventListener("DOMContentLoaded", () => {
     try { if (action === "Save and Next Term") coordinates = manager.getAllAnnotationsJSON(); }
     catch (error) { showStatus(error.message, "error"); return; }
     const elapsed = firstDraw ? `(${Math.max(0,firstDraw-started)},${Math.max(0,Date.now()-firstDraw)})` : "(0,0)";
-    const payload = {Id:assignmentId,BoxCoordinates:coordinates,ExtractedKeyword:termName(currentIndex),PressedButton:action,Comment:comments.value.trim(),TechnicalProblem:problem.value.trim(),Timestamps:elapsed};
+    const payload = {Id:assignmentId,BoxCoordinates:coordinates,ExtractedKeyword:termName(currentIndex),PressedButton:action,Comment:"",TechnicalProblem:problem.value.trim(),Timestamps:elapsed};
     saving = true; buttons(); showStatus("Saving… keep this page open.", "saving");
     try {
       await request("/MedData/ProcessAnnotatedMedData", {method:"POST",body:JSON.stringify(payload)});
@@ -418,7 +421,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (custom?.hasPending()) { showStatus("Save or cancel the custom annotation before moving on.", "error"); return; }
     if (reviewIndex !== -1) { await saveChange("Save and Next Term"); return; }
     if (currentIndex !== -1) { await save("Save and Next Term"); return; }
-    if (!(await flushImageComment())) { showStatus("Your comment on the whole image could not be saved yet. Try again in a moment.", "error"); return; }
+    if (!(await flushImageComment())) { showStatus("Your comment could not be saved yet. Try again in a moment.", "error"); return; }
     saving = true; buttons(); showStatus("Loading the next image…", "saving");
     try {
       await timer?.flush();
@@ -428,7 +431,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
   // Saved answers can't be seen until they have loaded, so a failed load is treated as if there were some.
   const hasWork = () => !historyLoaded || history.length > 0 || dirty || problem.value.trim() !== "" || custom?.hasSaved() || custom?.hasPending()
-    || (imageComment?.value.trim() ?? "") !== "";
+    || comments.value.trim() !== "";
   skipImage.addEventListener("click", async () => {
     if (released || saving) return;
     if (hasWork() && !confirm("Skip this case? What you have entered on it will be removed, and another specialist will start it fresh.")) return;

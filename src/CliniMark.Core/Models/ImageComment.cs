@@ -1,9 +1,9 @@
 namespace CliniMark.Core.Models;
 
 /// <summary>
-/// A specialist's comment on the whole image, beside the comments saved with each term. One per specialist and image,
-/// written in the Comments panel and saved on its own, so it can be added or changed at any point until Next Image,
-/// including after every term is saved. Clearing the text removes it.
+/// A specialist's comment on the image: one box in the Comments panel, saved with its Save button, so it can be added or
+/// changed at any point until Next Image, including after every term is saved. One per specialist and image; clearing
+/// the text removes it. (Before 2026-11-26 comments were saved with each term, in AnnotatedMedData.Comment.)
 /// </summary>
 public class ImageComment
 {

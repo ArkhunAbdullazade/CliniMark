@@ -109,7 +109,7 @@ public sealed record ImageDetail(
     LockHolder? SpecialistLock, LockHolder? StudentLock, IReadOnlyList<CustomRow> Customs, IReadOnlyList<MetadataCheckRow> MetadataChecks,
     IReadOnlyList<ImageCommentRow> ImageComments);
 
-/// <summary>A specialist's comment on the whole image (beside the comments saved with each term).</summary>
+/// <summary>A specialist's comment on the image, from the Comments panel (earlier comments were saved with a term).</summary>
 public sealed record ImageCommentRow(string Text, DateTime UpdatedAt, string? AnnotatorId, string AnnotatorName);
 
 /// <summary>A finding a specialist outlined and named themselves, beyond the image's terms.</summary>

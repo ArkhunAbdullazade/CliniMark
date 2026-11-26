@@ -48,7 +48,7 @@ async function page(occurrences, expectedCount, options = {}) {
   const events = {};
   const elements = Object.fromEntries(['annotation-status', 'next-button', 'skip-button', 'skip-image-button',
     'not-present-button', 'comments', 'technical-problem', 'image-container', 'cancel-change-button',
-    'saved-terms', 'saved-count', 'saved-items', 'image-comment', 'image-comment-status'].map(id => [id, new Element()]));
+    'saved-terms', 'saved-count', 'saved-items', 'comment-save', 'comment-status'].map(id => [id, new Element()]));
   const header = new Element();
   header.dataset.keywordCount = String(expectedCount);
   let onReady;
@@ -306,11 +306,11 @@ test('specialist status updates during inspection are restored when it ends', as
   const {elements, manager} = await page([new Element('lesion', 'lesion')], 1);
   const status = elements['annotation-status'];
   manager.onInspectionChange(true);
-  elements.comments.value = 'A comment entered while inspecting';
-  await elements.comments.fire('input');
+  manager.annotations = [{syntheticShape: true}];
+  manager.onAnnotationsChange();
   assert.equal(status.dataset.state, 'inspection');
   manager.onInspectionChange(false);
-  assert.equal(status.textContent, 'Unsaved comment.');
+  assert.equal(status.textContent, 'Unsaved changes. Select Save and Next Term to save this term.');
   assert.equal(status.dataset.state, 'unsaved');
 });
 
@@ -404,7 +404,7 @@ test('an image arriving first shares the in-flight fetch and restores history wi
   await savedTerm.click();
   assert.equal(manager.readOnly, false);
   assert.equal(manager.loaded, 'saved coordinate envelope');
-  assert.equal(elements.comments.value, 'saved comment');
+  assert.equal(elements.comments.value, '', 'The comment box is the image comment; opening a term leaves it alone');
   await current.click();
   manager.annotations = [{syntheticShape: true}]; elements.comments.value = 'current draft';
   manager.onAnnotationsChange();
@@ -453,7 +453,7 @@ test('finishing the history prefetch does not hide an image loading error', asyn
   assert.match(elements['annotation-status'].textContent, /image could not be loaded/);
 });
 
-test('removing every shape and the comment returns the term to an untouched state', async () => {
+test('removing every shape returns the term to an untouched state, and the comment is saved on its own', async () => {
   const {elements, manager, warnsBeforeLeaving} = await page([new Element('lesion', 'lesion')], 1);
   const status = elements['annotation-status'];
   manager.annotations = [{syntheticShape: true}];
@@ -471,16 +471,10 @@ test('removing every shape and the comment returns the term to an untouched stat
 
   elements.comments.value = 'A note';
   await elements.comments.fire('input');
-  assert.equal(status.textContent, 'Unsaved comment.');
-  manager.annotations = [{syntheticShape: true}];
-  manager.onAnnotationsChange();
-  manager.annotations = [];
-  manager.onAnnotationsChange();
-  assert.equal(status.dataset.state, 'unsaved', 'The comment still needs saving');
-  assert.equal(warnsBeforeLeaving(), true);
-  elements.comments.value = '  ';
-  await elements.comments.fire('input');
-  assert.equal(status.dataset.state, 'ready');
+  assert.equal(status.dataset.state, 'ready', 'A comment is not part of the term');
+  assert.equal(warnsBeforeLeaving(), true, 'but leaving with an unsaved comment asks first');
+  await elements['comment-save'].click();
+  await new Promise(setImmediate);
   assert.equal(warnsBeforeLeaving(), false);
 });
 
@@ -538,7 +532,7 @@ test('zoom to area shows its own hint and restores the specialist status afterwa
   assert.equal(status.dataset.state, 'ready');
 });
 
-test('an unsent technical problem report is saved with the term, separately from the comment, and never blocks the term', async () => {
+test('an unsent technical problem report is saved with the term, and the comment box is left alone', async () => {
   const {elements, calls, manager} = await page([new Element('lesion', 'lesion')], 1);
   const status = elements['annotation-status'], problem = elements['technical-problem'];
   problem.value = '  The image loaded blurred  ';
@@ -548,9 +542,9 @@ test('an unsent technical problem report is saved with the term, separately from
   await elements['skip-button'].click();
   const body = JSON.parse(calls.find(call => call.url === '/MedData/ProcessAnnotatedMedData').body);
   assert.equal(body.TechnicalProblem, 'The image loaded blurred');
-  assert.equal(body.Comment, 'Clinical note');
+  assert.equal(body.Comment, '', 'The comment is saved on its own, not with the term');
   assert.equal(problem.value, '');
-  assert.equal(elements.comments.value, '');
+  assert.equal(elements.comments.value, 'Clinical note', 'Moving to the next term keeps the comment box as it is');
   assert.equal(manager.annotations.length, 0);
 });
 
@@ -566,14 +560,14 @@ const drawnHistory = () => historyResponse([{extractedKeyword: 'lesion', pressed
   boxCoordinates: 'saved coordinate envelope', comment: 'first note'}]);
 const corrections = calls => calls.filter(call => call.url === '/MedData/CorrectAnnotatedMedData').map(call => JSON.parse(call.body));
 
-test('a saved term changed only in its comment is sent with its shapes exactly as saved', async () => {
+test('a saved term opens with its shapes, and a changed term keeps the comment it was saved with', async () => {
   const lesion = new Element('lesion', 'lesion'), margin = new Element('margin', 'margin');
   const {elements, calls, manager} = await page([lesion, margin], 2, {loadHistory: drawnHistory});
   assert.equal(margin.classList.contains('current_keyword'), true);
   assert.equal(lesion.dataset.description !== undefined, true, 'Saved terms say they can be opened');
 
   await lesion.click();
-  assert.equal(elements.comments.value, 'first note');
+  assert.equal(elements.comments.value, '', 'The comment box is not the term');
   assert.equal(elements['cancel-change-button'].hidden, false);
   assert.equal(elements['skip-button'].disabled, true, 'Its shapes must go before it can be Uncertain');
   const status = elements['annotation-status'];
@@ -584,20 +578,16 @@ test('a saved term changed only in its comment is sent with its shapes exactly a
   assert.equal(margin.classList.contains('current_keyword'), true, 'An unchanged term just closes');
 
   await lesion.click();
-  elements.comments.value = 'second note';
-  await elements.comments.fire('input');
+  manager.annotations = [{syntheticShape: true}, {syntheticShape: true}];
+  manager.onAnnotationsChange();
   assert.equal(elements['next-button'].disabled, false);
-  assert.equal(manager.readOnly, false);
   await elements['next-button'].click();
-  assert.deepEqual(corrections(calls), [{Id: 1, BoxCoordinates: 'saved coordinate envelope', ExtractedKeyword: 'lesion',
-    PressedButton: 'Save and Next Term', Comment: 'second note'}]);
+  assert.deepEqual(corrections(calls), [{Id: 1, BoxCoordinates: 'synthetic image-coordinate envelope', ExtractedKeyword: 'lesion',
+    PressedButton: 'Save and Next Term', Comment: 'first note'}]);
   assert.match(status.textContent, /^Your changes to lesion are saved\. Annotate the current term: margin/);
   assert.equal(status.children[1].textContent, 'margin');
   assert.equal(margin.classList.contains('current_keyword'), true, 'Back on the term they were on');
   assert.equal(elements['cancel-change-button'].hidden, true);
-
-  await lesion.click();
-  assert.equal(elements.comments.value, 'second note', 'The page keeps the changed answer');
 });
 
 test('a drawn term becomes Uncertain once its shapes are deleted, and new shapes are sent when they change', async () => {
@@ -646,13 +636,13 @@ test('Cancel leaves the saved answer as it was, asking first when something chan
 test('a refused change keeps the term open with the reason, and the next change can still be saved', async () => {
   let refuse = true;
   const lesion = new Element('lesion', 'lesion'), margin = new Element('margin', 'margin');
-  const {elements, calls, requestErrors} = await page([lesion, margin], 2, {loadHistory: drawnHistory,
+  const {elements, calls, requestErrors, manager} = await page([lesion, margin], 2, {loadHistory: drawnHistory,
     correct: async () => refuse
       ? {ok: false, status: 400, json: async () => ({success: false, message: 'Choose a valid annotation response.'})}
       : {ok: true, json: async () => ({success: true})}});
   await lesion.click();
-  elements.comments.value = 'second note';
-  await elements.comments.fire('input');
+  manager.annotations = [{syntheticShape: true}, {syntheticShape: true}];
+  manager.onAnnotationsChange();
   await elements['next-button'].click();
   assert.equal(elements['annotation-status'].textContent, 'Choose a valid annotation response.');
   assert.equal(elements['next-button'].textContent, 'Save changes');
@@ -743,38 +733,46 @@ const imageComments = calls => calls.filter(call => call.url === '/MedData/SaveI
 const savedOnce = (extra = {}) => () => ({ok: true, json: async () => ({annotations: [{extractedKeyword: 'lesion', pressedButton: 'Save and Next Term',
   boxCoordinates: 'saved coordinate envelope', comment: ''}], ...extra})});
 
-test('after every term is saved, a comment on the whole image can still be written and is saved on its own', async () => {
+test('the comment is typed in one box and saved with its Save button, also after every term is saved', async () => {
   const lesion = new Element('lesion', 'lesion');
   const {elements, calls} = await page([lesion], 1, {loadHistory: savedOnce()});
   assert.equal(elements['next-button'].textContent, 'Next Image');
-  assert.equal(elements.comments.disabled, true, 'The term box waits for a term');
-  assert.match(elements.comments.placeholder, /select it in the text or in Saved terms\. For the case as a whole, use the box below/);
-  const box = elements['image-comment'];
-  assert.equal(box.disabled, false, 'The comment on the whole image is open');
+  const box = elements.comments, save = elements['comment-save'], note = elements['comment-status'];
+  assert.equal(box.disabled, false, 'The comment box is open after the last term');
+  assert.equal(save.disabled, true, 'Nothing to save yet');
 
-  box.value = 'Synthetic overall note';
+  box.value = '  Synthetic note  ';
   await box.fire('input');
-  assert.match(elements['image-comment-status'].textContent, /Not saved yet/);
-  await box.fire('change');
+  assert.equal(note.textContent, 'Not saved yet.');
+  assert.equal(save.disabled, false);
+  await save.click();
   await new Promise(setImmediate);
-  assert.deepEqual(imageComments(calls), [{Id: 1, Comment: 'Synthetic overall note'}]);
-  assert.equal(elements['image-comment-status'].textContent, 'Saved.');
-  await box.fire('change');
-  assert.equal(imageComments(calls).length, 1, 'Leaving the box again without a change sends nothing');
+  assert.deepEqual(imageComments(calls), [{Id: 1, Comment: 'Synthetic note'}]);
+  assert.deepEqual([note.textContent, note.dataset.state, save.disabled], ['Saved.', 'sent', true]);
+  await save.click();
+  assert.equal(imageComments(calls).length, 1, 'Saving again without a change sends nothing');
+
+  box.value = '';
+  await box.fire('input');
+  await save.click();
+  await new Promise(setImmediate);
+  assert.deepEqual(imageComments(calls).at(-1), {Id: 1, Comment: ''});
+  assert.equal(note.textContent, 'Comment removed.');
 });
 
-test('Next Image saves the comment on the whole image first, and stays if it cannot be saved', async () => {
+test('Next Image saves a comment that was typed but not saved, and stays if it cannot be saved', async () => {
   let fail = true;
   const lesion = new Element('lesion', 'lesion');
   const {elements, calls, warnsBeforeLeaving} = await page([lesion], 1, {loadHistory: savedOnce(), imageComment: async () => fail
     ? {ok: false, status: 503, json: async () => ({success: false, message: 'The comment could not be saved. Keep this page open and retry.'})}
     : {ok: true, json: async () => ({success: true})}});
-  elements['image-comment'].value = 'Typed, never left the box';
+  elements.comments.value = 'Typed, Save not pressed';
+  await elements.comments.fire('input');
   assert.equal(warnsBeforeLeaving(), true, 'Leaving the page with an unsaved comment asks first');
   await elements['next-button'].click();
   assert.equal(calls.filter(call => call.url.includes('NextImage')).length, 0, 'No next image while the comment is unsaved');
-  assert.match(elements['annotation-status'].textContent, /comment on the whole image could not be saved/);
-  assert.equal(elements['image-comment-status'].classList.contains('error'), true);
+  assert.match(elements['annotation-status'].textContent, /Your comment could not be saved yet/);
+  assert.equal(elements['comment-status'].dataset.state, 'error');
 
   fail = false;
   await elements['next-button'].click();
@@ -783,12 +781,13 @@ test('Next Image saves the comment on the whole image first, and stays if it can
   assert.equal(warnsBeforeLeaving(), false);
 });
 
-test('a comment on the whole image saved earlier comes back when the page opens again', async () => {
+test('a saved comment comes back when the page opens again, also while terms are still to do', async () => {
   const lesion = new Element('lesion', 'lesion'), margin = new Element('margin', 'margin');
   const {elements, calls, warnsBeforeLeaving} = await page([lesion, margin], 2, {loadHistory: savedOnce({imageComment: 'Saved before the reload'})});
-  assert.equal(elements['image-comment'].value, 'Saved before the reload');
-  assert.equal(elements['image-comment'].disabled, false, 'Also while terms are still to do');
+  assert.equal(elements.comments.value, 'Saved before the reload');
+  assert.equal(elements.comments.disabled, false);
+  assert.equal(elements['comment-save'].disabled, true, 'Already saved');
   assert.equal(warnsBeforeLeaving(), false, 'Nothing unsaved');
-  await elements['image-comment'].fire('change');
+  await elements['comment-save'].click();
   assert.equal(imageComments(calls).length, 0);
 });

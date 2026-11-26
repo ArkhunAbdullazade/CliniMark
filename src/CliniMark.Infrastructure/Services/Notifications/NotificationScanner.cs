@@ -202,7 +202,7 @@ public sealed class NotificationScanner(MedDataDbContext context, IOptions<Notif
         return result;
     }
 
-    // A specialist's comment on the whole image (ImageComment). Each saved version is announced once; versions saved within
+    // A specialist's comment on the image (ImageComment, the Comments panel). Each saved version is announced once; versions saved within
     // the same minute come as one, the latest.
     private async Task<List<Notification>> ImageCommentsAsync(DateTime since, DateTime now, CancellationToken cancellationToken)
     {
@@ -219,9 +219,9 @@ public sealed class NotificationScanner(MedDataDbContext context, IOptions<Notif
             var person = everyone.ById(comment.UserId);
             var name = person?.DisplayName ?? "an unknown account";
             var changed = comment.UpdatedAt > comment.CreatedAt;
-            var title = $"{(changed ? "Changed comment" : "Comment")} on the whole image from {name} on image {comment.MedDataId}";
+            var title = $"{(changed ? "Changed comment" : "Comment")} from {name} on image {comment.MedDataId}";
             var body = Card(title, Fields(
-                Field.Text("Type", changed ? "Comment on the whole image, changed" : "Comment on the whole image"),
+                Field.Text("Type", changed ? "Comment on the image, changed" : "Comment on the image"),
                 Field.Text("When", When(comment.UpdatedAt)),
                 Field.Text("From", person != null ? Who(person) : "an unknown account"),
                 await ImageFieldAsync(comment.MedDataId, cancellationToken),

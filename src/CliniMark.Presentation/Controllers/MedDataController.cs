@@ -159,7 +159,7 @@ public class MedDataController : Controller
         }
     }
 
-    // The specialist's comment on the whole image, saved on its own (ImageComment); empty text removes it.
+    // The specialist's comment on the image, saved with the Comments panel's Save button (ImageComment); empty text removes it.
     [HttpPost]
     [Authorize(Roles = "Professional")]
     [RequestSizeLimit(64_000)]
